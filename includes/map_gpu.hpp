@@ -1,5 +1,5 @@
 /**
- * Totally NOT hacking on existing WindFlow implementation!
+ * Totally NOT hacking on the existing WindFlow implementation!
  */
 #ifndef WINDFLOW_MAP_GPU_H
 #define WINDFLOW_MAP_GPU_H
@@ -17,30 +17,30 @@
 constexpr std::uint32_t MAX_BUFFERED_TUPLES = 1024;
 
 
-//TODO: Lots of redundant parameters here, should be probably removed.
-template<typename win_F_t>
-__global__ void kernelBatch(void *input_data,
-                            std::size_t *start,
-                            std::size_t *end,
-                            std::uint64_t *gwids,
-                            void *results,
-                            win_F_t F,
-                            std::size_t batch_len,
-                            char *scratchpad_memory,
-                            std::size_t scratchpad_size)
-{
-	using input_t = decltype(get_tuple_t(F));
-	using output_t = decltype(get_result_t(F));
-	int id = threadIdx.x + blockIdx.x * blockDim.x;
-	if (id < batch_len) {
-		const auto scratchpad_addr = scratchpad_size > 0 ?
-			&scratchpad_memory[id * scratchpad_size] :
-			nullptr;
-		F(gwids[id], ((input_t *) input_data) + start[id],
-		  &((output_t *) results)[id], end[id] - start[id],
-		  scratchpad_addr);
-	}
-}
+// This was from win_seq_gpu.hpp, why did I inlcude it here?
+// template<typename win_F_t>
+// __global__ void kernelBatch(void *input_data,
+//                             std::size_t *start,
+//                             std::size_t *end,
+//                             std::uint64_t *gwids,
+//                             void *results,
+//                             win_F_t F,
+//                             std::size_t batch_len,
+//                             char *scratchpad_memory,
+//                             std::size_t scratchpad_size)
+// {
+// 	using input_t = decltype(get_tuple_t(F));
+// 	using output_t = decltype(get_result_t(F));
+// 	int id = threadIdx.x + blockIdx.x * blockDim.x;
+// 	if (id < batch_len) {
+// 		const auto scratchpad_addr = scratchpad_size > 0 ?
+// 			&scratchpad_memory[id * scratchpad_size] :
+// 			nullptr;
+// 		F(gwids[id], ((input_t *) input_data) + start[id],
+// 		  &((output_t *) results)[id], end[id] - start[id],
+// 		  scratchpad_addr);
+// 	}
+// }
 
 namespace wf {
 /**
@@ -74,7 +74,7 @@ public:
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	/// type of the function to map the key hashcode onto an identifier
 	/// starting from zero to pardegree-1
-	// using routing_func_t = std::function<size_t(size_t, size_t)>;
+	// using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
 
 private:
 	// friendships with other classes in the library
@@ -243,7 +243,7 @@ public:
 	 *  \param _name string with the unique name of the Map operator
 	 *  \param _closing_func closing function
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -257,7 +257,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -280,7 +280,7 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -295,7 +295,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -317,7 +317,7 @@ public:
 	 *  \param _name string with the unique name of the Map operator
 	 *  \param _closing_func closing function
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -331,7 +331,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -354,7 +354,7 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -369,7 +369,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -391,7 +391,7 @@ public:
 	 *  \param _name string with the unique name of the Map operator
 	 *  \param _closing_func closing function
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -405,7 +405,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -428,7 +428,7 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -443,7 +443,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -465,7 +465,7 @@ public:
 	 *  \param _name string with the unique name of the Map operator
 	 *  \param _closing_func closing function
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -479,7 +479,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -502,7 +502,7 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -517,7 +517,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
