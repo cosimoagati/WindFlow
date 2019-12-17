@@ -247,7 +247,7 @@ public:
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
-	    closing_func_t _closing_func):
+	    closing_func_t _closing_func) :
 		keyed(false)
 	{
 		// check the validity of the parallelism degree
@@ -256,19 +256,19 @@ public:
 			exit(EXIT_FAILURE);
 		}
 		// vector of Map_Node
-		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
-		}
+		// std::vector<ff_node *> w;
+		// for (std::size_t i=0; i<_pardegree; i++) {
+		// 	auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		// 	w.push_back(seq);
+		// }
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
+		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		// ff::ff_farm::add_workers(w);
 		// add default collector
-		ff::ff_farm::add_collector(nullptr);
+		// ff::ff_farm::add_collector(nullptr);
 		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
+		// ff::ff_farm::cleanup_all();
 	}
 
 	/**
@@ -284,8 +284,8 @@ public:
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
-	    closing_func_t _closing_func,
-	    routing_func_t _routing_func):
+	    closing_func_t _closing_func) :
+	    //routing_func_t _routing_func):
 		keyed(true)
 	{
 		// check the validity of the parallelism degree
@@ -294,19 +294,19 @@ public:
 			exit(EXIT_FAILURE);
 		}
 		// vector of Map_Node
-		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
-		}
+		// std::vector<ff_node *> w;
+		// for (std::size_t i=0; i<_pardegree; i++) {
+		// 	auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		// 	w.push_back(seq);
+		// }
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
+		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		// ff::ff_farm::add_workers(w);
 		// add default collector
-		ff::ff_farm::add_collector(nullptr);
+		// ff::ff_farm::add_collector(nullptr);
 		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
+		// ff::ff_farm::cleanup_all();
 	}
 
 	/**
@@ -318,7 +318,8 @@ public:
 	 *  \param _closing_func closing function
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
+	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value,
+	    rich_map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
 	    closing_func_t _closing_func):
@@ -330,19 +331,19 @@ public:
 			exit(EXIT_FAILURE);
 		}
 		// vector of Map_Node
-		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
-		}
+		// std::vector<ff_node *> w;
+		// for (std::size_t i=0; i<_pardegree; i++) {
+		// 	auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		// 	w.push_back(seq);
+		// }
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
+		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		// ff::ff_farm::add_workers(w);
 		// add default collector
-		ff::ff_farm::add_collector(nullptr);
+		// ff::ff_farm::add_collector(nullptr);
 		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
+		// ff::ff_farm::cleanup_all();
 	}
 
 	/**
@@ -358,8 +359,8 @@ public:
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
-	    closing_func_t _closing_func,
-	    routing_func_t _routing_func):
+	    closing_func_t _closing_func) :
+		//routing_func_t _routing_func):
 		keyed(true)
 	{
 		// check the validity of the parallelism degree
@@ -404,19 +405,19 @@ public:
 			exit(EXIT_FAILURE);
 		}
 		// vector of Map_Node
-		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
-		}
+		// std::vector<ff_node *> w;
+		// for (std::size_t i=0; i<_pardegree; i++) {
+		// 	auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		// 	w.push_back(seq);
+		// }
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
+		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		// ff::ff_farm::add_workers(w);
 		// add default collector
-		ff::ff_farm::add_collector(nullptr);
+		// ff::ff_farm::add_collector(nullptr);
 		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
+		// ff::ff_farm::cleanup_all();
 	}
 
 	/**
@@ -428,34 +429,34 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func,
-	    routing_func_t _routing_func):
-		keyed(true)
-	{
-		// check the validity of the parallelism degree
-		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
-		}
-		// vector of Map_Node
-		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
-		}
-		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
-		// add workers
-		ff::ff_farm::add_workers(w);
-		// add default collector
-		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
-	}
+	// template <typename T=std::size_t>
+	// Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
+	//     T _pardegree,
+	//     std::string _name,
+	//     closing_func_t _closing_func) :
+	//     // routing_func_t _routing_func):
+	// 	keyed(true)
+	// {
+	// 	// check the validity of the parallelism degree
+	// 	if (_pardegree == 0) {
+	// 		std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+	// 		exit(EXIT_FAILURE);
+	// 	}
+	// 	// vector of Map_Node
+	// 	std::vector<ff_node *> w;
+	// 	for (std::size_t i=0; i<_pardegree; i++) {
+	// 		auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+	// 		w.push_back(seq);
+	// 	}
+	// 	// add emitter
+	// 	ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
+	// 	// add workers
+	// 	ff::ff_farm::add_workers(w);
+	// 	// add default collector
+	// 	ff::ff_farm::add_collector(nullptr);
+	// 	// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+	// 	ff::ff_farm::cleanup_all();
+	// }
 
 	/**
 	 *  \brief Constructor VII
@@ -478,19 +479,19 @@ public:
 			exit(EXIT_FAILURE);
 		}
 		// vector of Map_Node
-		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
-		}
+		// std::vector<ff_node *> w;
+		// for (std::size_t i=0; i<_pardegree; i++) {
+		// 	auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		// 	w.push_back(seq);
+		// }
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
+		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		// ff::ff_farm::add_workers(w);
 		// add default collector
-		ff::ff_farm::add_collector(nullptr);
+		// ff::ff_farm::add_collector(nullptr);
 		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
+		// ff::ff_farm::cleanup_all();
 	}
 
 	/**
@@ -503,33 +504,33 @@ public:
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func,
-	    routing_func_t _routing_func):
-		keyed(true)
-	{
-		// check the validity of the parallelism degree
-		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
-		}
-		// vector of Map_Node
-		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
-		}
-		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
-		// add workers
-		ff::ff_farm::add_workers(w);
-		// add default collector
-		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
-	}
+	// Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
+	//     T _pardegree,
+	//     std::string _name,
+	//     closing_func_t _closing_func) :
+	//     // routing_func_t _routing_func):
+	// 	keyed(true)
+	// {
+	// 	// check the validity of the parallelism degree
+	// 	if (_pardegree == 0) {
+	// 		std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+	// 		exit(EXIT_FAILURE);
+	// 	}
+	// 	// vector of Map_Node
+	// 	std::vector<ff_node *> w;
+	// 	for (std::size_t i=0; i<_pardegree; i++) {
+	// 		auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+	// 		w.push_back(seq);
+	// 	}
+	// 	// add emitter
+	// 	ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
+	// 	// add workers
+	// 	ff::ff_farm::add_workers(w);
+	// 	// add default collector
+	// 	ff::ff_farm::add_collector(nullptr);
+	// 	// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+	// 	ff::ff_farm::cleanup_all();
+	// }
 
 	/**
 	 *  \brief Check whether the Map has been instantiated with a key-based distribution or not
@@ -538,6 +539,21 @@ public:
 	bool isKeyed() const
 	{
 		return keyed;
+	}
+
+	// svc_init method (utilized by the FastFlow runtime)
+	int svc_init()
+	{
+#if defined(LOG_DIR)
+		logfile = new std::ofstream();
+		name += "_node_"
+			+ std::to_string(ff::ff_node_t<tuple_t,result_t>::get_my_id())
+			+ ".log";
+		std::string filename = std::string(STRINGIFY(LOG_DIR))
+			+ "/" + name;
+		logfile->open(filename);
+#endif
+		return 0;
 	}
 };
 
