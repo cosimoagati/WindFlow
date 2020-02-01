@@ -32,8 +32,8 @@
  *  the setControlFields() and getControlFields() methods.
  */
 
-#ifndef MAP_H
-#define MAP_H
+#ifndef MAP_GPU_H
+#define MAP_GPU_H
 
 /// includes
 #include <string>
@@ -47,28 +47,29 @@
 
 namespace wf {
 
-// CUDA KERNEL: it calls the user-defined function over the windows within a micro-batch
-// Shamelessly taken by win_seq_gpu.hpp
-template<typename win_F_t>
-__global__ void kernelBatch(void *input_data,
-                            std::size_t *start,
-                            std::size_t *end,
-                            uint64_t *gwids,
-                            void *results,
-                            win_F_t F,
-                            std::size_t batch_len,
-                            char *scratchpad_memory,
-                            std::size_t scratchpad_size)
+// No Rich version for now!
+
+template<typename tuple_t, typename map_F_t>
+__device__ void map_kernel_ip(const tuple_t *buffer,
+			      const std::size_t buffer_size,
+			      const map_F_t f)
 {
-	using input_t = decltype(get_tuple_t(F));
-	using output_t = decltype(get_result_t(F));
-	int id = threadIdx.x + blockIdx.x * blockDim.x;
-	if (id < batch_len) {
-		if (scratchpad_size > 0)
-			F(gwids[id], ((input_t *) input_data) + start[id], &((output_t *) results)[id], end[id] - start[id], &scratchpad_memory[id * scratchpad_size]);
-		else
-			F(gwids[id], ((input_t *) input_data) + start[id], &((output_t *) results)[id], end[id] - start[id], nullptr);
-	}
+	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto stride = blockDim.x * gridDim.x;
+	for (auto i = index; i < buffer_size; i += stride)
+		f(buffer[i]);
+}
+
+template<typename tuple_t, typename result_t, typename win_F_t>
+__device__ void map_kernel_nip(const tuple_t *input_buffer,
+			       const result_t *result_buffer,
+			       const std::size_t buffer_size,
+			       const win_F_t f)
+{
+	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto stride = blockDim.x * gridDim.x;
+	for (auto i = index; i < buffer_size; i += stride)
+		result_buffer[i] = f(input_buffer[i]);
 }
 
 /**
@@ -103,10 +104,9 @@ private:
 	// class Map_Node
 	class Map_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
-	private:
 		static constexpr auto max_buffered_tuples = 256;
-		std::vector<tuple_t *> tuple_buffer;
-		std::vector<result_t *> result_buffer;
+		tuple_t *tuple_buffer;
+		result_t *result_buffer;
 
 		map_func_ip_t func_ip; // in-place map function
 		rich_map_func_ip_t rich_func_ip; // in-place rich map function
@@ -117,14 +117,21 @@ private:
 		bool isIP; // flag stating if the in-place map function should be used (otherwise the not in-place version)
 		bool isRich; // flag stating whether the function to be used is rich (i.e. it receives the RuntimeContext object)
 		RuntimeContext context; // RuntimeContext
+		decltype(max_buffered_tuples) buf_index {0};
+
 #if defined(LOG_DIR)
-		unsigned long rcvTuples = 0;
-		double avg_td_us = 0;
-		double avg_ts_us = 0;
+		unsigned long rcvTuples {0};
+		double avg_td_us {0};
+		double avg_ts_us {0};
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-
+		void fill_tuple_buffer(tuple_t *t)
+		{
+			tuple_buffer[buf_index] = *t;
+			buf_index++;
+			delete t;
+		}
 	public:
 		// Constructor I
 		template <typename T=std::string>
@@ -192,6 +199,10 @@ private:
 			std::string filename = std::string(STRINGIFY(LOG_DIR)) + "/" + name;
 			logfile->open(filename);
 #endif
+			cudaMallocManaged(&tuple_buffer,
+					  max_buffered_tuples * sizeof(tuple_t));
+			cudaMallocManaged(&result_buffer,
+					  max_buffered_tuples * sizeof(tuple_t));
 			return 0;
 		}
 
@@ -204,37 +215,33 @@ private:
 				startTD = current_time_nsecs();
 			rcvTuples++;
 #endif
-			result_t *r;
+			// in-place version
+			if (buf_index < max_buffered_tuples) {
+				fill_tuple_buffer(t);
+				return GO_ON;
+			}
+			buf_index = 0;
+			if (isIP) {
+				map_kernel_ip<<<1, 32>>>(tuple_buffer,
+							 max_buffered_tuples,
+							 func_ip);
+				cudaDeviceSynchronize();
+			} else {
+				cudaMallocManaged(&result_buffer,
+						  max_buffered_tuples * sizeof(result_t));
+				map_kernel_nip<<<1, 32>>>(tuple_buffer,
+							  result_buffer,
+							  max_buffered_tuples,
+							  func_nip);
+				cudaDeviceSynchronize();
+			}
 			const auto &output_buffer = isIP
 				? tuple_buffer
 				: result_buffer;
-			// in-place version
-			if (tuple_buffer.size() < max_buffered_tuples - 1) {
-				tuple_buffer.push_back(t);
-				return GO_ON;
-			} else {
-				if (isIP) {
-					if (!isRich)
-						func_ip(*t);
-					else
-						rich_func_ip(*t, context);
-					r = reinterpret_cast<result_t *>(t);
-					for (const auto &t : tuple_buffer)
-						ff_send_out(t);
-				} else {
-					r = new result_t();
-					if (!isRich)
-						func_nip(*t, *r);
-					else
-						rich_func_nip(*t, *r, context);
-					for (const auto &t : tuple_buffer)
-						delete t;
-					for (const auto &r : result_buffer)
-						ff_send_out(r);
-				}
-				for (const auto &r : result_buffer)
-					ff_send_out(r);
-			}
+			for (auto i = 0; i < max_buffered_tuples; ++i)
+				ff_send_out(new result_t
+					    {reinterpret_cast<result_t>(output_buffer[i])});
+
 #if defined(LOG_DIR)
 			endTS = current_time_nsecs();
 			endTD = current_time_nsecs();
@@ -262,6 +269,8 @@ private:
 			logfile->close();
 			delete logfile;
 #endif
+			cudaFree(tuple_buffer);
+			cudaFree(result_buffer);
 		}
 	};
 
