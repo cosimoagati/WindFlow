@@ -46,24 +46,6 @@
 #include <standard_nodes.hpp>
 
 namespace wf {
-
-
-/**
- * Individual results are stored in a boolean mask array, which the CPU
- * then uses to determine which tuples to send out.
- */
-template<typename tuple_t, typename filter_F_t>
-__device__ void filter_kernel(const tuple_t *tuple_buffer,
-			      const bool *tuple_mask_array,
-			      const std::size_t buffer_size,
-			      const filter_F_t f)
-{
-	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto stride = blockDim.x * gridDim.x;
-	for (auto i = index; i < buffer_size; i += stride)
-		tuple_mask_array[i] = f(tuple_buffer[i]);
-}
-
 /**
  *  \class Filter
  *
@@ -112,6 +94,10 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
+		/**
+		 * Individual results are stored in a boolean mask array, which the CPU
+		 * then uses to determine which tuples to send out.
+		 */
 		__device__ void filter_kernel(const tuple_t *tuple_buffer,
 					      const bool *tuple_mask_array,
 					      const std::size_t buffer_size,

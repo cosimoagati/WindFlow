@@ -46,32 +46,6 @@
 #include <standard_nodes.hpp>
 
 namespace wf {
-
-// No Rich version for now!
-
-template<typename tuple_t, typename map_F_t>
-__device__ void map_kernel_ip(const tuple_t *buffer,
-			      const std::size_t buffer_size,
-			      const map_F_t f)
-{
-	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto stride = blockDim.x * gridDim.x;
-	for (auto i = index; i < buffer_size; i += stride)
-		f(buffer[i]);
-}
-
-template<typename tuple_t, typename result_t, typename win_F_t>
-__device__ void map_kernel_nip(const tuple_t *input_buffer,
-			       const result_t *result_buffer,
-			       const std::size_t buffer_size,
-			       const win_F_t f)
-{
-	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto stride = blockDim.x * gridDim.x;
-	for (auto i = index; i < buffer_size; i += stride)
-		result_buffer[i] = f(input_buffer[i]);
-}
-
 /**
  *  \class Map
  *
@@ -126,6 +100,25 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
+		__device__ void map_kernel_ip(const tuple_t *buffer,
+					      const std::size_t buffer_size,
+					      const map_func_ip_t f)
+		{
+			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+			const auto stride = blockDim.x * gridDim.x;
+			for (auto i = index; i < buffer_size; i += stride)
+				f(buffer[i]);
+		}
+		__device__ void map_kernel_nip(const tuple_t *input_buffer,
+					       const result_t *result_buffer,
+					       const std::size_t buffer_size,
+					       const map_func_nip_t f)
+		{
+			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+			const auto stride = blockDim.x * gridDim.x;
+			for (auto i = index; i < buffer_size; i += stride)
+				result_buffer[i] = f(input_buffer[i]);
+		}
 		void fill_tuple_buffer(tuple_t *t)
 		{
 			tuple_buffer[buf_index] = *t;
