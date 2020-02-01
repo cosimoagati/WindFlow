@@ -112,7 +112,7 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-		void fill_tuple_buffer(tuple_t *t)
+		void fill_tuple_buffers(tuple_t *t)
 		{
 			cpu_tuple_buffer[buf_index] = t;
 			gpu_tuple_buffer[buf_index] = *t;
@@ -195,7 +195,6 @@ private:
 				}
 			}
 			buf_index = 0;
-
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)
