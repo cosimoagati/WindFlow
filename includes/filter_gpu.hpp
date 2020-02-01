@@ -92,7 +92,8 @@ private:
 	class Filter_Node: public ff::ff_node_t<tuple_t>
 	{
 		static constexpr auto max_buffered_tuples = 256;
-		tuple_t *tuple_buffer;
+		std::vector<tuple_t *> cpu_tuple_buffer;
+		tuple_t *gpu_tuple_buffer;
 		bool *tuple_mask_array;
 
 		filter_func_t filter_func; // filter function (predicate)
@@ -112,9 +113,14 @@ private:
 #endif
 		void fill_tuple_buffer(tuple_t *t)
 		{
-			tuple_buffer[buf_index] = *t;
+			cpu_tuple_buffer.push_back(t);
+			gpu_tuple_buffer[buf_index] = *t;
 			buf_index++;
-			delete t;
+		}
+		void reset_buffers()
+		{
+			cpu_tuple_buffer.clear();
+			buf_index = 0;
 		}
 	public:
 		// Constructor I
@@ -166,12 +172,12 @@ private:
 			rcvTuples++;
 #endif
 			if (buf_index < max_buffered_tuples) {
-				fill_tuple_buffer(t);
+				fill_tuple_buffers(t);
 				return GO_ON;
 			}
-			buf_index = 0;
 			// evaluate the predicate on the input item
-			filter_kernel<<<1, 32>>>(tuple_buffer, tuple_mask_array,
+			filter_kernel<<<1, 32>>>(gpu_tuple_buffer,
+						 tuple_mask_array,
 						 max_buffered_tuples,
 						 filter_func);
 			cudaDeviceSynchronize();
@@ -184,9 +190,15 @@ private:
 			avg_td_us += (1.0 / rcvTuples) * (elapsedTD_us - avg_td_us);
 			startTD = current_time_nsecs();
 #endif
-			for (auto i = 0; i < max_buffered_tuples; ++i)
-				return tuple_mask_array[i] ?
-					new tuple_t {tuple_buffer[i]} : GO_ON;
+			for (auto i = 0; i < max_buffered_tuples; ++i) {
+				if (tuple_mask_array[i]) {
+					return cpu_tuple_buffer[i];
+				} else {
+					delete cpu_tuple_buffer[i];
+					return GO_ON;
+				}
+			}
+			reset_buffers();
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)
