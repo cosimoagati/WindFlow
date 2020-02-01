@@ -60,7 +60,7 @@ __device__ void filter_kernel(const tuple_t *tuple_buffer,
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_size; i += stride)
-		tuple_mask_buffer[i] = f(tuple_buffer[i]);
+		tuple_mask_array[i] = f(tuple_buffer[i]);
 }
 
 /**
