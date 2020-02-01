@@ -106,6 +106,7 @@ private:
 	private:
 		static constexpr auto max_buffered_tuples = 256;
 		std::vector<tuple_t *> tuple_buffer;
+		std::vector<result_t *> result_buffer;
 
 		map_func_ip_t func_ip; // in-place map function
 		rich_map_func_ip_t rich_func_ip; // in-place rich map function
@@ -204,26 +205,36 @@ private:
 			rcvTuples++;
 #endif
 			result_t *r;
+			const auto &output_buffer = isIP
+				? tuple_buffer
+				: result_buffer;
 			// in-place version
 			if (tuple_buffer.size() < max_buffered_tuples - 1) {
 				tuple_buffer.push_back(t);
-			} else
+				return GO_ON;
+			} else {
 				if (isIP) {
 					if (!isRich)
 						func_ip(*t);
 					else
 						rich_func_ip(*t, context);
 					r = reinterpret_cast<result_t *>(t);
-				}
-				else {
+					for (const auto &t : tuple_buffer)
+						ff_send_out(t);
+				} else {
 					r = new result_t();
 					if (!isRich)
 						func_nip(*t, *r);
 					else
 						rich_func_nip(*t, *r, context);
-					delete t;
+					for (const auto &t : tuple_buffer)
+						delete t;
+					for (const auto &r : result_buffer)
+						ff_send_out(r);
+				}
+				for (const auto &r : result_buffer)
+					ff_send_out(r);
 			}
-		}
 #if defined(LOG_DIR)
 			endTS = current_time_nsecs();
 			endTD = current_time_nsecs();
@@ -233,7 +244,6 @@ private:
 			avg_td_us += (1.0 / rcvTuples) * (elapsedTD_us - avg_td_us);
 			startTD = current_time_nsecs();
 #endif
-			return r;
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)
