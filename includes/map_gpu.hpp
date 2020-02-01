@@ -247,6 +247,7 @@ private:
 			avg_td_us += (1.0 / rcvTuples) * (elapsedTD_us - avg_td_us);
 			startTD = current_time_nsecs();
 #endif
+			return GO_ON;
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)

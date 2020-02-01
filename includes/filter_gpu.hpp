@@ -112,11 +112,31 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
+		__device__ void filter_kernel(const tuple_t *tuple_buffer,
+					      const bool *tuple_mask_array,
+					      const std::size_t buffer_size,
+					      const filter_func_t f)
+		{
+			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+			const auto stride = blockDim.x * gridDim.x;
+			for (auto i = index; i < buffer_size; i += stride)
+				tuple_mask_array[i] = f(tuple_buffer[i]);
+		}
 		void fill_tuple_buffers(tuple_t *t)
 		{
 			cpu_tuple_buffer[buf_index] = t;
 			gpu_tuple_buffer[buf_index] = *t;
 			buf_index++;
+		}
+		void send_filtered_tuples()
+		{
+			for (auto i = 0; i < max_buffered_tuples; ++i) {
+				if (tuple_mask_array[i])
+					ff_send_out(cpu_tuple_buffer[i]);
+				else
+					delete cpu_tuple_buffer[i];
+			}
+			buf_index = 0;
 		}
 	public:
 		// Constructor I
@@ -186,15 +206,8 @@ private:
 			avg_td_us += (1.0 / rcvTuples) * (elapsedTD_us - avg_td_us);
 			startTD = current_time_nsecs();
 #endif
-			for (auto i = 0; i < max_buffered_tuples; ++i) {
-				if (tuple_mask_array[i]) {
-					return cpu_tuple_buffer[i];
-				} else {
-					delete cpu_tuple_buffer[i];
-					return GO_ON;
-				}
-			}
-			buf_index = 0;
+			send_filtered_tuples();
+			return GO_ON;
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)
