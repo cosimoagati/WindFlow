@@ -227,8 +227,6 @@ private:
 							 func_ip);
 				cudaDeviceSynchronize();
 			} else {
-				cudaMallocManaged(&result_buffer,
-						  max_buffered_tuples * sizeof(result_t));
 				map_kernel_nip<<<1, 32>>>(tuple_buffer,
 							  result_buffer,
 							  max_buffered_tuples,
