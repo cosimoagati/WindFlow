@@ -37,6 +37,7 @@
 
 /// includes
 #include <string>
+#include <vector>
 #include <ff/node.hpp>
 #include <ff/pipeline.hpp>
 #include <ff/farm.hpp>
@@ -44,17 +45,20 @@
 #include <context.hpp>
 #include <standard_nodes.hpp>
 
-// Taken from win_seq_gpu.hpp for now!
+namespace wf {
+
+// CUDA KERNEL: it calls the user-defined function over the windows within a micro-batch
+// Shamelessly taken by win_seq_gpu.hpp
 template<typename win_F_t>
 __global__ void kernelBatch(void *input_data,
-                            size_t *start,
-                            size_t *end,
+                            std::size_t *start,
+                            std::size_t *end,
                             uint64_t *gwids,
                             void *results,
                             win_F_t F,
-                            size_t batch_len,
+                            std::size_t batch_len,
                             char *scratchpad_memory,
-                            size_t scratchpad_size)
+                            std::size_t scratchpad_size)
 {
 	using input_t = decltype(get_tuple_t(F));
 	using output_t = decltype(get_result_t(F));
@@ -66,8 +70,6 @@ __global__ void kernelBatch(void *input_data,
 			F(gwids[id], ((input_t *) input_data) + start[id], &((output_t *) results)[id], end[id] - start[id], nullptr);
 	}
 }
-
-namespace wf {
 
 /**
  *  \class Map
@@ -92,7 +94,7 @@ public:
 	/// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	/// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
 
 private:
 	// friendships with other classes in the library
@@ -102,18 +104,15 @@ private:
 	class Map_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 	private:
-		static constexpr auto buf_capacity = 1024;
-		std::vector<tuple_t *> tuple_buf {}; // tuples are buffered here before sending them to GPU
-		int buf_tuples_num {0};
+		static constexpr auto max_buffered_tuples = 256;
+		std::vector<tuple_t *> tuple_buffer;
 
 		map_func_ip_t func_ip; // in-place map function
 		rich_map_func_ip_t rich_func_ip; // in-place rich map function
-		map_func_nip_t func_nip; // not in-vbbnjkplace map function
+		map_func_nip_t func_nip; // not in-place map function
 		rich_map_func_nip_t rich_func_nip; // not in-place rich map function
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
-		std::vector<tuple_t *> tuple_buf {}; // tuples are buffered here before sending them to GPU
-		int buf_tuples_num {0};
 		bool isIP; // flag stating if the in-place map function should be used (otherwise the not in-place version)
 		bool isRich; // flag stating whether the function to be used is rich (i.e. it receives the RuntimeContext object)
 		RuntimeContext context; // RuntimeContext
@@ -204,23 +203,27 @@ private:
 				startTD = current_time_nsecs();
 			rcvTuples++;
 #endif
-			if (rcvTuples
 			result_t *r;
 			// in-place version
-			if (isIP) {
-				if (!isRich)
-					func_ip(*t);
-				else
-					rich_func_ip(*t, context);
-				r = reinterpret_cast<result_t *>(t);
-			} else {
-				r = new result_t();
-				if (!isRich)
-					func_nip(*t, *r);
-				else
-					rich_func_nip(*t, *r, context);
-				delete t;
+			if (tuple_buffer.size() < max_buffered_tuples - 1) {
+				tuple_buffer.push_back(t);
+			} else
+				if (isIP) {
+					if (!isRich)
+						func_ip(*t);
+					else
+						rich_func_ip(*t, context);
+					r = reinterpret_cast<result_t *>(t);
+				}
+				else {
+					r = new result_t();
+					if (!isRich)
+						func_nip(*t, *r);
+					else
+						rich_func_nip(*t, *r, context);
+					delete t;
 			}
+		}
 #if defined(LOG_DIR)
 			endTS = current_time_nsecs();
 			endTD = current_time_nsecs();
@@ -261,7 +264,7 @@ public:
 	 *  \param _name string with the unique name of the Map operator
 	 *  \param _closing_func closing function
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -275,7 +278,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -298,7 +301,7 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -313,7 +316,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -335,7 +338,7 @@ public:
 	 *  \param _name string with the unique name of the Map operator
 	 *  \param _closing_func closing function
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -349,7 +352,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -372,7 +375,7 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -387,7 +390,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -409,7 +412,7 @@ public:
 	 *  \param _name string with the unique name of the Map operator
 	 *  \param _closing_func closing function
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -423,7 +426,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -446,7 +449,7 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -461,7 +464,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -483,7 +486,7 @@ public:
 	 *  \param _name string with the unique name of the Map operator
 	 *  \param _closing_func closing function
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -497,7 +500,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
@@ -520,7 +523,7 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=size_t>
+	template <typename T=std::size_t>
 	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
@@ -535,7 +538,7 @@ public:
 		}
 		// vector of Map_Node
 		std::vector<ff_node *> w;
-		for (size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
