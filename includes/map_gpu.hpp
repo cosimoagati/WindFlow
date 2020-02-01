@@ -221,18 +221,16 @@ private:
 				return GO_ON;
 			}
 			buf_index = 0;
-			if (isIP) {
+			if (isIP)
 				map_kernel_ip<<<1, 32>>>(tuple_buffer,
 							 max_buffered_tuples,
 							 func_ip);
-				cudaDeviceSynchronize();
-			} else {
-				map_kernel_nip<<<1, 32>>>(tuple_buffer,
+			else
+				  map_kernel_nip<<<1, 32>>>(tuple_buffer,
 							  result_buffer,
 							  max_buffered_tuples,
 							  func_nip);
-				cudaDeviceSynchronize();
-			}
+			cudaDeviceSynchronize();
 			const auto &output_buffer = isIP
 				? tuple_buffer
 				: result_buffer;
