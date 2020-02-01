@@ -35,6 +35,7 @@
 #define FILTER_GPU_H
 
 /// includes
+#include <array>
 #include <string>
 #include <iostream>
 #include <ff/node.hpp>
@@ -92,7 +93,7 @@ private:
 	class Filter_Node: public ff::ff_node_t<tuple_t>
 	{
 		static constexpr auto max_buffered_tuples = 256;
-		std::vector<tuple_t *> cpu_tuple_buffer;
+		std::array<tuple_t *, max_buffered_tuples> cpu_tuple_buffer;
 		tuple_t *gpu_tuple_buffer;
 		bool *tuple_mask_array;
 
@@ -113,14 +114,9 @@ private:
 #endif
 		void fill_tuple_buffer(tuple_t *t)
 		{
-			cpu_tuple_buffer.push_back(t);
+			cpu_tuple_buffer[buf_index] = t;
 			gpu_tuple_buffer[buf_index] = *t;
 			buf_index++;
-		}
-		void reset_buffers()
-		{
-			cpu_tuple_buffer.clear();
-			buf_index = 0;
 		}
 	public:
 		// Constructor I
@@ -198,7 +194,8 @@ private:
 					return GO_ON;
 				}
 			}
-			reset_buffers();
+			buf_index = 0;
+
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)
