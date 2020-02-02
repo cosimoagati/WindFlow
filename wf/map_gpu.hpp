@@ -138,9 +138,9 @@ private:
 		// Constructor I
 		template <typename T=std::string>
 		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
-			 T _name,
-			 RuntimeContext _context,
-			 closing_func_t _closing_func):
+			    T _name,
+			    RuntimeContext _context,
+			    closing_func_t _closing_func):
 			func_ip(_func),
 			name(_name),
 			isIP(true),
@@ -152,9 +152,9 @@ private:
 		// Constructor II
 		template <typename T=std::string>
 		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
-			 T _name,
-			 RuntimeContext _context,
-			 closing_func_t _closing_func):
+			    T _name,
+			    RuntimeContext _context,
+			    closing_func_t _closing_func):
 			rich_func_ip(_func),
 			name(_name),
 			isIP(true),
@@ -166,9 +166,9 @@ private:
 		// Constructor III
 		template <typename T=std::string>
 		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
-			 T _name,
-			 RuntimeContext _context,
-			 closing_func_t _closing_func):
+			    T _name,
+			    RuntimeContext _context,
+			    closing_func_t _closing_func):
 			func_nip(_func),
 			name(_name),
 			isIP(false),
@@ -180,10 +180,10 @@ private:
 		// Constructor IV
 		template <typename T=std::string>
 		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value,
-			 rich_map_func_nip_t>::type _func,
-			 T _name,
-			 RuntimeContext _context,
-			 closing_func_t _closing_func):
+			    rich_map_func_nip_t>::type _func,
+			    T _name,
+			    RuntimeContext _context,
+			    closing_func_t _closing_func):
 			rich_func_nip(_func),
 			name(_name),
 			isIP(false),
@@ -277,9 +277,9 @@ public:
 	 */
 	template <typename T=std::size_t>
 	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func):
+	       T _pardegree,
+	       std::string _name,
+	       closing_func_t _closing_func):
 		keyed(false)
 	{
 		// check the validity of the parallelism degree
@@ -314,10 +314,10 @@ public:
 	 */
 	template <typename T=std::size_t>
 	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func,
-	    routing_func_t _routing_func):
+	       T _pardegree,
+	       std::string _name,
+	       closing_func_t _closing_func,
+	       routing_func_t _routing_func):
 		keyed(true)
 	{
 		// check the validity of the parallelism degree
@@ -351,9 +351,9 @@ public:
 	 */
 	template <typename T=std::size_t>
 	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func):
+	       T _pardegree,
+	       std::string _name,
+	       closing_func_t _closing_func):
 		keyed(false)
 	{
 		// check the validity of the parallelism degree
@@ -388,10 +388,10 @@ public:
 	 */
 	template <typename T=std::size_t>
 	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func,
-	    routing_func_t _routing_func):
+	       T _pardegree,
+	       std::string _name,
+	       closing_func_t _closing_func,
+	       routing_func_t _routing_func):
 		keyed(true)
 	{
 		// check the validity of the parallelism degree
@@ -425,9 +425,9 @@ public:
 	 */
 	template <typename T=std::size_t>
 	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func):
+	       T _pardegree,
+	       std::string _name,
+	       closing_func_t _closing_func):
 		keyed(false)
 	{
 		// check the validity of the parallelism degree
@@ -462,10 +462,10 @@ public:
 	 */
 	template <typename T=std::size_t>
 	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func,
-	    routing_func_t _routing_func):
+	       T _pardegree,
+	       std::string _name,
+	       closing_func_t _closing_func,
+	       routing_func_t _routing_func):
 		keyed(true)
 	{
 		// check the validity of the parallelism degree
@@ -477,8 +477,8 @@ public:
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new MapGPU_Node(_func, _name,
-						 RuntimeContext(_pardegree, i),
-						 _closing_func);
+						    RuntimeContext(_pardegree, i),
+						    _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -501,9 +501,9 @@ public:
 	 */
 	template <typename T=std::size_t>
 	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func):
+	       T _pardegree,
+	       std::string _name,
+	       closing_func_t _closing_func):
 		keyed(false)
 	{
 		// check the validity of the parallelism degree
@@ -538,10 +538,10 @@ public:
 	 */
 	template <typename T=std::size_t>
 	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
-	    T _pardegree,
-	    std::string _name,
-	    closing_func_t _closing_func,
-	    routing_func_t _routing_func):
+	       T _pardegree,
+	       std::string _name,
+	       closing_func_t _closing_func,
+	       routing_func_t _routing_func):
 		keyed(true)
 	{
 		// check the validity of the parallelism degree

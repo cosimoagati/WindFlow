@@ -127,9 +127,9 @@ private:
 	public:
 		// Constructor I
 		FilterGPU_Node(filter_func_t _filter_func,
-			    std::string _name,
-			    RuntimeContext _context,
-			    closing_func_t _closing_func):
+			       std::string _name,
+			       RuntimeContext _context,
+			       closing_func_t _closing_func):
 			filter_func(_filter_func),
 			name(_name),
 			isRich(false),
@@ -139,9 +139,9 @@ private:
 
 		// Constructor II
 		FilterGPU_Node(rich_filter_func_t _rich_filter_func,
-			    std::string _name,
-			    RuntimeContext _context,
-			    closing_func_t _closing_func):
+			       std::string _name,
+			       RuntimeContext _context,
+			       closing_func_t _closing_func):
 			rich_filter_func(_rich_filter_func),
 			name(_name), isRich(true),
 			context(_context),
@@ -226,9 +226,9 @@ public:
 	 *  \param _closing_func closing function
 	 */
 	FilterGPU(filter_func_t _func,
-	       size_t _pardegree,
-	       std::string _name,
-	       closing_func_t _closing_func):
+		  size_t _pardegree,
+		  std::string _name,
+		  closing_func_t _closing_func):
 		keyed(false)
 	{
 		// check the validity of the parallelism degree
@@ -262,10 +262,10 @@ public:
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	FilterGPU(filter_func_t _func,
-	       size_t _pardegree,
-	       std::string _name,
-	       closing_func_t _closing_func,
-	       routing_func_t _routing_func):
+		  size_t _pardegree,
+		  std::string _name,
+		  closing_func_t _closing_func,
+		  routing_func_t _routing_func):
 		keyed(true)
 	{
 		// check the validity of the parallelism degree
@@ -298,9 +298,9 @@ public:
 	 *  \param _closing_func closing function
 	 */
 	FilterGPU(rich_filter_func_t _func,
-	       size_t _pardegree,
-	       std::string _name,
-	       closing_func_t _closing_func):
+		  size_t _pardegree,
+		  std::string _name,
+		  closing_func_t _closing_func):
 		keyed(false)
 	{
 		// check the validity of the parallelism degree
@@ -334,10 +334,10 @@ public:
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	FilterGPU(rich_filter_func_t _func,
-	       size_t _pardegree,
-	       std::string _name,
-	       closing_func_t _closing_func,
-	       routing_func_t _routing_func):
+		  size_t _pardegree,
+		  std::string _name,
+		  closing_func_t _closing_func,
+		  routing_func_t _routing_func):
 		keyed(true)
 	{
 		// check the validity of the parallelism degree
