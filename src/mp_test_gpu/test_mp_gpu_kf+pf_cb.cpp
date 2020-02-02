@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 		cout << "|                                          +-----------+           |" << endl;
 		cout << "+------------------------------------------------------------------+" << endl;
 	    // prepare the test
-	    PipeGraph graph("test_kf+pf_cb");
+	    PipeGraph graph("test_kf+pf_cb", Mode::DETERMINISTIC);
 	    // source
 	    Source_Functor source_functor(stream_len, n_keys);
 	    auto *source = Source_Builder<decltype(source_functor)>(source_functor)
@@ -134,21 +134,21 @@ int main(int argc, char *argv[])
 	    							.withName("test_kf+pf_cb_gpu_filter")
 	    							.withParallelism(filter_degree)
 	    							.build_ptr();
-	    mp.add(*filter);
+	    mp.chain(*filter);
 	    // flatmap
 	    FlatMap_Functor flatmap_functor;
 	    auto *flatmap = FlatMap_Builder<decltype(flatmap_functor)>(flatmap_functor)
 	    						.withName("test_kf+pf_cb_gpu_flatmap")
 	    						.withParallelism(flatmap_degree)
 	    						.build_ptr();
-	    mp.add(*flatmap);
+	    mp.chain(*flatmap);
 	    // map
 	    Map_Functor map_functor;
 	    auto *map = Map_Builder<decltype(map_functor)>(map_functor)
 	    					.withName("test_kf+pf_cb_gpu_map")
 	    					.withParallelism(map_degree)
 	    					.build_ptr();
-	    mp.add(*map);
+	    mp.chain(*map);
 	    // pf
 		// Pane_Farm (PLQ) function (non-incremental) on GPU
 		auto plq_function_gpu = [] __host__ __device__ (size_t pid, const tuple_t *data, output_t *res, size_t size, char *memory) {
@@ -187,19 +187,19 @@ int main(int argc, char *argv[])
 	    					.withName("test_kf+pf_cb_gpu_sink")
 	    					.withParallelism(1)
 	    					.build_ptr();
-	    mp.add_sink(*sink);
+	    mp.chain_sink(*sink);
 	   	// run the application
 	   	graph.run();
 	   	if (i == 0) {
 	   		last_result = global_sum;
-	   		cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT << endl;
+	   		cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT_COLOR << endl;
 	   	}
 	   	else {
 	   		if (last_result == global_sum) {
-	   			cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT << endl;
+	   			cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT_COLOR << endl;
 	   		}
 	   		else {
-	   			cout << "Result is --> " << RED << "FAILED" << "!!!" << DEFAULT << endl;
+	   			cout << "Result is --> " << RED << "FAILED" << "!!!" << DEFAULT_COLOR << endl;
 	   		}
 	   	}
     }

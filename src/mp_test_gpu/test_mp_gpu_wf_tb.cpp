@@ -1,4 +1,4 @@
-/* *****************************************************************************
+/******************************************************************************
  *  This program is free software; you can redistribute it and/or modify it
  *  under the terms of the GNU Lesser General Public License version 3 as
  *  published by the Free Software Foundation.
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 		cout << "| (" << source_degree << ") +-->+ (" << filter_degree << ") +-->+  (" << flatmap_degree << ") +-->+ (" << map_degree << ") +-->+  (" << wf_degree << ")  +-->+ (1) |" << endl;
 		cout << "+-----+   +-----+   +------+   +-----+   +-------+   +-----+" << endl;
 	    // prepare the test
-	    PipeGraph graph("test_wf_tb_gpu");
+	    PipeGraph graph("test_wf_tb_gpu", Mode::DETERMINISTIC);
 	    // source
 	    Source_Functor source_functor(stream_len, n_keys);
 	    auto *source = Source_Builder<decltype(source_functor)>(source_functor)
@@ -112,21 +112,21 @@ int main(int argc, char *argv[])
 	    							.withName("test_wf_tb_gpu_filter")
 	    							.withParallelism(filter_degree)
 	    							.build_ptr();
-	    mp.add(*filter);
+	    mp.chain(*filter);
 	    // flatmap
 	    FlatMap_Functor flatmap_functor;
 	    auto *flatmap = FlatMap_Builder<decltype(flatmap_functor)>(flatmap_functor)
 	    						.withName("test_wf_tb_gpu_flatmap")
 	    						.withParallelism(flatmap_degree)
 	    						.build_ptr();
-	    mp.add(*flatmap);
+	    mp.chain(*flatmap);
 	    // map
 	    Map_Functor map_functor;
 	    auto *map = Map_Builder<decltype(map_functor)>(map_functor)
 	    					.withName("test_wf_tb_gpu_map")
 	    					.withParallelism(map_degree)
 	    					.build_ptr();
-	    mp.add(*map);
+	    mp.chain(*map);
 	    // wf
 		// Win_Farm function (non-incremental) on GPU
 		auto wf_function_gpu = [] __host__ __device__ (size_t wid, const tuple_t *data, output_t *res, size_t size, char *memory) {
@@ -149,19 +149,19 @@ int main(int argc, char *argv[])
 	    					.withName("test_wf_tb_gpu_sink")
 	    					.withParallelism(1)
 	    					.build_ptr();
-	    mp.add_sink(*sink);
+	    mp.chain_sink(*sink);
 	   	// run the application
 	   	graph.run();
 	   	if (i == 0) {
 	   		last_result = global_sum;
-	   		cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT << endl;
+	   		cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT_COLOR << endl;
 	   	}
 	   	else {
 	   		if (last_result == global_sum) {
-	   			cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT << endl;
+	   			cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT_COLOR << endl;
 	   		}
 	   		else {
-	   			cout << "Result is --> " << RED << "FAILED" << "!!!" << DEFAULT << endl;
+	   			cout << "Result is --> " << RED << "FAILED" << "!!!" << DEFAULT_COLOR << endl;
 	   		}
 	   	}
     }

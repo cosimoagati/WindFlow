@@ -18,12 +18,12 @@
 
 FF_ROOT			= $(HOME)/fastflow
 OUT_DIR			= ../../bin/mp_test_gpu
-INCLUDE_DIR		= ../../includes
+INCLUDE_DIR		= ../../wf
 
 INCLUDES		= -I $(FF_ROOT) -I $(INCLUDE_DIR) -I .
 NCXX			= nvcc
 NCXXFLAGS		= -g -x cu -w -std=c++14 --expt-extended-lambda
-MACROS 			= -DFF_BOUNDED_BUFFER # -DLOG_DIR="../../log"
+MACROS 			= -DFF_BOUNDED_BUFFER # -DTRACE_WINDFLOW -DTRACE_FASTFLOW
 NOPTFLAGS		= -O3
 NLDFLAGS      	= 
 
@@ -45,5 +45,5 @@ checkbindir:
 clean:
 	rm -rf $(OUT_DIR)
 
-.DEFAULT_GOAL := all
-.PHONY: all clean
+.DEFAULT_COLOR_GOAL := all
+.PHONY: all checkbindir clean

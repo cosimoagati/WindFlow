@@ -1,4 +1,4 @@
-/* *****************************************************************************
+/******************************************************************************
  *  This program is free software; you can redistribute it and/or modify it
  *  under the terms of the GNU Lesser General Public License version 3 as
  *  published by the Free Software Foundation.
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 		cout << "| (" << source_degree << ") +-->+ (" << filter_degree << ") +-->+  (" << flatmap_degree << ") +-->+ (" << map_degree << ") +-->+ (" << wmap_degree << "," << reduce_degree << ")  +-->+ (1) |" << endl;
 		cout << "+-----+   +-----+   +------+   +-----+   +--------+   +-----+" << endl;
 	    // prepare the test
-	    PipeGraph graph("test_wmr_cb");
+	    PipeGraph graph("test_wmr_cb", Mode::DETERMINISTIC);
 	    // source
 	    Source_Functor source_functor(stream_len, n_keys);
 	    Source source = Source_Builder(source_functor)
@@ -111,21 +111,21 @@ int main(int argc, char *argv[])
 	    					.withName("test_wmr_cb_filter")
 	    					.withParallelism(filter_degree)
 	    					.build();
-	    mp.add(filter);
+	    mp.chain(filter);
 	    // flatmap
 	    FlatMap_Functor flatmap_functor;
 	    FlatMap flatmap = FlatMap_Builder(flatmap_functor)
 	    						.withName("test_wmr_cb_flatmap")
 	    						.withParallelism(flatmap_degree)
 	    						.build();
-	    mp.add(flatmap);
+	    mp.chain(flatmap);
 	    // map
 	    Map_Functor map_functor;
 	    Map map = Map_Builder(map_functor)
 	    				.withName("test_wmr_cb_map")
 	    				.withParallelism(map_degree)
 	    				.build();
-	    mp.add(map);
+	    mp.chain(map);
 	    // wmr
 	    Win_MapReduce wmr = WinMapReduce_Builder(wmap_function, reduce_function)
 	   							.withName("test_wmr_cb_wmr")
@@ -139,19 +139,19 @@ int main(int argc, char *argv[])
 	    					.withName("test_wmr_cb_sink")
 	    					.withParallelism(1)
 	    					.build();
-	    mp.add_sink(sink);
+	    mp.chain_sink(sink);
 	   	// run the application
 	   	graph.run();
 	   	if (i == 0) {
 	   		last_result = global_sum;
-	   		cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT << endl;
+	   		cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT_COLOR << endl;
 	   	}
 	   	else {
 	   		if (last_result == global_sum) {
-	   			cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT << endl;
+	   			cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT_COLOR << endl;
 	   		}
 	   		else {
-	   			cout << "Result is --> " << RED << "FAILED" << "!!!" << DEFAULT << endl;
+	   			cout << "Result is --> " << RED << "FAILED" << "!!!" << DEFAULT_COLOR << endl;
 	   		}
 	   	}
     }

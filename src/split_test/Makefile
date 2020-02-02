@@ -18,12 +18,12 @@
 
 FF_ROOT			= $(HOME)/fastflow
 OUT_DIR			= ../../bin/split_test
-INCLUDE_DIR		= ../../includes
+INCLUDE_DIR		= ../../wf
 
 CXX 			= g++
 CXXFLAGS		= -std=c++17
 INCLUDES		= -I $(FF_ROOT) -I $(INCLUDE_DIR) -I .
-MACROS 			= -DFF_BOUNDED_BUFFER # -DLOG_DIR="../../log"
+MACROS 			= -DFF_BOUNDED_BUFFER #-DTRACE_WINDFLOW -DTRACE_FASTFLOW
 OPTFLAGS		= -g -O3 -finline-functions
 LDFLAGS			= -pthread
 
@@ -45,5 +45,5 @@ checkbindir:
 clean:
 	rm -rf $(OUT_DIR)
 
-.DEFAULT_GOAL := all
-.PHONY: all clean
+.DEFAULT_COLOR_GOAL := all
+.PHONY: all checkbindir clean
