@@ -118,13 +118,13 @@ private:
 			for (auto i = index; i < buffer_size; i += stride)
 				result_buffer[i] = f(input_buffer[i]);
 		}
-		void fill_tuple_buffer(tuple_t *t)
+		inline void fill_tuple_buffer(tuple_t *t)
 		{
 			tuple_buffer[buf_index] = *t;
 			buf_index++;
 			delete t;
 		}
-		void send_mapped_tuples()
+		inline void send_mapped_tuples()
 		{
 			const auto &output_buffer = isIP
 				? tuple_buffer
