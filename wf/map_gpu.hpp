@@ -55,7 +55,7 @@ namespace wf {
  *  on each tuple of the input stream.
  */
 template<typename tuple_t, typename result_t>
-class Map: public ff::ff_farm
+class MapGPU: public ff::ff_farm
 {
 public:
 	/// type of the map function (in-place version)
@@ -73,9 +73,9 @@ public:
 private:
 	// friendships with other classes in the library
 	friend class MultiPipe;
-	bool keyed; // flag stating whether the Map is configured with keyBy or not
-	// class Map_Node
-	class Map_Node: public ff::ff_node_t<tuple_t, result_t>
+	bool keyed; // flag stating whether the MapGPU is configured with keyBy or not
+	// class MapGPU_Node
+	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		static constexpr auto max_buffered_tuples = 256;
 		tuple_t *tuple_buffer;
@@ -137,7 +137,7 @@ private:
 	public:
 		// Constructor I
 		template <typename T=std::string>
-		Map_Node(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
+		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
 			 T _name,
 			 RuntimeContext _context,
 			 closing_func_t _closing_func):
@@ -151,7 +151,7 @@ private:
 
 		// Constructor II
 		template <typename T=std::string>
-		Map_Node(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
+		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
 			 T _name,
 			 RuntimeContext _context,
 			 closing_func_t _closing_func):
@@ -165,7 +165,7 @@ private:
 
 		// Constructor III
 		template <typename T=std::string>
-		Map_Node(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
+		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
 			 T _name,
 			 RuntimeContext _context,
 			 closing_func_t _closing_func):
@@ -179,7 +179,7 @@ private:
 
 		// Constructor IV
 		template <typename T=std::string>
-		Map_Node(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value,
+		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value,
 			 rich_map_func_nip_t>::type _func,
 			 T _name,
 			 RuntimeContext _context,
@@ -271,12 +271,12 @@ public:
 	 *  \brief Constructor I
 	 *
 	 *  \param _func function to be executed on each input tuple (in-place version)
-	 *  \param _pardegree parallelism degree of the Map operator
-	 *  \param _name string with the unique name of the Map operator
+	 *  \param _pardegree parallelism degree of the MapGPU operator
+	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
+	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
 	    closing_func_t _closing_func):
@@ -284,13 +284,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Map_Node
+		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -299,7 +299,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -307,13 +307,13 @@ public:
 	 *  \brief Constructor II
 	 *
 	 *  \param _func function to be executed on each input tuple (in-place version)
-	 *  \param _pardegree parallelism degree of the Map operator
-	 *  \param _name string with the unique name of the Map operator
+	 *  \param _pardegree parallelism degree of the MapGPU operator
+	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
+	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
 	    closing_func_t _closing_func,
@@ -322,13 +322,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Map_Node
+		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -337,7 +337,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -345,12 +345,12 @@ public:
 	 *  \brief Constructor III
 	 *
 	 *  \param _func rich function to be executed on each input tuple (in-place version)
-	 *  \param _pardegree parallelism degree of the Map operator
-	 *  \param _name string with the unique name of the Map operator
+	 *  \param _pardegree parallelism degree of the MapGPU operator
+	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
+	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
 	    closing_func_t _closing_func):
@@ -358,13 +358,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Map_Node
+		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -373,7 +373,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -381,13 +381,13 @@ public:
 	 *  \brief Constructor IV
 	 *
 	 *  \param _func rich function to be executed on each input tuple (in-place version)
-	 *  \param _pardegree parallelism degree of the Map operator
-	 *  \param _name string with the unique name of the Map operator
+	 *  \param _pardegree parallelism degree of the MapGPU operator
+	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
+	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, rich_map_func_ip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
 	    closing_func_t _closing_func,
@@ -396,13 +396,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Map_Node
+		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -411,7 +411,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -419,12 +419,12 @@ public:
 	 *  \brief Constructor V
 	 *
 	 *  \param _func function to be executed on each input tuple (not in-place version)
-	 *  \param _pardegree parallelism degree of the Map operator
-	 *  \param _name string with the unique name of the Map operator
+	 *  \param _pardegree parallelism degree of the MapGPU operator
+	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
+	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
 	    closing_func_t _closing_func):
@@ -432,13 +432,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Map_Node
+		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -447,7 +447,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -455,13 +455,13 @@ public:
 	 *  \brief Constructor VI
 	 *
 	 *  \param _func function to be executed on each input tuple (not in-place version)
-	 *  \param _pardegree parallelism degree of the Map operator
-	 *  \param _name string with the unique name of the Map operator
+	 *  \param _pardegree parallelism degree of the MapGPU operator
+	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
+	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
 	    closing_func_t _closing_func,
@@ -470,13 +470,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Map_Node
+		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name,
+			auto *seq = new MapGPU_Node(_func, _name,
 						 RuntimeContext(_pardegree, i),
 						 _closing_func);
 			w.push_back(seq);
@@ -487,7 +487,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -495,12 +495,12 @@ public:
 	 *  \brief Constructor VII
 	 *
 	 *  \param _func rich function to be executed on each input tuple (not in-place version)
-	 *  \param _pardegree parallelism degree of the Map operator
-	 *  \param _name string with the unique name of the Map operator
+	 *  \param _pardegree parallelism degree of the MapGPU operator
+	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
+	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
 	    closing_func_t _closing_func):
@@ -508,13 +508,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Map_Node
+		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -523,7 +523,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -531,13 +531,13 @@ public:
 	 *  \brief Constructor VIII
 	 *
 	 *  \param _func rich function to be executed on each input tuple (not in-place version)
-	 *  \param _pardegree parallelism degree of the Map operator
-	 *  \param _name string with the unique name of the Map operator
+	 *  \param _pardegree parallelism degree of the MapGPU operator
+	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	template <typename T=std::size_t>
-	Map(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
+	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, rich_map_func_nip_t>::type _func,
 	    T _pardegree,
 	    std::string _name,
 	    closing_func_t _closing_func,
@@ -546,13 +546,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Map has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Map_Node
+		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -561,13 +561,13 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Map will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
 	/**
-	 *  \brief Check whether the Map has been instantiated with a key-based distribution or not
-	 *  \return true if the Map is configured with keyBy
+	 *  \brief Check whether the MapGPU has been instantiated with a key-based distribution or not
+	 *  \return true if the MapGPU is configured with keyBy
 	 */
 	bool isKeyed() const
 	{
