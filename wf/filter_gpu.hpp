@@ -19,11 +19,11 @@
  *  @author  Gabriele Mencagli
  *  @date    10/01/2019
  *
- *  @brief Filter operator dropping data items not respecting a given predicate
+ *  @brief FilterGPU operator dropping data items not respecting a given predicate
  *
- *  @section Filter (Description)
+ *  @section FilterGPU (Description)
  *
- *  This file implements the Filter operator able to drop all the input items that do not
+ *  This file implements the FilterGPU operator able to drop all the input items that do not
  *  respect a given predicate given by the user.
  *
  *  The template parameter tuple_t must be default constructible, with a copy constructor
@@ -47,15 +47,15 @@
 
 namespace wf {
 /**
- *  \class Filter
+ *  \class FilterGPU
  *
- *  \brief Filter operator dropping data items not respecting a given predicate
+ *  \brief FilterGPU operator dropping data items not respecting a given predicate
  *
- *  This class implements the Filter operator applying a given predicate to all the input
+ *  This class implements the FilterGPU operator applying a given predicate to all the input
  *  items and dropping out all of them for which the predicate evaluates to false.
  */
 template<typename tuple_t>
-class Filter: public ff::ff_farm
+class FilterGPU: public ff::ff_farm
 {
 public:
 	/// type of the predicate function
@@ -70,9 +70,9 @@ public:
 private:
 	// friendships with other classes in the library
 	friend class MultiPipe;
-	bool keyed; // flag stating whether the Filter is configured with keyBy or not
-	// class Filter_Node
-	class Filter_Node: public ff::ff_node_t<tuple_t>
+	bool keyed; // flag stating whether the FilterGPU is configured with keyBy or not
+	// class FilterGPU_Node
+	class FilterGPU_Node: public ff::ff_node_t<tuple_t>
 	{
 		static constexpr auto max_buffered_tuples = 256;
 		std::array<tuple_t *, max_buffered_tuples> cpu_tuple_buffer;
@@ -126,7 +126,7 @@ private:
 		}
 	public:
 		// Constructor I
-		Filter_Node(filter_func_t _filter_func,
+		FilterGPU_Node(filter_func_t _filter_func,
 			    std::string _name,
 			    RuntimeContext _context,
 			    closing_func_t _closing_func):
@@ -138,7 +138,7 @@ private:
 		{}
 
 		// Constructor II
-		Filter_Node(rich_filter_func_t _rich_filter_func,
+		FilterGPU_Node(rich_filter_func_t _rich_filter_func,
 			    std::string _name,
 			    RuntimeContext _context,
 			    closing_func_t _closing_func):
@@ -221,11 +221,11 @@ public:
 	 *  \brief Constructor I
 	 *
 	 *  \param _func filter function (boolean predicate)
-	 *  \param _pardegree parallelism degree of the Filter operator
-	 *  \param _name string with the unique name of the Filter operator
+	 *  \param _pardegree parallelism degree of the FilterGPU operator
+	 *  \param _name string with the unique name of the FilterGPU operator
 	 *  \param _closing_func closing function
 	 */
-	Filter(filter_func_t _func,
+	FilterGPU(filter_func_t _func,
 	       size_t _pardegree,
 	       std::string _name,
 	       closing_func_t _closing_func):
@@ -233,13 +233,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Filter has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Filter_Node
+		// vector of FilterGPU_Node
 		std::vector<ff_node *> w;
 		for (size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Filter_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new FilterGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -248,7 +248,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Filter will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the FilterGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -256,12 +256,12 @@ public:
 	 *  \brief Constructor II
 	 *
 	 *  \param _func filter function (boolean predicate)
-	 *  \param _pardegree parallelism degree of the Filter operator
-	 *  \param _name string with the unique name of the Filter operator
+	 *  \param _pardegree parallelism degree of the FilterGPU operator
+	 *  \param _name string with the unique name of the FilterGPU operator
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	Filter(filter_func_t _func,
+	FilterGPU(filter_func_t _func,
 	       size_t _pardegree,
 	       std::string _name,
 	       closing_func_t _closing_func,
@@ -270,13 +270,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Filter has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Filter_Node
+		// vector of FilterGPU_Node
 		std::vector<ff_node *> w;
 		for (size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Filter_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new FilterGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -285,7 +285,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Filter will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the FilterGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -293,11 +293,11 @@ public:
 	 *  \brief Constructor III
 	 *
 	 *  \param _func rich filter function (boolean predicate)
-	 *  \param _pardegree parallelism degree of the Filter operator
-	 *  \param _name string with the unique name of the Filter operator
+	 *  \param _pardegree parallelism degree of the FilterGPU operator
+	 *  \param _name string with the unique name of the FilterGPU operator
 	 *  \param _closing_func closing function
 	 */
-	Filter(rich_filter_func_t _func,
+	FilterGPU(rich_filter_func_t _func,
 	       size_t _pardegree,
 	       std::string _name,
 	       closing_func_t _closing_func):
@@ -305,13 +305,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Filter has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Filter_Node
+		// vector of FilterGPU_Node
 		std::vector<ff_node *> w;
 		for (size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Filter_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new FilterGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -320,7 +320,7 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Filter will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the FilterGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
@@ -328,12 +328,12 @@ public:
 	 *  \brief Constructor IV
 	 *
 	 *  \param _func rich filter function (boolean predicate)
-	 *  \param _pardegree parallelism degree of the Filter operator
-	 *  \param _name string with the unique name of the Filter operator
+	 *  \param _pardegree parallelism degree of the FilterGPU operator
+	 *  \param _name string with the unique name of the FilterGPU operator
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	Filter(rich_filter_func_t _func,
+	FilterGPU(rich_filter_func_t _func,
 	       size_t _pardegree,
 	       std::string _name,
 	       closing_func_t _closing_func,
@@ -342,13 +342,13 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: Filter has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
 			exit(EXIT_FAILURE);
 		}
-		// vector of Filter_Node
+		// vector of FilterGPU_Node
 		std::vector<ff_node *> w;
 		for (size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Filter_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new FilterGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -357,13 +357,13 @@ public:
 		ff::ff_farm::add_workers(w);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the Filter will be destroyed we need aslo to destroy the emitter, workers and collector
+		// when the FilterGPU will be destroyed we need aslo to destroy the emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
 
 	/**
-	 *  \brief Check whether the Filter has been instantiated with a key-based distribution or not
-	 *  \return true if the Filter is configured with keyBy
+	 *  \brief Check whether the FilterGPU has been instantiated with a key-based distribution or not
+	 *  \return true if the FilterGPU is configured with keyBy
 	 */
 	bool isKeyed() const
 	{
