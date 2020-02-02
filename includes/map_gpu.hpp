@@ -125,6 +125,16 @@ private:
 			buf_index++;
 			delete t;
 		}
+		void send_mapped_tuples()
+		{
+			const auto &output_buffer = isIP
+				? tuple_buffer
+				: result_buffer;
+			for (auto i = 0; i < max_buffered_tuples; ++i)
+				ff_send_out(new result_t
+					    {reinterpret_cast<result_t>(output_buffer[i])});
+			buf_index = 0;
+		}
 	public:
 		// Constructor I
 		template <typename T=std::string>
@@ -213,7 +223,6 @@ private:
 				fill_tuple_buffer(t);
 				return GO_ON;
 			}
-			buf_index = 0;
 			if (isIP)
 				map_kernel_ip<<<1, 32>>>(tuple_buffer,
 							 max_buffered_tuples,
@@ -224,13 +233,7 @@ private:
 							  max_buffered_tuples,
 							  func_nip);
 			cudaDeviceSynchronize();
-			const auto &output_buffer = isIP
-				? tuple_buffer
-				: result_buffer;
-			for (auto i = 0; i < max_buffered_tuples; ++i)
-				ff_send_out(new result_t
-					    {reinterpret_cast<result_t>(output_buffer[i])});
-
+			send_mapped_tuples();
 #if defined(LOG_DIR)
 			endTS = current_time_nsecs();
 			endTD = current_time_nsecs();
