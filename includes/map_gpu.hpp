@@ -228,7 +228,7 @@ private:
 							 max_buffered_tuples,
 							 func_ip);
 			else
-				  map_kernel_nip<<<1, 32>>>(tuple_buffer,
+				map_kernel_nip<<<1, 32>>>(tuple_buffer,
 							  result_buffer,
 							  max_buffered_tuples,
 							  func_nip);
