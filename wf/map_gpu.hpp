@@ -476,7 +476,9 @@ public:
 		// vector of Map_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new Map_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new Map_Node(_func, _name,
+						 RuntimeContext(_pardegree, i),
+						 _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
