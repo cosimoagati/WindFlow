@@ -108,13 +108,13 @@ private:
 			for (auto i = index; i < buffer_size; i += stride)
 				tuple_mask_array[i] = f(tuple_buffer[i]);
 		}
-		void fill_tuple_buffers(tuple_t *t)
+		inline void fill_tuple_buffers(tuple_t *t)
 		{
 			cpu_tuple_buffer[buf_index] = t;
 			gpu_tuple_buffer[buf_index] = *t;
 			buf_index++;
 		}
-		void send_filtered_tuples()
+		inline void send_filtered_tuples()
 		{
 			for (auto i = 0; i < max_buffered_tuples; ++i) {
 				if (tuple_mask_array[i])
@@ -177,7 +177,7 @@ private:
 				fill_tuple_buffers(t);
 				return GO_ON;
 			}
-			// evaluate the predicate on the input item
+			// evaluate the predicate on buffered items
 			filter_kernel<<<1, 32>>>(gpu_tuple_buffer,
 						 tuple_mask_array,
 						 max_buffered_tuples,
