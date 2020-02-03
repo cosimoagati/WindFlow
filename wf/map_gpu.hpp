@@ -99,7 +99,7 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-		__device__ void map_kernel_ip(const tuple_t *buffer,
+		__global__ void map_kernel_ip(const tuple_t *buffer,
 					      const std::size_t buffer_size,
 					      const map_func_ip_t f)
 		{
@@ -108,7 +108,7 @@ private:
 			for (auto i = index; i < buffer_size; i += stride)
 				f(buffer[i]);
 		}
-		__device__ void map_kernel_nip(const tuple_t *input_buffer,
+		__global__ void map_kernel_nip(const tuple_t *input_buffer,
 					       const result_t *result_buffer,
 					       const std::size_t buffer_size,
 					       const map_func_nip_t f)

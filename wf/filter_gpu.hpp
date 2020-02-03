@@ -98,7 +98,7 @@ private:
 		 * Individual results are stored in a boolean mask array, which the CPU
 		 * then uses to determine which tuples to send out.
 		 */
-		__device__ void filter_kernel(const tuple_t *tuple_buffer,
+		__global__ void filter_kernel(const tuple_t *tuple_buffer,
 					      const bool *tuple_mask_array,
 					      const std::size_t buffer_size,
 					      const filter_func_t f)
