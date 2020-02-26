@@ -760,8 +760,7 @@ public:
 	std::unique_ptr<accumulator_t> build_unique()
 	{
 		return std::make_unique<accumulator_t>(func, init_value,
-						       pardegree,
-						       name,
+						       pardegree, name,
 						       closing_func,
 						       routing_func);
 	}
@@ -864,9 +863,7 @@ public:
 	winseq_t build()
 	{
 		return winseq_t(func, win_len, slide_len, triggering_delay,
-				winType,
-				name,
-				closing_func,
+				winType, name, closing_func,
 				RuntimeContext(1, 0),
 				PatternConfig(0, 1, slide_len, 0, 1, slide_len),
 				SEQ); // copy elision in C++17
@@ -881,13 +878,10 @@ public:
 	winseq_t *build_ptr()
 	{
 		return new winseq_t(func, win_len, slide_len, triggering_delay,
-				    winType,
-				    name,
-				    closing_func,
+				    winType, name, closing_func,
 				    RuntimeContext(1, 0),
 				    PatternConfig(0, 1, slide_len, 0, 1,
-						  slide_len),
-				    SEQ);
+						  slide_len), SEQ);
 	}
 
 	/**
@@ -898,14 +892,11 @@ public:
 	std::unique_ptr<winseq_t> build_unique()
 	{
 		return std::make_unique<winseq_t>(func, win_len, slide_len,
-						  triggering_delay,
-						  winType,
-						  name,
-						  closing_func,
+						  triggering_delay, winType,
+						  name, closing_func,
 						  RuntimeContext(1, 0),
 						  PatternConfig(0, 1, slide_len,
-								0,
-								1,
+								0, 1,
 								slide_len),
 						  SEQ);
 	}
@@ -1024,12 +1015,8 @@ public:
 	winseq_gpu_t *build_ptr()
 	{
 		return new winseq_gpu_t(func, win_len, slide_len,
-					triggering_delay,
-					winType,
-					batch_len,
-					n_thread_block,
-					name,
-					scratchpad_size);
+					triggering_delay, winType, batch_len,
+					n_thread_block, name, scratchpad_size);
 	}
 
 	/**
@@ -1040,12 +1027,9 @@ public:
 	std::unique_ptr<winseq_gpu_t> build_unique()
 	{
 		return std::make_unique<winseq_gpu_t>(func, win_len, slide_len,
-						      triggering_delay,
-						      winType,
-						      batch_len,
-						      n_thread_block,
-						      name,
-						      scratchpad_size);
+						      triggering_delay, winType,
+						      batch_len, n_thread_block,
+						      name, scratchpad_size);
 	}
 };
 
@@ -1208,11 +1192,7 @@ public:
 	winfarm_t build()
 	{
 		return winfarm_t(input, win_len, slide_len, triggering_delay,
-				 winType,
-				 pardegree,
-				 name,
-				 closing_func,
-				 true,
+				 winType, pardegree, name, closing_func, true,
 				 opt_level); // copy elision in C++17
 	}
 #endif
@@ -1224,7 +1204,9 @@ public:
 	 */
 	winfarm_t *build_ptr()
 	{
-		return new winfarm_t(input, win_len, slide_len, triggering_delay, winType, pardegree, name, closing_func, true, opt_level);
+		return new winfarm_t(input, win_len, slide_len,
+				     triggering_delay, winType, pardegree, name,
+				     closing_func, true, opt_level);
 	}
 
 	/**
@@ -1235,12 +1217,9 @@ public:
 	std::unique_ptr<winfarm_t> build_unique()
 	{
 		return std::make_unique<winfarm_t>(input, win_len, slide_len,
-						   triggering_delay,
-						   winType,
-						   pardegree,
-						   name,
-						   closing_func,
-						   true,
+						   triggering_delay, winType,
+						   pardegree, name,
+						   closing_func, true,
 						   opt_level);
 	}
 };
@@ -1422,14 +1401,9 @@ public:
 	winfarm_gpu_t *build_ptr()
 	{
 		return new winfarm_gpu_t(input, win_len, slide_len,
-					 triggering_delay,
-					 winType, pardegree,
-					 batch_len,
-					 n_thread_block,
-					 name,
-					 scratchpad_size,
-					 true,
-					 opt_level);
+					 triggering_delay, winType, pardegree,
+					 batch_len, n_thread_block, name,
+					 scratchpad_size, true, opt_level);
 	}
 
 	/**
@@ -1442,13 +1416,10 @@ public:
 		return std::make_unique<winfarm_gpu_t>(input, win_len,
 						       slide_len,
 						       triggering_delay,
-						       winType,
-						       pardegree,
+						       winType, pardegree,
 						       batch_len,
-						       n_thread_block,
-						       name,
-						       scratchpad_size,
-						       true,
+						       n_thread_block, name,
+						       scratchpad_size, true,
 						       opt_level);
 	}
 };
@@ -1545,7 +1516,9 @@ public:
 	 *  \param _triggering_delay (in microseconds)
 	 *  \return the object itself
 	 */
-	KeyFarm_Builder<T>& withTBWindows(std::chrono::microseconds _win_len, std::chrono::microseconds _slide_len, std::chrono::microseconds _triggering_delay=std::chrono::microseconds::zero())
+	KeyFarm_Builder<T>& withTBWindows(std::chrono::microseconds _win_len,
+					  std::chrono::microseconds _slide_len,
+					  std::chrono::microseconds _triggering_delay=std::chrono::microseconds::zero())
 	{
 		win_len = _win_len.count();
 		slide_len = _slide_len.count();
@@ -1611,12 +1584,8 @@ public:
 	keyfarm_t build()
 	{
 		return keyfarm_t(input, win_len, slide_len, triggering_delay,
-				 winType,
-				 pardegree,
-				 name,
-				 closing_func,
-				 routing_func,
-				 opt_level); // copy elision in C++17
+				 winType, pardegree, name, closing_func,
+				 routing_func, opt_level); // copy elision in C++17
 	}
 #endif
 
@@ -1628,13 +1597,8 @@ public:
 	keyfarm_t *build_ptr()
 	{
 		return new keyfarm_t(input, win_len, slide_len,
-				     triggering_delay,
-				     winType,
-				     pardegree,
-				     name,
-				     closing_func,
-				     routing_func,
-				     opt_level);
+				     triggering_delay, winType, pardegree, name,
+				     closing_func, routing_func, opt_level);
 	}
 
 	/**
@@ -1645,12 +1609,9 @@ public:
 	std::unique_ptr<keyfarm_t> build_unique()
 	{
 		return std::make_unique<keyfarm_t>(input, win_len, slide_len,
-						   triggering_delay,
-						   winType,
-						   pardegree,
-						   name,
-						   closing_func,
-						   routing_func,
+						   triggering_delay, winType,
+						   pardegree, name,
+						   closing_func, routing_func,
 						   opt_level);
 	}
 };
@@ -1834,14 +1795,9 @@ public:
 	keyfarm_gpu_t *build_ptr()
 	{
 		return new keyfarm_gpu_t(input, win_len, slide_len,
-					 triggering_delay,
-					 winType,
-					 pardegree,
-					 batch_len,
-					 n_thread_block,
-					 name,
-					 scratchpad_size,
-					 routing_func,
+					 triggering_delay, winType, pardegree,
+					 batch_len, n_thread_block, name,
+					 scratchpad_size, routing_func,
 					 opt_level);
 	}
 
@@ -1852,7 +1808,14 @@ public:
 	 */
 	std::unique_ptr<keyfarm_gpu_t> build_unique()
 	{
-		return std::make_unique<keyfarm_gpu_t>(input, win_len, slide_len, triggering_delay, winType, pardegree, batch_len, n_thread_block, name, scratchpad_size, routing_func, opt_level);
+		return std::make_unique<keyfarm_gpu_t>(input, win_len,
+						       slide_len,
+						       triggering_delay,
+						       winType, pardegree,
+						       batch_len,
+						       n_thread_block, name,
+						       scratchpad_size,
+						       routing_func, opt_level);
 	}
 };
 
@@ -1997,13 +1960,8 @@ public:
 	panefarm_t build()
 	{
 		return panefarm_t(func_F, func_G, win_len, slide_len,
-				  triggering_delay,
-				  winType,
-				  plq_degree,
-				  wlq_degree,
-				  name,
-				  closing_func,
-				  true,
+				  triggering_delay, winType, plq_degree,
+				  wlq_degree, name, closing_func, true,
 				  opt_level); // copy elision in C++17
 	}
 #endif
@@ -2016,13 +1974,8 @@ public:
 	panefarm_t *build_ptr()
 	{
 		return new panefarm_t(func_F, func_G, win_len, slide_len,
-				      triggering_delay,
-				      winType,
-				      plq_degree,
-				      wlq_degree,
-				      name,
-				      closing_func,
-				      true,
+				      triggering_delay, winType, plq_degree,
+				      wlq_degree, name, closing_func, true,
 				      opt_level);
 	}
 
@@ -2034,14 +1987,10 @@ public:
 	std::unique_ptr<panefarm_t> build_unique()
 	{
 		return std::make_unique<panefarm_t>(func_F, func_G, win_len,
-						    slide_len,
-						    triggering_delay,
-						    winType,
-						    plq_degree,
-						    wlq_degree,
-						    name,
-						    closing_func,
-						    true,
+						    slide_len, triggering_delay,
+						    winType, plq_degree,
+						    wlq_degree, name,
+						    closing_func, true,
 						    opt_level);
 	}
 };
@@ -2207,15 +2156,9 @@ public:
 	panefarm_gpu_t *build_ptr()
 	{
 		return new panefarm_gpu_t(func_F, func_G, win_len, slide_len,
-					  triggering_delay,
-					  winType,
-					  plq_degree,
-					  wlq_degree,
-					  batch_len,
-					  n_thread_block,
-					  name,
-					  scratchpad_size,
-					  true,
+					  triggering_delay, winType, plq_degree,
+					  wlq_degree, batch_len, n_thread_block,
+					  name, scratchpad_size, true,
 					  opt_level);
 	}
 
@@ -2229,14 +2172,10 @@ public:
 		return std::make_unique<panefarm_gpu_t>(func_F, func_G, win_len,
 							slide_len,
 							triggering_delay,
-							winType,
-							plq_degree,
-							wlq_degree,
-							batch_len,
-							n_thread_block,
-							name,
-							scratchpad_size,
-							true,
+							winType, plq_degree,
+							wlq_degree, batch_len,
+							n_thread_block, name,
+							scratchpad_size, true,
 							opt_level);
 	}
 };
@@ -2385,13 +2324,8 @@ public:
 	winmapreduce_t build()
 	{
 		return winmapreduce_t(func_F, func_G, win_len, slide_len,
-				      triggering_delay,
-				      winType,
-				      map_degree,
-				      reduce_degree,
-				      name,
-				      closing_func,
-				      true,
+				      triggering_delay, winType, map_degree,
+				      reduce_degree, name, closing_func, true,
 				      opt_level); // copy elision in C++17
 	}
 #endif
@@ -2404,14 +2338,9 @@ public:
 	winmapreduce_t *build_ptr()
 	{
 		return new winmapreduce_t(func_F, func_G, win_len, slide_len,
-					  triggering_delay,
-					  winType,
-					  map_degree,
-					  reduce_degree,
-					  name,
-					  closing_func,
-					  true,
-					  opt_level);
+					  triggering_delay, winType, map_degree,
+					  reduce_degree, name, closing_func,
+					  true, opt_level);
 	}
 
 	/**
@@ -2421,16 +2350,12 @@ public:
 	 */
 	std::unique_ptr<winmapreduce_t> build_unique()
 	{
-		return std::make_unique<winmapreduce_t>(func_F, func_G,
-							win_len,
+		return std::make_unique<winmapreduce_t>(func_F, func_G, win_len,
 							slide_len,
 							triggering_delay,
-							winType,
-							map_degree,
-							reduce_degree,
-							name,
-							closing_func,
-							true,
+							winType, map_degree,
+							reduce_degree, name,
+							closing_func, true,
 							opt_level);
 	}
 };
@@ -2595,17 +2520,12 @@ public:
 	 */
 	winmapreduce_gpu_t *build_ptr()
 	{
-		return new winmapreduce_gpu_t(func_F, func_G, win_len, slide_len,
-					      triggering_delay,
-					      winType,
-					      map_degree,
-					      reduce_degree,
-					      batch_len,
-					      n_thread_block,
-					      name,
-					      scratchpad_size,
-					      true,
-					      opt_level);
+		return new winmapreduce_gpu_t(func_F, func_G, win_len,
+					      slide_len, triggering_delay,
+					      winType, map_degree,
+					      reduce_degree, batch_len,
+					      n_thread_block, name,
+					      scratchpad_size, true, opt_level);
 	}
 
 	/**
@@ -2616,18 +2536,15 @@ public:
 	std::unique_ptr<winmapreduce_gpu_t> build_unique()
 	{
 		return std::make_unique<winmapreduce_gpu_t>(func_F, func_G,
-							    win_len,
-							    slide_len,
+							    win_len, slide_len,
 							    triggering_delay,
-							    winType,
-							    map_degree,
+							    winType, map_degree,
 							    reduce_degree,
 							    batch_len,
 							    n_thread_block,
 							    name,
 							    scratchpad_size,
-							    true,
-							    opt_level);
+							    true, opt_level);
 	}
 };
 
