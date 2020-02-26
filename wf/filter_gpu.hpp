@@ -16,7 +16,7 @@
 
 /**
  *  @file    filter.hpp
- *  @author  Gabriele Mencagli
+ *  @author  Cosimo Agati
  *  @date    10/01/2019
  *
  *  @brief FilterGPU operator dropping data items not respecting a given predicate
