@@ -89,9 +89,9 @@ private:
 		decltype(max_buffered_tuples) buf_index {0};
 
 #if defined(TRACE_WINDFLOW)
-		unsigned long rcvTuples = 0;
-		double avg_td_us = 0;
-		double avg_ts_us = 0;
+		unsigned long rcvTuples {0};
+		double avg_td_us {0};
+		double avg_ts_us {0};
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
@@ -154,9 +154,24 @@ private:
 		{
 #if defined(TRACE_WINDFLOW)
 			logfile = new std::ofstream();
-			name += "_node_" + std::to_string(ff::ff_node_t<tuple_t>::get_my_id()) + ".log";
-			std::string filename = std::string(STRINGIFY(TRACE_WINDFLOW)) + "/" + name;
+			name += "_" + std::to_string(this->get_my_id()) + "_" + std::to_string(getpid()) + ".log";
+#if defined(LOG_DIR)
+			std::string filename = std::string(STRINGIFY(LOG_DIR)) + "/" + name;
+			std::string log_dir = std::string(STRINGIFY(LOG_DIR));
+#else
+			std::string filename = "log/" + name;
+			std::string log_dir = std::string("log");
+#endif
+			// create the log directory
+			if (mkdir(log_dir.c_str(), 0777) != 0) {
+				struct stat st;
+				if((stat(log_dir.c_str(), &st) != 0) || !S_ISDIR(st.st_mode)) {
+					std::cerr << RED << "WindFlow Error: directory for log files cannot be created" << DEFAULT_COLOR << std::endl;
+					exit(EXIT_FAILURE);
+				}
+			}
 			logfile->open(filename);
+
 #endif
 			cudaMallocManaged(&tuple_buffer,
 					  max_buffered_tuples * sizeof(tuple_t));
@@ -168,7 +183,7 @@ private:
 		// svc method (utilized by the FastFlow runtime)
 		tuple_t *svc(tuple_t *t)
 		{
-#if defined (TRACE_WINDFLOW)
+#if defined(TRACE_WINDFLOW)
 			startTS = current_time_nsecs();
 			if (rcvTuples == 0)
 				startTD = current_time_nsecs();
@@ -202,7 +217,7 @@ private:
 		{
 			// call the closing function
 			closing_func(context);
-#if defined (TRACE_WINDFLOW)
+#if defined(TRACE_WINDFLOW)
 			std::ostringstream stream;
 			stream << "************************************LOG************************************\n";
 			stream << "No. of received tuples: " << rcvTuples << "\n";
@@ -370,6 +385,21 @@ public:
 	{
 		return keyed;
 	}
+
+	/**
+	 *  \brief Check whether the Filter has been used in a MultiPipe
+	 *  \return true if the Filter has been added/chained to an existing MultiPipe
+	 */
+	bool isUsed() const
+	{
+		return used;
+	}
+
+	/// deleted constructors/operators
+	FilterGPU(const FilterGPU &) = delete; // copy constructor
+	FilterGPU(FilterGPU &&) = delete; // move constructor
+	FilterGPU &operator=(const FilterGPU &) = delete; // copy assignment operator
+	FilterGPU &operator=(FilterGPU &&) = delete; // move assignment operator
 };
 
 } // namespace wf
