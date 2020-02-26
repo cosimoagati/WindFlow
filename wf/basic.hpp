@@ -165,9 +165,17 @@ class Source;
 template<typename tuple_t, typename result_t>
 class Map;
 
+/// forward declaration of the Map operator (GPU version)
+template<typename tuple_t, typename result_t>
+class MapGPU;
+
 /// forward declaration of the Filter operator
 template<typename tuple_t>
 class Filter;
+
+// forward declaration of the Filter operator (GPU version)
+template<typename tuple_t>
+class FilterGPU;
 
 /// forward declaration of the FlatMap operator
 template<typename tuple_t, typename result_t>
