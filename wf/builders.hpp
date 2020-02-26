@@ -806,7 +806,8 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	WinSeq_Builder<F_t>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
+	WinSeq_Builder<F_t>& withCBWindows(std::uint64_t _win_len,
+					   std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -822,7 +823,9 @@ public:
 	 *  \param _triggering_delay (in microseconds)
 	 *  \return the object itself
 	 */
-	WinSeq_Builder<F_t>& withTBWindows(std::chrono::microseconds _win_len, std::chrono::microseconds _slide_len, std::chrono::microseconds _triggering_delay=std::chrono::microseconds::zero())
+	WinSeq_Builder<F_t>& withTBWindows(std::chrono::microseconds _win_len,
+					   std::chrono::microseconds _slide_len,
+					   std::chrono::microseconds _triggering_delay=std::chrono::microseconds::zero())
 	{
 		win_len = _win_len.count();
 		slide_len = _slide_len.count();
@@ -943,7 +946,8 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	WinSeqGPU_Builder<F_t>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
+	WinSeqGPU_Builder<F_t>& withCBWindows(std::uint64_t _win_len,
+					      std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -959,7 +963,8 @@ public:
 	 *  \param _triggering_delay (in microseconds)
 	 *  \return the object itself
 	 */
-	WinSeqGPU_Builder<F_t>& withTBWindows(std::chrono::microseconds _win_len, std::chrono::microseconds _slide_len,
+	WinSeqGPU_Builder<F_t>& withTBWindows(std::chrono::microseconds _win_len,
+					      std::chrono::microseconds _slide_len,
 					      std::chrono::microseconds _triggering_delay=std::chrono::microseconds::zero())
 	{
 		win_len = _win_len.count();
@@ -1501,7 +1506,8 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	KeyFarm_Builder<T>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
+	KeyFarm_Builder<T>& withCBWindows(std::uint64_t _win_len,
+					  std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -1698,7 +1704,8 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	KeyFarmGPU_Builder<T>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
+	KeyFarmGPU_Builder<T>& withCBWindows(std::uint64_t _win_len,
+					     std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -1863,7 +1870,8 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	PaneFarm_Builder<F_t, G_t>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
+	PaneFarm_Builder<F_t, G_t>& withCBWindows(std::uint64_t _win_len,
+						  std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
