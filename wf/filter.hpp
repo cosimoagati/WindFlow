@@ -83,9 +83,9 @@ private:
 		bool isRich; // flag stating whether the function to be used is rich (i.e. it receives the RuntimeContext object)
 		RuntimeContext context; // RuntimeContext
 #if defined(TRACE_WINDFLOW)
-		unsigned long rcvTuples {0};
-		double avg_td_us {0};
-		double avg_ts_us {0};
+		unsigned long rcvTuples = 0;
+		double avg_td_us = 0;
+		double avg_ts_us = 0;
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
