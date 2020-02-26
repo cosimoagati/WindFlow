@@ -408,7 +408,8 @@ private:
 	std::string name = "anonymous_map";
 	bool isKeyed = false;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
-	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
+	routing_func_t routing_func = [](std::size_t k,
+					 std::size_t n) { return k%n; };
 
 public:
 	/**
