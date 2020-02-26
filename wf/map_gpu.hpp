@@ -15,13 +15,13 @@
  */
 
 /**
- *  @file    map.hpp
- *  @author  Gabriele Mencagli
+ *  @file    map_gpu.hpp
+ *  @author  Cosimo Agati
  *  @date    08/01/2019
  *
- *  @brief Map operator executing a one-to-one transformation on the input stream
+ *  @brief Map_GPU operator executing a one-to-one transformation on the input stream
  *
- *  @section Map (Description)
+ *  @section Map_GPU (Description)
  *
  *  This file implements the Map operator able to execute a one-to-one transformation
  *  on each tuple of the input data stream. The transformation should be stateless and
@@ -74,6 +74,7 @@ private:
 	// friendships with other classes in the library
 	friend class MultiPipe;
 	bool keyed; // flag stating whether the MapGPU is configured with keyBy or not
+	bool used;
 	// class MapGPU_Node
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
