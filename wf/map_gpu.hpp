@@ -93,7 +93,7 @@ private:
 		RuntimeContext context; // RuntimeContext
 		decltype(max_buffered_tuples) buf_index {0};
 
-#if defined(LOG_DIR)
+#if defined(TRACE_WINDFLOW)
 		unsigned long rcvTuples {0};
 		double avg_td_us {0};
 		double avg_ts_us {0};
@@ -196,10 +196,10 @@ private:
 		// svc_init method (utilized by the FastFlow runtime)
 		int svc_init()
 		{
-#if defined(LOG_DIR)
+#if defined(TRACE_WINDFLOW)
 			logfile = new std::ofstream();
 			name += "_node_" + std::to_string(ff::ff_node_t<tuple_t, result_t>::get_my_id()) + ".log";
-			std::string filename = std::string(STRINGIFY(LOG_DIR)) + "/" + name;
+			std::string filename = std::string(STRINGIFY(TRACE_WINDFLOW)) + "/" + name;
 			logfile->open(filename);
 #endif
 			cudaMallocManaged(&tuple_buffer,
@@ -212,7 +212,7 @@ private:
 		// svc method (utilized by the FastFlow runtime)
 		result_t *svc(tuple_t *t)
 		{
-#if defined (LOG_DIR)
+#if defined (TRACE_WINDFLOW)
 			startTS = current_time_nsecs();
 			if (rcvTuples == 0)
 				startTD = current_time_nsecs();
@@ -234,7 +234,7 @@ private:
 							  func_nip);
 			cudaDeviceSynchronize();
 			send_mapped_tuples();
-#if defined(LOG_DIR)
+#if defined(TRACE_WINDFLOW)
 			endTS = current_time_nsecs();
 			endTD = current_time_nsecs();
 			double elapsedTS_us = ((double) (endTS - startTS)) / 1000;
@@ -251,7 +251,7 @@ private:
 		{
 			// call the closing function
 			closing_func(context);
-#if defined (LOG_DIR)
+#if defined (TRACE_WINDFLOW)
 			std::ostringstream stream;
 			stream << "************************************LOG************************************\n";
 			stream << "No. of received tuples: " << rcvTuples << "\n";
