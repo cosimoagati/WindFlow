@@ -33,8 +33,8 @@
 #include <chrono>
 #include <memory>
 #include <functional>
-#include <basic.hpp>
-#include <meta_utils.hpp>
+#include "basic.hpp"
+#include "meta_utils.hpp"
 
 namespace wf {
 
@@ -369,6 +369,121 @@ public:
      *  
      *  \return a unique_ptr to the created Map operator
      */ 
+    std::unique_ptr<map_t> build_unique()
+    {
+        if (!isKeyed)
+            return std::make_unique<map_t>(func, pardegree, name, closing_func);
+        else
+            return std::make_unique<map_t>(func, pardegree, name, closing_func, routing_func);
+    }
+};
+
+template<typename F_t>
+class MapGPU_Builder
+{
+private:
+    F_t func;
+    // type of the operator to be created by this builder
+    using map_t = MapGPU<decltype(get_tuple_t(func)),
+                             decltype(get_result_t(func))>;
+    // type of the closing function
+    using closing_func_t = std::function<void(RuntimeContext&)>;
+    // type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
+    using routing_func_t = std::function<size_t(size_t, size_t)>;
+    uint64_t pardegree = 1;
+    std::string name = "anonymous_map";
+    bool isKeyed = false;
+    closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
+    routing_func_t routing_func = [](size_t k, size_t n) { return k%n; };
+
+public:
+    /**
+     *  \brief Constructor
+     *
+     *  \param _func function of the one-to-one transformation
+     */
+    MapGPU_Builder(F_t _func): func(_func) {}
+
+    /**
+     *  \brief Method to specify the name of the Map operator
+     *
+     *  \param _name std::string with the name to be given
+     *  \return the object itself
+     */
+    MapGPU_Builder<F_t>& withName(std::string _name)
+    {
+        name = _name;
+        return *this;
+    }
+
+    /**
+     *  \brief Method to specify the parallelism of the Map operator
+     *
+     *  \param _pardegree number of map replicas
+     *  \return the object itself
+     */
+    MapGPU_Builder<F_t>& withParallelism(size_t _pardegree)
+    {
+        pardegree = _pardegree;
+        return *this;
+    }
+
+    /**
+     *  \brief Method to enable the key-based routing
+     *
+     *  \return the object itself
+     */
+    MapGPU_Builder<F_t>& enable_KeyBy()
+    {
+        isKeyed = true;
+        return *this;
+    }
+
+    /**
+     *  \brief Method to specify the closing function used by the operator
+     *
+     *  \param _closing_func closing function to be used by the operator
+     *  \return the object itself
+     */
+    MapGPU_Builder<F_t>& withClosingFunction(closing_func_t _closing_func)
+    {
+        closing_func = _closing_func;
+        return *this;
+    }
+
+#if __cplusplus >= 201703L
+    /**
+     *  \brief Method to create the Map operator (only C++17)
+     *
+     *  \return a copy of the created Map operator
+     */
+    map_t build()
+    {
+        if (!isKeyed)
+            return map_t(func, pardegree, name, closing_func); // copy elision in C++17
+        else
+            return map_t(func, pardegree, name, closing_func, routing_func); // copy elision in C++17
+    }
+#endif
+
+    /**
+     *  \brief Method to create the Map operator
+     *
+     *  \return a pointer to the created Map operator (to be explicitly deallocated/destroyed)
+     */
+    map_t *build_ptr()
+    {
+        if (!isKeyed)
+            return new map_t(func, pardegree, name, closing_func);
+        else
+            return new map_t(func, pardegree, name, closing_func, routing_func);
+    }
+
+    /**
+     *  \brief Method to create the Map operator
+     *
+     *  \return a unique_ptr to the created Map operator
+     */
     std::unique_ptr<map_t> build_unique()
     {
         if (!isKeyed)
