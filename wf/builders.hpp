@@ -31,6 +31,7 @@
 
 /// includes
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <functional>
 #include "basic.hpp"
@@ -54,7 +55,7 @@ private:
 	using source_t = Source<decltype(get_tuple_t(func))>;
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
-	uint64_t pardegree = 1;
+	std::uint64_t pardegree = 1;
 	std::string name = "anonymous_source";
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
 
@@ -84,7 +85,7 @@ public:
 	 *  \param _pardegree number of source replicas
 	 *  \return the object itself
 	 */
-	Source_Builder<F_t>& withParallelism(size_t _pardegree)
+	Source_Builder<F_t>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -153,12 +154,12 @@ private:
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
 	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
-	uint64_t pardegree = 1;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
+	std::uint64_t pardegree = 1;
 	std::string name = "anonymous_filter";
 	bool isKeyed = false;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
-	routing_func_t routing_func = [](size_t k, size_t n) { return k%n; };
+	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
 
 public:
 	/**
@@ -186,7 +187,7 @@ public:
 	 *  \param _pardegree number of filter replicas
 	 *  \return the object itself
 	 */
-	Filter_Builder<F_t>& withParallelism(size_t _pardegree)
+	Filter_Builder<F_t>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -281,12 +282,12 @@ private:
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
 	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
-	uint64_t pardegree = 1;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
+	std::uint64_t pardegree = 1;
 	std::string name = "anonymous_map";
 	bool isKeyed = false;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
-	routing_func_t routing_func = [](size_t k, size_t n) { return k%n; };
+	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
 
 public:
 	/**
@@ -314,7 +315,7 @@ public:
 	 *  \param _pardegree number of map replicas
 	 *  \return the object itself
 	 */
-	Map_Builder<F_t>& withParallelism(size_t _pardegree)
+	Map_Builder<F_t>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -402,12 +403,12 @@ private:
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
 	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
-	uint64_t pardegree = 1;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
+	std::uint64_t pardegree = 1;
 	std::string name = "anonymous_map";
 	bool isKeyed = false;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
-	routing_func_t routing_func = [](size_t k, size_t n) { return k%n; };
+	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
 
 public:
 	/**
@@ -435,7 +436,7 @@ public:
 	 *  \param _pardegree number of map replicas
 	 *  \return the object itself
 	 */
-	MapGPU_Builder<F_t>& withParallelism(size_t _pardegree)
+	MapGPU_Builder<F_t>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -529,12 +530,12 @@ private:
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
 	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
-	uint64_t pardegree = 1;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
+	std::uint64_t pardegree = 1;
 	std::string name = "anonymous_flatmap";
 	bool isKeyed = false;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
-	routing_func_t routing_func = [](size_t k, size_t n) { return k%n; };
+	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
 
 public:
 	/**
@@ -562,7 +563,7 @@ public:
 	 *  \param _pardegree number of flatmap replicas
 	 *  \return the object itself
 	 */
-	FlatMap_Builder<F_t>& withParallelism(size_t _pardegree)
+	FlatMap_Builder<F_t>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -659,14 +660,14 @@ private:
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
 	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
 	// type of the result produced by the Accumulator
 	using result_t = decltype(get_result_t(func));
-	uint64_t pardegree = 1;
+	std::uint64_t pardegree = 1;
 	std::string name = "anonymous_accumulator";
 	result_t init_value;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
-	routing_func_t routing_func = [](size_t k, size_t n) { return k%n; };
+	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
 
 public:
 	/**
@@ -708,7 +709,7 @@ public:
 	 *  \param _pardegree number of accumulator replicas
 	 *  \return the object itself
 	 */
-	Accumulator_Builder<F_t>& withParallelism(size_t _pardegree)
+	Accumulator_Builder<F_t>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -783,9 +784,9 @@ private:
 				 decltype(get_result_t(func))>;
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
 	std::string name = "anonymous_seq";
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
@@ -805,7 +806,7 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	WinSeq_Builder<F_t>& withCBWindows(uint64_t _win_len, uint64_t _slide_len)
+	WinSeq_Builder<F_t>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -918,14 +919,14 @@ private:
 	using winseq_gpu_t = Win_Seq_GPU<decltype(get_tuple_t(func)),
 					 decltype(get_result_t(func)),
 					 decltype(func)>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
-	size_t batch_len = 1;
-	size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
+	std::size_t batch_len = 1;
+	std::size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
 	std::string name = "anonymous_seq_gpu";
-	size_t scratchpad_size = 0;
+	std::size_t scratchpad_size = 0;
 
 public:
 	/**
@@ -942,7 +943,7 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	WinSeqGPU_Builder<F_t>& withCBWindows(uint64_t _win_len, uint64_t _slide_len)
+	WinSeqGPU_Builder<F_t>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -975,8 +976,8 @@ public:
 	 *  \param _n_thread_block number of threads per block
 	 *  \return the object itself
 	 */
-	WinSeqGPU_Builder<F_t>& withBatch(size_t _batch_len,
-					  size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
+	WinSeqGPU_Builder<F_t>& withBatch(std::size_t _batch_len,
+					  std::size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
 	{
 		batch_len = _batch_len;
 		n_thread_block = _n_thread_block;
@@ -1001,7 +1002,7 @@ public:
 	 *  \param _scratchpad_size size in bytes of the scratchpad memory per CUDA thread
 	 *  \return the object itself
 	 */
-	WinSeqGPU_Builder<F_t>& withScratchpad(size_t _scratchpad_size)
+	WinSeqGPU_Builder<F_t>& withScratchpad(std::size_t _scratchpad_size)
 	{
 		scratchpad_size = _scratchpad_size;
 		return *this;
@@ -1049,11 +1050,11 @@ private:
 	using winfarm_t = std::remove_reference_t<decltype(*get_WF_nested_type(input))>;
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
-	size_t pardegree = 1;
+	std::size_t pardegree = 1;
 	std::string name = "anonymous_wf";
 	opt_level_t opt_level = LEVEL2;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
@@ -1106,7 +1107,7 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	WinFarm_Builder<T>& withCBWindows(uint64_t _win_len, uint64_t _slide_len)
+	WinFarm_Builder<T>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -1139,7 +1140,7 @@ public:
 	 *  \param _pardegree number of replicas
 	 *  \return the object itself
 	 */
-	WinFarm_Builder<T>& withParallelism(size_t _pardegree)
+	WinFarm_Builder<T>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -1238,15 +1239,15 @@ private:
 	T &input;
 	// type of the operator to be created by this builder
 	using winfarm_gpu_t = std::remove_reference_t<decltype(*get_WF_GPU_nested_type(input))>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
-	size_t pardegree = 1;
-	size_t batch_len = 1;
-	size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
+	std::size_t pardegree = 1;
+	std::size_t batch_len = 1;
+	std::size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
 	std::string name = "anonymous_wf_gpu";
-	size_t scratchpad_size = 0;
+	std::size_t scratchpad_size = 0;
 	opt_level_t opt_level = LEVEL2;
 
 	// window parameters initialization (input is a Pane_Farm_GPU)
@@ -1302,8 +1303,8 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	WinFarmGPU_Builder<T>& withCBWindows(uint64_t _win_len,
-					     uint64_t _slide_len)
+	WinFarmGPU_Builder<T>& withCBWindows(std::uint64_t _win_len,
+					     std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -1336,7 +1337,7 @@ public:
 	 *  \param _pardegree number of replicas
 	 *  \return the object itself
 	 */
-	WinFarmGPU_Builder<T>& withParallelism(size_t _pardegree)
+	WinFarmGPU_Builder<T>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -1349,8 +1350,8 @@ public:
 	 *  \param _n_thread_block number of threads per block
 	 *  \return the object itself
 	 */
-	WinFarmGPU_Builder<T>& withBatch(size_t _batch_len,
-					 size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
+	WinFarmGPU_Builder<T>& withBatch(std::size_t _batch_len,
+					 std::size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
 	{
 		batch_len = _batch_len;
 		n_thread_block = _n_thread_block;
@@ -1375,7 +1376,7 @@ public:
 	 *  \param _scratchpad_size size in bytes of the scratchpad memory per CUDA thread
 	 *  \return the object itself
 	 */
-	WinFarmGPU_Builder<T>& withScratchpad(size_t _scratchpad_size)
+	WinFarmGPU_Builder<T>& withScratchpad(std::size_t _scratchpad_size)
 	{
 		scratchpad_size = _scratchpad_size;
 		return *this;
@@ -1441,14 +1442,14 @@ private:
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
 	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
-	size_t pardegree = 1;
+	std::size_t pardegree = 1;
 	std::string name = "anonymous_kf";
-	routing_func_t routing_func = [](size_t k, size_t n) { return k%n; };
+	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
 	opt_level_t opt_level = LEVEL2;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
 
@@ -1500,7 +1501,7 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	KeyFarm_Builder<T>& withCBWindows(uint64_t _win_len, uint64_t _slide_len)
+	KeyFarm_Builder<T>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -1533,7 +1534,7 @@ public:
 	 *  \param _pardegree number of replicas
 	 *  \return the object itself
 	 */
-	KeyFarm_Builder<T>& withParallelism(size_t _pardegree)
+	KeyFarm_Builder<T>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -1629,19 +1630,19 @@ class KeyFarmGPU_Builder
 private:
 	T &input;
 	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
 	// type of the operator to be created by this builder
 	using keyfarm_gpu_t = std::remove_reference_t<decltype(*get_KF_GPU_nested_type(input))>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
-	size_t pardegree = 1;
-	size_t batch_len = 1;
-	size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
+	std::size_t pardegree = 1;
+	std::size_t batch_len = 1;
+	std::size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
 	std::string name = "anonymous_wf_gpu";
-	size_t scratchpad_size = 0;
-	routing_func_t routing_func = [](size_t k, size_t n) { return k%n; };
+	std::size_t scratchpad_size = 0;
+	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
 	opt_level_t opt_level = LEVEL2;
 
 	// window parameters initialization (input is a Pane_Farm_GPU)
@@ -1697,7 +1698,7 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	KeyFarmGPU_Builder<T>& withCBWindows(uint64_t _win_len, uint64_t _slide_len)
+	KeyFarmGPU_Builder<T>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -1730,7 +1731,7 @@ public:
 	 *  \param _pardegree number of replicas
 	 *  \return the object itself
 	 */
-	KeyFarmGPU_Builder<T>& withParallelism(size_t _pardegree)
+	KeyFarmGPU_Builder<T>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
@@ -1743,8 +1744,8 @@ public:
 	 *  \param _n_thread_block number of threads per block
 	 *  \return the object itself
 	 */
-	KeyFarmGPU_Builder<T>& withBatch(size_t _batch_len,
-					 size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
+	KeyFarmGPU_Builder<T>& withBatch(std::size_t _batch_len,
+					 std::size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
 	{
 		batch_len = _batch_len;
 		n_thread_block = _n_thread_block;
@@ -1769,7 +1770,7 @@ public:
 	 *  \param _scratchpad_size size in bytes of the scratchpad memory per CUDA thread
 	 *  \return the object itself
 	 */
-	KeyFarmGPU_Builder<T>& withScratchpad(size_t _scratchpad_size)
+	KeyFarmGPU_Builder<T>& withScratchpad(std::size_t _scratchpad_size)
 	{
 		scratchpad_size = _scratchpad_size;
 		return *this;
@@ -1836,12 +1837,12 @@ private:
 				     decltype(get_result_t(func_F))>;
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
-	size_t plq_degree = 1;
-	size_t wlq_degree = 1;
+	std::size_t plq_degree = 1;
+	std::size_t wlq_degree = 1;
 	std::string name = "anonymous_pf";
 	opt_level_t opt_level = LEVEL0;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
@@ -1862,7 +1863,7 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	PaneFarm_Builder<F_t, G_t>& withCBWindows(uint64_t _win_len, uint64_t _slide_len)
+	PaneFarm_Builder<F_t, G_t>& withCBWindows(std::uint64_t _win_len, std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -1896,8 +1897,8 @@ public:
 	 *  \param _wlq_degree number replicas in the WLQ stage
 	 *  \return the object itself
 	 */
-	PaneFarm_Builder<F_t, G_t>& withParallelism(size_t _plq_degree,
-						    size_t _wlq_degree)
+	PaneFarm_Builder<F_t, G_t>& withParallelism(std::size_t _plq_degree,
+						    std::size_t _wlq_degree)
 	{
 		plq_degree = _plq_degree;
 		wlq_degree = _wlq_degree;
@@ -2012,16 +2013,16 @@ private:
 					     decltype(get_result_t(func_F)),
 					     decltype(get_GPU_F(&F_t::operator(),
 								&G_t::operator()))>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
-	size_t plq_degree = 1;
-	size_t wlq_degree = 1;
-	size_t batch_len = 1;
-	size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
+	std::size_t plq_degree = 1;
+	std::size_t wlq_degree = 1;
+	std::size_t batch_len = 1;
+	std::size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
 	std::string name = "anonymous_pf_gpu";
-	size_t scratchpad_size = 0;
+	std::size_t scratchpad_size = 0;
 	opt_level_t opt_level = LEVEL0;
 
 public:
@@ -2043,8 +2044,8 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	PaneFarmGPU_Builder<F_t, G_t>& withCBWindows(uint64_t _win_len,
-						     uint64_t _slide_len)
+	PaneFarmGPU_Builder<F_t, G_t>& withCBWindows(std::uint64_t _win_len,
+						     std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -2078,8 +2079,8 @@ public:
 	 *  \param _wlq_degree number of replicas in the WLQ stage
 	 *  \return the object itself
 	 */
-	PaneFarmGPU_Builder<F_t, G_t>& withParallelism(size_t _plq_degree,
-						       size_t _wlq_degree)
+	PaneFarmGPU_Builder<F_t, G_t>& withParallelism(std::size_t _plq_degree,
+						       std::size_t _wlq_degree)
 	{
 		plq_degree = _plq_degree;
 		wlq_degree = _wlq_degree;
@@ -2093,8 +2094,8 @@ public:
 	 *  \param _n_thread_block number of threads per block
 	 *  \return the object itself
 	 */
-	PaneFarmGPU_Builder<F_t, G_t>& withBatch(size_t _batch_len,
-						 size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
+	PaneFarmGPU_Builder<F_t, G_t>& withBatch(std::size_t _batch_len,
+						 std::size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
 	{
 		batch_len = _batch_len;
 		n_thread_block = _n_thread_block;
@@ -2119,7 +2120,7 @@ public:
 	 *  \param _scratchpad_size size in bytes of the scratchpad memory per CUDA thread
 	 *  \return the object itself
 	 */
-	PaneFarmGPU_Builder<F_t, G_t>& withScratchpad(size_t _scratchpad_size)
+	PaneFarmGPU_Builder<F_t, G_t>& withScratchpad(std::size_t _scratchpad_size)
 	{
 		scratchpad_size = _scratchpad_size;
 		return *this;
@@ -2198,12 +2199,12 @@ private:
 					     decltype(get_result_t(func_F))>;
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
-	size_t map_degree = 2;
-	size_t reduce_degree = 1;
+	std::size_t map_degree = 2;
+	std::size_t reduce_degree = 1;
 	std::string name = "anonymous_wmr";
 	opt_level_t opt_level = LEVEL0;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
@@ -2225,8 +2226,8 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	WinMapReduce_Builder<F_t, G_t>& withCBWindows(uint64_t _win_len,
-						      uint64_t _slide_len)
+	WinMapReduce_Builder<F_t, G_t>& withCBWindows(std::uint64_t _win_len,
+						      std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -2260,8 +2261,8 @@ public:
 	 *  \param _reduce_degree number of replicas in the REDUCE stage
 	 *  \return the object itself
 	 */
-	WinMapReduce_Builder<F_t, G_t>& withParallelism(size_t _map_degree,
-							size_t _reduce_degree)
+	WinMapReduce_Builder<F_t, G_t>& withParallelism(std::size_t _map_degree,
+							std::size_t _reduce_degree)
 	{
 		map_degree = _map_degree;
 		reduce_degree = _reduce_degree;
@@ -2377,16 +2378,16 @@ private:
 						     decltype(get_result_t(func_F)),
 						     decltype(get_GPU_F(&F_t::operator(),
 									&G_t::operator()))>;
-	uint64_t win_len = 1;
-	uint64_t slide_len = 1;
-	uint64_t triggering_delay = 0;
+	std::uint64_t win_len = 1;
+	std::uint64_t slide_len = 1;
+	std::uint64_t triggering_delay = 0;
 	win_type_t winType = CB;
-	size_t map_degree = 2;
-	size_t reduce_degree = 1;
-	size_t batch_len = 1;
-	size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
+	std::size_t map_degree = 2;
+	std::size_t reduce_degree = 1;
+	std::size_t batch_len = 1;
+	std::size_t n_thread_block = DEFAULT_CUDA_NUM_THREAD_BLOCK;
 	std::string name = "anonymous_wmw_gpu";
-	size_t scratchpad_size = 0;
+	std::size_t scratchpad_size = 0;
 	opt_level_t opt_level = LEVEL0;
 
 public:
@@ -2408,8 +2409,8 @@ public:
 	 *  \param _slide_len slide length (in no. of tuples)
 	 *  \return the object itself
 	 */
-	WinMapReduceGPU_Builder<F_t, G_t>& withCBWindows(uint64_t _win_len,
-							 uint64_t _slide_len)
+	WinMapReduceGPU_Builder<F_t, G_t>& withCBWindows(std::uint64_t _win_len,
+							 std::uint64_t _slide_len)
 	{
 		win_len = _win_len;
 		slide_len = _slide_len;
@@ -2443,8 +2444,8 @@ public:
 	 *  \param _reduce_degree number of replicas in the REDUCE stage
 	 *  \return the object itself
 	 */
-	WinMapReduceGPU_Builder<F_t, G_t>& withParallelism(size_t _map_degree,
-							   size_t _reduce_degree)
+	WinMapReduceGPU_Builder<F_t, G_t>& withParallelism(std::size_t _map_degree,
+							   std::size_t _reduce_degree)
 	{
 		map_degree = _map_degree;
 		reduce_degree = _reduce_degree;
@@ -2458,8 +2459,8 @@ public:
 	 *  \param _n_thread_block number of threads per block
 	 *  \return the object itself
 	 */
-	WinMapReduceGPU_Builder<F_t, G_t>& withBatch(size_t _batch_len,
-						     size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
+	WinMapReduceGPU_Builder<F_t, G_t>& withBatch(std::size_t _batch_len,
+						     std::size_t _n_thread_block=DEFAULT_CUDA_NUM_THREAD_BLOCK)
 	{
 		batch_len = _batch_len;
 		n_thread_block = _n_thread_block;
@@ -2484,7 +2485,7 @@ public:
 	 *  \param _scratchpad_size size in bytes of the scratchpad memory per CUDA thread
 	 *  \return the object itself
 	 */
-	WinMapReduceGPU_Builder<F_t, G_t>& withScratchpad(size_t _scratchpad_size)
+	WinMapReduceGPU_Builder<F_t, G_t>& withScratchpad(std::size_t _scratchpad_size)
 	{
 		scratchpad_size = _scratchpad_size;
 		return *this;
@@ -2565,12 +2566,12 @@ private:
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
 	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
-	uint64_t pardegree = 1;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
+	std::uint64_t pardegree = 1;
 	std::string name = "anonymous_sink";
 	bool isKeyed = false;
 	closing_func_t closing_func = [](RuntimeContext &r) -> void { return; };
-	routing_func_t routing_func = [](size_t k, size_t n) { return k%n; };
+	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
 
 public:
 	/**
@@ -2598,7 +2599,7 @@ public:
 	 *  \param _pardegree number of sink replicas
 	 *  \return the object itself
 	 */
-	Sink_Builder<F_t>& withParallelism(size_t _pardegree)
+	Sink_Builder<F_t>& withParallelism(std::size_t _pardegree)
 	{
 		pardegree = _pardegree;
 		return *this;
