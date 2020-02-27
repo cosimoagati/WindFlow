@@ -38,12 +38,12 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
-#include <ff/node.hpp>
-#include <ff/pipeline.hpp>
-#include <ff/farm.hpp>
-#include <basic.hpp>
-#include <context.hpp>
-#include <standard_nodes.hpp>
+#include "ff/node.hpp"
+#include "ff/pipeline.hpp"
+#include "ff/farm.hpp"
+#include "basic.hpp"
+#include "context.hpp"
+#include "standard_nodes.hpp"
 
 namespace wf {
 

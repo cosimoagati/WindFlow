@@ -44,17 +44,17 @@
 #include <algorithm>
 #include <math.h>
 #include <ff/ff.hpp>
-#include <basic.hpp>
-#include <wm_nodes.hpp>
-#include <wf_nodes.hpp>
-#include <kf_nodes.hpp>
-#include <tree_emitter.hpp>
-#include <basic_emitter.hpp>
-#include <ordering_node.hpp>
-#include <standard_nodes.hpp>
-#include <transformations.hpp>
-#include <splitting_emitter.hpp>
-#include <broadcast_emitter.hpp>
+#include "basic.hpp"
+#include "wm_nodes.hpp"
+#include "wf_nodes.hpp"
+#include "kf_nodes.hpp"
+#include "tree_emitter.hpp"
+#include "basic_emitter.hpp"
+#include "ordering_node.hpp"
+#include "standard_nodes.hpp"
+#include "transformations.hpp"
+#include "splitting_emitter.hpp"
+#include "broadcast_emitter.hpp"
 
 namespace wf {
 

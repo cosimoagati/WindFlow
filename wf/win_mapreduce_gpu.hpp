@@ -45,10 +45,10 @@
 /// includes
 #include <ff/pipeline.hpp>
 #include <ff/farm.hpp>
-#include <win_farm.hpp>
-#include <win_farm_gpu.hpp>
-#include <basic.hpp>
-#include <meta_utils.hpp>
+#include "win_farm.hpp"
+#include "win_farm_gpu.hpp"
+#include "basic.hpp"
+#include "meta_utils.hpp"
 
 namespace wf {
 

@@ -39,10 +39,10 @@
 #include <ff/node.hpp>
 #include <ff/pipeline.hpp>
 #include <ff/all2all.hpp>
-#include <basic.hpp>
-#include <shipper.hpp>
-#include <context.hpp>
-#include <standard_nodes.hpp>
+#include "basic.hpp"
+#include "shipper.hpp"
+#include "context.hpp"
+#include "standard_nodes.hpp"
 
 namespace wf {
 
