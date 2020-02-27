@@ -32,10 +32,10 @@
 
 /// includes
 #include <ff/ff.hpp>
-#include <win_seq_gpu.hpp>
-#include <win_farm_gpu.hpp>
-#include <key_farm_gpu.hpp>
-#include <pane_farm_gpu.hpp>
-#include <win_mapreduce_gpu.hpp>
+#include <wf/win_seq_gpu.hpp>
+#include <wf/win_farm_gpu.hpp>
+#include <wf/key_farm_gpu.hpp>
+#include <wf/pane_farm_gpu.hpp>
+#include <wf/win_mapreduce_gpu.hpp>
 
 #endif

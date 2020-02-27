@@ -31,18 +31,18 @@
 
 /// includes
 #include <ff/ff.hpp>
-#include <builders.hpp>
-#include <source.hpp>
-#include <map.hpp>
-#include <filter.hpp>
-#include <flatmap.hpp>
-#include <accumulator.hpp>
-#include <win_seq.hpp>
-#include <win_farm.hpp>
-#include <key_farm.hpp>
-#include <pane_farm.hpp>
-#include <win_mapreduce.hpp>
-#include <pipegraph.hpp>
-#include <sink.hpp>
+#include <wf/builders.hpp>
+#include <wf/source.hpp>
+#include <wf/map.hpp>
+#include <wf/filter.hpp>
+#include <wf/flatmap.hpp>
+#include <wf/accumulator.hpp>
+#include <wf/win_seq.hpp>
+#include <wf/win_farm.hpp>
+#include <wf/key_farm.hpp>
+#include <wf/pane_farm.hpp>
+#include <wf/win_mapreduce.hpp>
+#include <wf/pipegraph.hpp>
+#include <wf/sink.hpp>
 
 #endif

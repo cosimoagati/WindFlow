@@ -37,9 +37,9 @@
 #include "basic.hpp"
 #include "meta_utils.hpp"
 
-namespace wf {
-
-/** 
+namespace wf
+{
+/**
  *  \class Source_Builder
  *  
  *  \brief Builder of the Source operator
@@ -401,6 +401,7 @@ private:
 	using map_t = MapGPU<decltype(get_tuple_t(func)),
 			     decltype(get_result_t(func))>;
 	// type of the closing function
+
 	using closing_func_t = std::function<void(RuntimeContext&)>;
 	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
