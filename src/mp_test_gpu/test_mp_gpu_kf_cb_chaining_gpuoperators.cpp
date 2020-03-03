@@ -44,12 +44,12 @@ extern long global_sum;
 int main(int argc, char *argv[])
 {
 	int option = 0;
-	std::size_t runs = 1;
-	std::size_t stream_len = 0;
-	std::size_t win_len = 0;
-	std::size_t win_slide = 0;
-	std::size_t n_keys = 1;
-	std::size_t batch_len = 1;
+	size_t runs = 1;
+	size_t stream_len = 0;
+	size_t win_len = 0;
+	size_t win_slide = 0;
+	size_t n_keys = 1;
+	size_t batch_len = 1;
 	// initalize global variable
 	global_sum = 0;
 	// arguments from command line
@@ -83,15 +83,15 @@ int main(int argc, char *argv[])
 	}
 	// set random seed
 	mt19937 rng;
-	rng.seed(std::random_device()());
-	std::size_t min = 1;
-	std::size_t max = 9;
-	std::uniform_int_distribution<std::mt19937::result_type> dist6(min, max);
+	rng.seed(random_device()());
+	size_t min = 1;
+	size_t max = 9;
+	uniform_int_distribution<mt19937::result_type> dist6(min, max);
 	int source_degree, degree1, degree2, kf_degree;
 	source_degree = 1;
 	long last_result = 0;
 	// executes the runs
-	for (std::size_t i=0; i<runs; i++) {
+	for (size_t i = 0; i < runs; i++) {
 		degree1 = dist6(rng);
 		degree2 = dist6(rng);
 		kf_degree = dist6(rng);
@@ -104,21 +104,24 @@ int main(int argc, char *argv[])
 		PipeGraph graph("test_kf_cb_gpu_ch", Mode::DETERMINISTIC);
 		// source
 		Source_Functor source_functor(stream_len, n_keys);
-		auto *source = Source_Builder<decltype(source_functor)>(source_functor)
+		auto *source =
+			Source_Builder<decltype(source_functor)>(source_functor)
 			.withName("test_kf_cb_gpu_ch_source")
 			.withParallelism(source_degree)
 			.build_ptr();
 		MultiPipe &mp = graph.add_source(*source);
 		// filter
 		Filter_Functor filter_functor;
-		auto *filter = Filter_Builder<decltype(filter_functor)>(filter_functor)
+		auto *filter =
+			Filter_Builder<decltype(filter_functor)>(filter_functor)
 			.withName("test_kf_cb_gpu_ch_filter")
 			.withParallelism(degree1)
 			.build_ptr();
 		mp.chain(*filter);
 		// flatmap
 		FlatMap_Functor flatmap_functor;
-		auto *flatmap = FlatMap_Builder<decltype(flatmap_functor)>(flatmap_functor)
+		auto *flatmap =
+			FlatMap_Builder<decltype(flatmap_functor)>(flatmap_functor)
 			.withName("test_kf_cb_gpu_ch_flatmap")
 			.withParallelism(degree2)
 			.build_ptr();
@@ -132,17 +135,19 @@ int main(int argc, char *argv[])
 		mp.chain(*map);
 		// kf
 		// Key_Farm function (non-incremental) on GPU
-		auto kf_function_gpu = [] __host__ __device__ (std::size_t wid,
-							       const tuple_t *data,
-							       output_t *res,
-							       std::size_t size,
-							       char *memory) {
-					       long sum = 0;
-					       for (std::size_t i=0; i<size; i++)
-						       sum += data[i].value;
-					       res->value = sum;
-				       };
-		auto *kf = KeyFarmGPU_Builder<decltype(kf_function_gpu)>(kf_function_gpu)
+		auto kf_function_gpu =
+			[] __host__ __device__ (size_t wid,
+						const tuple_t *data,
+						output_t *res,
+						size_t size,
+						char *memory) {
+				long sum = 0;
+				for (size_t i = 0; i < size; i++)
+					sum += data[i].value;
+				res->value = sum;
+			};
+		auto *kf =
+			KeyFarmGPU_Builder<decltype(kf_function_gpu)>(kf_function_gpu)
 			.withName("test_kf_cb_gpu_ch_kf")
 			.withParallelism(kf_degree)
 			.withCBWindows(win_len, win_slide)
