@@ -283,15 +283,18 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
-		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
+		std::vector<ff_node *> workers;
+		for (std::size_t i = 0; i < _pardegree; i++) {
+			auto *seq = new MapGPU_Node(_func, _name,
+						    RuntimeContext(_pardegree,
+								   i),
+						    _closing_func);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
@@ -323,19 +326,19 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
-		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
+		std::vector<ff_node *> workers;
+		for (std::size_t i = 0; i < _pardegree; i++) {
 			auto *seq = new MapGPU_Node(_func, _name,
 						    RuntimeContext(_pardegree,
 								   i),
 						    _closing_func);
-			w.push_back(seq);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func,
 								       _pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
@@ -363,18 +366,18 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
-		std::vector<ff_node *> w;
+		std::vector<ff_node *> workers;
 		for (std::size_t i = 0; i < _pardegree; i++) {
 			auto *seq = new MapGPU_Node(_func, _name,
 						    RuntimeContext(_pardegree,
 								   i),
 						    _closing_func);
-			w.push_back(seq);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
@@ -406,19 +409,19 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
-		std::vector<ff_node *> w;
+		std::vector<ff_node *> workers;
 		for (std::size_t i = 0; i < _pardegree; i++) {
 			auto *seq = new MapGPU_Node(_func, _name,
 						    RuntimeContext(_pardegree,
 								   i),
 						    _closing_func);
-			w.push_back(seq);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func,
 								       _pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
@@ -446,18 +449,18 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
-		std::vector<ff_node *> w;
+		std::vector<ff_node *> workers;
 		for (std::size_t i = 0; i < _pardegree; i++) {
 			auto *seq = new MapGPU_Node(_func, _name,
 						    RuntimeContext(_pardegree,
 								   i),
 						    _closing_func);
-			w.push_back(seq);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
@@ -489,17 +492,17 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
-		std::vector<ff_node *> w;
+		std::vector<ff_node *> workers;
 		for (std::size_t i = 0; i < _pardegree; i++) {
 			auto *seq = new MapGPU_Node(_func, _name,
 						    RuntimeContext(_pardegree, i),
 						    _closing_func);
-			w.push_back(seq);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
@@ -529,18 +532,18 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
-		std::vector<ff_node *> w;
+		std::vector<ff_node *> workers;
 		for (std::size_t i = 0; i < _pardegree; i++) {
 			auto *seq = new MapGPU_Node(_func, _name,
 						    RuntimeContext(_pardegree,
 								   i),
 						    _closing_func);
-			w.push_back(seq);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
@@ -572,19 +575,19 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
-		std::vector<ff_node *> w;
+		std::vector<ff_node *> workers;
 		for (std::size_t i=0; i<_pardegree; i++) {
 			auto *seq = new MapGPU_Node(_func, _name,
 						    RuntimeContext(_pardegree,
 								   i),
 						    _closing_func);
-			w.push_back(seq);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func,
 								       _pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
