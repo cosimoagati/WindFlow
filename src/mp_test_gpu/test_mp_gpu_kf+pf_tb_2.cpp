@@ -162,6 +162,7 @@ int main(int argc, char *argv[])
 		auto wlq_function = [](size_t wid, const Iterable<output_t> &input, output_t &win_result) {
 			long sum = 0;
 			// print the window content
+			// TODO: Could this be rewritten more elegantly?
 			for (auto t : input) {
 				int val = t.value;
 				sum += val;
@@ -192,14 +193,17 @@ int main(int argc, char *argv[])
 	   	graph.run();
 	   	if (i == 0) {
 	   		last_results = global_received;
-	   		cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT_COLOR << endl;
+	   		cout << "Result is --> " << GREEN << "OK" << "!!!"
+			     << DEFAULT_COLOR << endl;
 	   	}
 	   	else {
 	   		if (last_results == global_received) {
-	   			cout << "Result is --> " << GREEN << "OK" << "!!!" << DEFAULT_COLOR << endl;
+	   			cout << "Result is --> " << GREEN << "OK"
+				     << "!!!" << DEFAULT_COLOR << endl;
 	   		}
 	   		else {
-	   			cout << "Result is --> " << RED << "FAILED" << "!!!" << DEFAULT_COLOR << endl;
+	   			cout << "Result is --> " << RED << "FAILED"
+				     << "!!!" << DEFAULT_COLOR << endl;
 	   		}
 	   	}
     }

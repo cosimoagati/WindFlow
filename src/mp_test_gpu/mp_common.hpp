@@ -21,6 +21,7 @@
 // includes
 #include <cmath>
 #include <string>
+#include "../../wf/windflow.hpp"
 
 // defines
 #define RATIO 0.46566128e-9
@@ -44,43 +45,43 @@ double pareto(double alpha, double kappa)
 // struct of the input tuple
 struct tuple_t
 {
-    size_t key;
-    uint64_t id;
-    uint64_t ts;
-    int64_t value;
+	size_t key;
+	uint64_t id;
+	uint64_t ts;
+	int64_t value;
 
-    // constructor
-    tuple_t(size_t _key,
-            uint64_t _id,
-            uint64_t _ts,
-            int64_t _value):
-            key(_key),
-            id(_id),
-            ts(_ts),
-            value(_value)
-    {}
+	// constructor
+	tuple_t(size_t _key,
+		uint64_t _id,
+		uint64_t _ts,
+		int64_t _value):
+		key(_key),
+		id(_id),
+		ts(_ts),
+		value(_value)
+	{}
 
-    // default constructor
-    tuple_t():
-            key(0),
-            id(0),
-            ts(0),
-            value(0)
-    {}
+	// default constructor
+	tuple_t():
+		key(0),
+		id(0),
+		ts(0),
+		value(0)
+	{}
 
-    // getControlFields method
-    tuple<size_t, uint64_t, uint64_t> getControlFields() const
-    {
-        return tuple<size_t, uint64_t, uint64_t>(key, id, ts);
-    }
+	// getControlFields method
+	tuple<size_t, uint64_t, uint64_t> getControlFields() const
+	{
+		return tuple<size_t, uint64_t, uint64_t>(key, id, ts);
+	}
 
-    // setControlFields method
-    void setControlFields(size_t _key, uint64_t _id, uint64_t _ts)
-    {
-        key = _key;
-        id = _id;
-        ts = _ts;
-    }
+	// setControlFields method
+	void setControlFields(size_t _key, uint64_t _id, uint64_t _ts)
+	{
+		key = _key;
+		id = _id;
+		ts = _ts;
+	}
 };
 
 // struct of the output data type
@@ -91,23 +92,23 @@ struct output_t
 	uint64_t ts;
 	int64_t value;
 
-    // constructor
-    output_t(size_t _key,
-             uint64_t _id,
-             uint64_t _ts,
-             int64_t _value):
-             key(_key),
-             id(_id),
-             ts(_ts),
-             value(_value)
-    {}
+	// constructor
+	output_t(size_t _key,
+		 uint64_t _id,
+		 uint64_t _ts,
+		 int64_t _value):
+		key(_key),
+		id(_id),
+		ts(_ts),
+		value(_value)
+	{}
 
 	// default constructor
 	output_t():
-	         key(0),
-	         id(0),
-	         ts(0),
-	         value(0)
+		key(0),
+		id(0),
+		ts(0),
+		value(0)
 	{}
 
 	// getControlFields method
@@ -129,40 +130,40 @@ struct output_t
 class Source_Functor
 {
 private:
-    size_t len; // stream length per key
-    size_t keys; // number of keys
-    size_t k;
-    size_t sent;
-    vector<uint64_t> ids;
-    uint64_t next_ts;
+	size_t len; // stream length per key
+	size_t keys; // number of keys
+	size_t k;
+	size_t sent;
+	vector<uint64_t> ids;
+	uint64_t next_ts;
 
 public:
-    // Constructor
-    Source_Functor(size_t _len,
-                   size_t _keys):
-                   len(_len),
-                   keys(_keys),
-                   k(0),
-                   sent(0),
-                   ids(_keys, 0),
-                   next_ts(0)
-    {
-        srand(0);
-    }
+	// Constructor
+	Source_Functor(size_t _len,
+		       size_t _keys):
+		len(_len),
+		keys(_keys),
+		k(0),
+		sent(0),
+		ids(_keys, 0),
+		next_ts(0)
+	{
+		srand(0);
+	}
 
-    bool operator()(tuple_t &t)
-    {
-        t.setControlFields(k, ids[k], next_ts);
-        t.value = ids[k]++;
-        sent++;
-        k = (k+1) % keys;
-        double x = (1000 * 0.05) / 1.05;
-        next_ts += ceil(pareto(1.05, x));
-        if (sent < len*keys)
-            return true;
-        else
-            return false;
-    }
+	bool operator()(tuple_t &t)
+	{
+		t.setControlFields(k, ids[k], next_ts);
+		t.value = ids[k]++;
+		sent++;
+		k = (k+1) % keys;
+		double x = (1000 * 0.05) / 1.05;
+		next_ts += ceil(pareto(1.05, x));
+		if (sent < len*keys)
+			return true;
+		else
+			return false;
+	}
 };
 
 // filter functor
@@ -221,10 +222,10 @@ private:
 public:
 	// constructor
 	Sink_Functor(size_t _keys):
-				 received(0),
-				 totalsum(0),
-				 keys(_keys),
-				 check_counters(_keys, 0)
+		received(0),
+		totalsum(0),
+		keys(_keys),
+		check_counters(_keys, 0)
 	{}
 
 	// operator()
@@ -235,13 +236,14 @@ public:
 			totalsum += (*out).value;
 			// check the ordering of results
 			//if (check_counters[(*out).key] != (*out).id)
-				//cout << "Results received out-of-order!" << endl;
+			//cout << "Results received out-of-order!" << endl;
 			//else cout << "Received result window " << *out->id << " of key " << out->key << " with value " << (*out).value << endl;
 			//cout << "Received result window " << (*out).id << " of key " << (*out).key << " with value " << (*out).value << endl;
 			check_counters[(*out).key]++;	
 		}
 		else {
-            cout << "Received " << received << " results, total sum " << totalsum << endl;
+			cout << "Received " << received
+			     << " results, total sum " << totalsum << endl;
 			global_sum = totalsum;
 			global_received = received;
 		}
