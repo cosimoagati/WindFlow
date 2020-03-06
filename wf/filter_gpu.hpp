@@ -61,8 +61,6 @@ class FilterGPU: public ff::ff_farm
 public:
 	/// type of the predicate function
 	using filter_func_t = std::function<bool(tuple_t &)>;
-	/// type of the rich predicate function
-	using rich_filter_func_t = std::function<bool(tuple_t &, RuntimeContext &)>;
 	/// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	/// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
@@ -167,7 +165,9 @@ private:
 			if (mkdir(log_dir.c_str(), 0777) != 0) {
 				struct stat st;
 				if((stat(log_dir.c_str(), &st) != 0) || !S_ISDIR(st.st_mode)) {
-					std::cerr << RED << "WindFlow Error: directory for log files cannot be created" << DEFAULT_COLOR << std::endl;
+					std::cerr << RED
+						  << "WindFlow Error: directory for log files cannot be created"
+						  << DEFAULT_COLOR << std::endl;
 					std::exit(EXIT_FAILURE);
 				}
 			}
@@ -359,7 +359,9 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED
+				  << "WindFlow Error: FilterGPU has parallelism zero"
+				  << DEFAULT << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of FilterGPU_Node

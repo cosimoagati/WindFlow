@@ -279,7 +279,9 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED
+				  << "WindFlow Error: MapGPU has parallelism zero"
+				  << DEFAULT << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
