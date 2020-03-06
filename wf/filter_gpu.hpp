@@ -35,6 +35,7 @@
 #define FILTER_GPU_H
 
 /// includes
+#include <cstdlib>
 #include <array>
 #include <string>
 #include <iostream>
@@ -167,7 +168,7 @@ private:
 				struct stat st;
 				if((stat(log_dir.c_str(), &st) != 0) || !S_ISDIR(st.st_mode)) {
 					std::cerr << RED << "WindFlow Error: directory for log files cannot be created" << DEFAULT_COLOR << std::endl;
-					exit(EXIT_FAILURE);
+					std::exit(EXIT_FAILURE);
 				}
 			}
 			logfile->open(filename);
@@ -250,7 +251,7 @@ public:
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
 			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> w;
@@ -287,7 +288,7 @@ public:
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
 			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> w;
@@ -322,7 +323,7 @@ public:
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
 			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> w;
@@ -359,7 +360,7 @@ public:
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
 			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> w;
