@@ -64,7 +64,9 @@ int main(int argc, char *argv[])
 	global_sum = 0;
 	// arguments from command line
 	if (argc != 13) {
-		cout << argv[0] << " -r [runs] -l [stream_length] -k [n_keys] -w [win length usec] -s [win slide usec] -b [batch len]" << endl;
+		cout << argv[0]
+		     << " -r [runs] -l [stream_length] -k [n_keys] -w [win length usec] -s [win slide usec] -b [batch len]"
+		     << endl;
 		exit(EXIT_SUCCESS);
 	}
 	while ((option = getopt(argc, argv, "r:l:k:w:s:b:")) != -1) {
@@ -82,7 +84,9 @@ int main(int argc, char *argv[])
 		case 'b': batch_len = atoi(optarg);
 			break;
 		default: {
-			cout << argv[0] << " -r [runs] -l [stream_length] -k [n_keys] -w [win length usec] -s [win slide usec] -b [batch len]" << endl;
+			cout << argv[0]
+			     << " -r [runs] -l [stream_length] -k [n_keys] -w [win length usec] -s [win slide usec] -b [batch len]"
+			     << endl;
 			exit(EXIT_SUCCESS);
 		}
 		}
@@ -93,11 +97,12 @@ int main(int argc, char *argv[])
 	size_t min = 1;
 	size_t max = 9;
 	std::uniform_int_distribution<std::mt19937::result_type> dist6(min, max);
-	int filter_degree, flatmap_degree, map_degree, wf_degree = 1, plq_degree = 1, wlq_degree = 1;
+	int filter_degree, flatmap_degree, map_degree, wf_degree = 1,
+		plq_degree = 1, wlq_degree = 1;
 	size_t source_degree = 1;
 	long last_result = 0;
 	// executes the runs
-	for (size_t i=0; i<runs; i++) {
+	for (size_t i = 0; i < runs; i++) {
 		filter_degree = dist6(rng);
 		flatmap_degree = dist6(rng);
 		map_degree = dist6(rng);
