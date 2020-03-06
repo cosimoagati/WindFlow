@@ -21,6 +21,7 @@
 // includes
 #include <cmath>
 #include <string>
+#include "../../wf/windflow.hpp"
 
 // defines
 #define RATIO 0.46566128e-9
@@ -50,9 +51,9 @@ struct tuple_t
 
 	// constructor
 	tuple_t(string _key,
-		    uint64_t _id,
-		    uint64_t _ts,
-		    int64_t _value):
+		uint64_t _id,
+		uint64_t _ts,
+		int64_t _value):
 	        key(_key),
 	        id(_id),
 	        ts(_ts),
@@ -92,21 +93,21 @@ struct output_t
 
 	// constructor
 	output_t(string _key,
-		     uint64_t _id,
-		     uint64_t _ts,
-		     int64_t _value):
-	         key(_key),
-	         id(_id),
-	         ts(_ts),
-	         value(_value)
+		 uint64_t _id,
+		 uint64_t _ts,
+		 int64_t _value):
+		key(_key),
+		id(_id),
+		ts(_ts),
+		value(_value)
 	{}
 
 	// default constructor
 	output_t():
-	         key("undefined"),
-	         id(0),
-	         ts(0),
-	         value(0)
+		key("undefined"),
+		id(0),
+		ts(0),
+		value(0)
 	{}
 
 	// getControlFields method
@@ -128,40 +129,40 @@ struct output_t
 class Source_Functor
 {
 private:
-    size_t len; // stream length per key
-    size_t keys; // number of keys
-    size_t k;
-    size_t sent;
-    vector<uint64_t> ids;
-    uint64_t next_ts;
+	size_t len; // stream length per key
+	size_t keys; // number of keys
+	size_t k;
+	size_t sent;
+	vector<uint64_t> ids;
+	uint64_t next_ts;
 
 public:
-    // Constructor
-    Source_Functor(size_t _len,
-                   size_t _keys):
-                   len(_len),
-                   keys(_keys),
-                   k(0),
-                   sent(0),
-                   ids(_keys, 0),
-                   next_ts(0)
-    {
-        srand(0);
-    }
+	// Constructor
+	Source_Functor(size_t _len,
+		       size_t _keys):
+		len(_len),
+		keys(_keys),
+		k(0),
+		sent(0),
+		ids(_keys, 0),
+		next_ts(0)
+	{
+		srand(0);
+	}
 
-    bool operator()(tuple_t &t)
-    {
-        t.setControlFields("key_" + to_string(k), ids[k], next_ts);
-        t.value = ids[k]++;
-        sent++;
-        k = (k+1) % keys;
-        double x = (1000 * 0.05) / 1.05;
-        next_ts += ceil(pareto(1.05, x));
-        if (sent < len*keys)
-            return true;
-        else
-            return false;
-    }
+	bool operator()(tuple_t &t)
+	{
+		t.setControlFields("key_" + to_string(k), ids[k], next_ts);
+		t.value = ids[k]++;
+		sent++;
+		k = (k+1) % keys;
+		double x = (1000 * 0.05) / 1.05;
+		next_ts += ceil(pareto(1.05, x));
+		if (sent < len*keys)
+			return true;
+		else
+			return false;
+	}
 };
 
 // filter functor
@@ -227,7 +228,8 @@ public:
 			totalsum += (*out).value;
 		}
 		else {
-            cout << "Received " << received << " results, total sum " << totalsum << endl;
+			cout << "Received " << received
+			     << " results, total sum " << totalsum << endl;
 			global_sum = totalsum;
 		}
 	}
