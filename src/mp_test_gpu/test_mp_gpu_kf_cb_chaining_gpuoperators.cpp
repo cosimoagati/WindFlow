@@ -41,24 +41,12 @@ using namespace wf;
 extern long global_sum;
 
 // main
-int main(int argc, char *argv[])
+static void
+parse_args(size_t &batch_len, size_t &n_keys, size_t &win_slide,
+	   size_t &win_len, size_t &stream_len, size_t &runs, char *argv[],
+	   const int argc)
 {
 	int option = 0;
-	size_t runs = 1;
-	size_t stream_len = 0;
-	size_t win_len = 0;
-	size_t win_slide = 0;
-	size_t n_keys = 1;
-	size_t batch_len = 1;
-	// initalize global variable
-	global_sum = 0;
-	// arguments from command line
-	if (argc != 13) {
-		cout << argv[0]
-		     << " -r [runs] -l [stream_length] -k [n_keys] -w [win length] -s [win slide] -b [batch len]"
-		     << endl;
-		exit(EXIT_SUCCESS);
-	}
 	while ((option = getopt(argc, argv, "r:l:k:w:s:b:")) != -1) {
 		switch (option) {
 		case 'r': runs = atoi(optarg);
@@ -81,6 +69,27 @@ int main(int argc, char *argv[])
 		}
 		}
 	}
+}
+
+int main(int argc, char *argv[])
+{
+	size_t runs = 1;
+	size_t stream_len = 0;
+	size_t win_len = 0;
+	size_t win_slide = 0;
+	size_t n_keys = 1;
+	size_t batch_len = 1;
+	// initalize global variable
+	global_sum = 0;
+	// arguments from command line
+	if (argc != 13) {
+		cout << argv[0]
+		     << " -r [runs] -l [stream_length] -k [n_keys] -w [win length] -s [win slide] -b [batch len]"
+		     << endl;
+		exit(EXIT_SUCCESS);
+	}
+	parse_args(batch_len, n_keys, win_slide, win_len, stream_len, runs,
+		   argv, argc);
 	// set random seed
 	mt19937 rng;
 	rng.seed(random_device()());
