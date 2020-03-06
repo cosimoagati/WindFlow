@@ -36,6 +36,7 @@
 #define MAP_GPU_H
 
 /// includes
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <ff/node.hpp>
@@ -60,12 +61,8 @@ class MapGPU: public ff::ff_farm
 public:
 	/// type of the map function (in-place version)
 	using map_func_ip_t = std::function<void(tuple_t &)>;
-	/// type of the rich map function (in-place version)
-	using rich_map_func_ip_t = std::function<void(tuple_t &, RuntimeContext &)>;
 	/// type of the map function (not in-place version)
 	using map_func_nip_t = std::function<void(const tuple_t &, result_t &)>;
-	/// type of the rich map function (not in-place version)
-	using rich_map_func_nip_t = std::function<void(const tuple_t &, result_t &, RuntimeContext &)>;
 	/// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	/// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
@@ -83,13 +80,10 @@ private:
 		result_t *result_buffer;
 
 		map_func_ip_t func_ip; // in-place map function
-		rich_map_func_ip_t rich_func_ip; // in-place rich map function
 		map_func_nip_t func_nip; // not in-place map function
-		rich_map_func_nip_t rich_func_nip; // not in-place rich map function
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
 		bool isIP; // flag stating if the in-place map function should be used (otherwise the not in-place version)
-		bool isRich; // flag stating whether the function to be used is rich (i.e. it receives the RuntimeContext object)
 		RuntimeContext context; // RuntimeContext
 		decltype(max_buffered_tuples) buf_index {0};
 
@@ -145,7 +139,6 @@ private:
 			func_ip(_func),
 			name(_name),
 			isIP(true),
-			isRich(false),
 			context(_context),
 			closing_func(_closing_func)
 		{}
@@ -173,7 +166,6 @@ private:
 			func_nip(_func),
 			name(_name),
 			isIP(false),
-			isRich(false),
 			context(_context),
 			closing_func(_closing_func)
 		{}
@@ -185,10 +177,8 @@ private:
 			    T _name,
 			    RuntimeContext _context,
 			    closing_func_t _closing_func):
-			rich_func_nip(_func),
 			name(_name),
 			isIP(false),
-			isRich(true),
 			context(_context),
 			closing_func(_closing_func)
 		{}
@@ -198,8 +188,12 @@ private:
 		{
 #if defined(TRACE_WINDFLOW)
 			logfile = new std::ofstream();
-			name += "_node_" + std::to_string(ff::ff_node_t<tuple_t, result_t>::get_my_id()) + ".log";
-			std::string filename = std::string(STRINGIFY(TRACE_WINDFLOW)) + "/" + name;
+			name += "_node_" + std::to_string(ff::ff_node_t<tuple_t,
+							  result_t>::get_my_id())
+				+ ".log";
+			std::string filename =
+				std::string(STRINGIFY(TRACE_WINDFLOW)) + "/"
+				+ name;
 			logfile->open(filename);
 #endif
 			cudaMallocManaged(&tuple_buffer,
@@ -286,7 +280,7 @@ public:
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
 			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
@@ -323,17 +317,23 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::cerr << RED
+				  << "WindFlow Error: MapGPU has parallelism zero"
+				  << DEFAULT << std::endl;
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new MapGPU_Node(_func, _name,
+						    RuntimeContext(_pardegree,
+								   i),
+						    _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
+		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func,
+								       _pardegree));
 		// add workers
 		ff::ff_farm::add_workers(w);
 		// add default collector
@@ -360,12 +360,15 @@ public:
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
 			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		for (std::size_t i = 0; i < _pardegree; i++) {
+			auto *seq = new MapGPU_Node(_func, _name,
+						    RuntimeContext(_pardegree,
+								   i),
+						    _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -397,17 +400,23 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::cerr << RED
+				  << "WindFlow Error: MapGPU has parallelism zero"
+				  << DEFAULT << std::endl;
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		for (std::size_t i = 0; i < _pardegree; i++) {
+			auto *seq = new MapGPU_Node(_func, _name,
+						    RuntimeContext(_pardegree,
+								   i),
+						    _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
+		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func,
+								       _pardegree));
 		// add workers
 		ff::ff_farm::add_workers(w);
 		// add default collector
@@ -434,12 +443,15 @@ public:
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
 			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		for (std::size_t i = 0; i < _pardegree; i++) {
+			auto *seq = new MapGPU_Node(_func, _name,
+						    RuntimeContext(_pardegree,
+								   i),
+						    _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -471,12 +483,14 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::cerr << RED
+				  << "WindFlow Error: MapGPU has parallelism zero"
+				  << DEFAULT << std::endl;
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
+		for (std::size_t i = 0; i < _pardegree; i++) {
 			auto *seq = new MapGPU_Node(_func, _name,
 						    RuntimeContext(_pardegree, i),
 						    _closing_func);
@@ -509,13 +523,18 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::cerr << RED
+				  << "WindFlow Error: MapGPU has parallelism zero"
+				  << DEFAULT << std::endl;
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
-		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		for (std::size_t i = 0; i < _pardegree; i++) {
+			auto *seq = new MapGPU_Node(_func, _name,
+						    RuntimeContext(_pardegree,
+								   i),
+						    _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
@@ -547,17 +566,23 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
-			exit(EXIT_FAILURE);
+			std::cerr << RED
+				  << "WindFlow Error: MapGPU has parallelism zero"
+				  << DEFAULT << std::endl;
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> w;
 		for (std::size_t i=0; i<_pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+			auto *seq = new MapGPU_Node(_func, _name,
+						    RuntimeContext(_pardegree,
+								   i),
+						    _closing_func);
 			w.push_back(seq);
 		}
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
+		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func,
+								       _pardegree));
 		// add workers
 		ff::ff_farm::add_workers(w);
 		// add default collector
