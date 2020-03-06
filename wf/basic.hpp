@@ -50,9 +50,9 @@ namespace wf {
 inline unsigned long current_time_usecs() __attribute__((always_inline));
 inline unsigned long current_time_usecs()
 {
-    struct timespec t;
-    clock_gettime(CLOCK_REALTIME, &t);
-    return (t.tv_sec)*1000000L + (t.tv_nsec / 1000);
+	struct timespec t;
+	clock_gettime(CLOCK_REALTIME, &t);
+	return (t.tv_sec)*1000000L + (t.tv_nsec / 1000);
 }
 
 /** 
@@ -64,9 +64,9 @@ inline unsigned long current_time_usecs()
 inline unsigned long current_time_nsecs() __attribute__((always_inline));
 inline unsigned long current_time_nsecs()
 {
-    struct timespec t;
-    clock_gettime(CLOCK_REALTIME, &t);
-    return (t.tv_sec)*1000000000L + t.tv_nsec;
+	struct timespec t;
+	clock_gettime(CLOCK_REALTIME, &t);
+	return (t.tv_sec)*1000000000L + t.tv_nsec;
 }
 
 /// utility macros
@@ -100,18 +100,19 @@ enum ordering_mode_t { ID, TS, TS_RENUMBERING };
 enum role_t { SEQ, PLQ, WLQ, MAP, REDUCE };
 
 // existing window-based operators of the library
-enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU, PF_CPU, PF_GPU, WMR_CPU, WMR_GPU };
+enum pattern_t {SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU, PF_CPU,
+		PF_GPU, WMR_CPU, WMR_GPU};
 
 // macros for the linux terminal colors
-#define DEFAULT_COLOR 	"\033[0m"
-#define BLACK 		      "\033[30m"
-#define RED   		      "\033[31m"
-#define GREEN   	      "\033[32m"
-#define YELLOW  	      "\033[33m"
-#define BLUE    	      "\033[34m"
-#define MAGENTA 	      "\033[35m"
-#define CYAN    	      "\033[36m"
-#define WHITE   	      "\033[37m"
+#define DEFAULT_COLOR        "\033[0m"
+#define BLACK                "\033[30m"
+#define RED                 "\033[31m"
+#define GREEN                "\033[32m"
+#define YELLOW               "\033[33m"
+#define BLUE                 "\033[34m"
+#define MAGENTA              "\033[35m"
+#define CYAN                 "\033[36m"
+#define WHITE                "\033[37m"
 #define BOLDBLACK       "\033[1m\033[30m"
 #define BOLDRED         "\033[1m\033[31m"
 #define BOLDGREEN       "\033[1m\033[32m"
@@ -123,36 +124,26 @@ enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU, PF_CPU, PF_GP
 
 // struct of the window-based operator's configuration parameters
 struct PatternConfig {
-    size_t id_outer; // identifier in the outermost operator
-    size_t n_outer; // parallelism degree in the outermost operator
-    uint64_t slide_outer; // sliding factor of the outermost operator
-    size_t id_inner; // identifier in the innermost operator
-    size_t n_inner; // parallelism degree in the innermost operator
-    uint64_t slide_inner; // sliding factor of the innermost operator
+	size_t id_outer; // identifier in the outermost operator
+	size_t n_outer; // parallelism degree in the outermost operator
+	uint64_t slide_outer; // sliding factor of the outermost operator
+	size_t id_inner; // identifier in the innermost operator
+	size_t n_inner; // parallelism degree in the innermost operator
+	uint64_t slide_inner; // sliding factor of the innermost operator
 
-    // Constructor I
-    PatternConfig(): id_outer(0),
-                     n_outer(0),
-                     slide_outer(0),
-                     id_inner(0),
-                     n_inner(0),
-                     slide_inner(0)
-    {}
+	// Constructor I
+	PatternConfig(): id_outer(0), n_outer(0), slide_outer(0), id_inner(0),
+		n_inner(0), slide_inner(0)
+	{}
 
-    // Constructor II
-    PatternConfig(size_t _id_outer,
-                  size_t _n_outer,
-                  uint64_t _slide_outer,
-                  size_t _id_inner,
-                  size_t _n_inner,
-                  uint64_t _slide_inner):
-                  id_outer(_id_outer),
-                  n_outer(_n_outer),
-                  slide_outer(_slide_outer),
-                  id_inner(_id_inner),
-                  n_inner(_n_inner),
-                  slide_inner(_slide_inner)
-    {}
+	// Constructor II
+	PatternConfig(size_t _id_outer, size_t _n_outer, uint64_t _slide_outer,
+		      size_t _id_inner, size_t _n_inner,
+		      uint64_t _slide_inner): id_outer(_id_outer),
+		n_outer(_n_outer), slide_outer(_slide_outer),
+		id_inner(_id_inner), n_inner(_n_inner),
+		slide_inner(_slide_inner)
+	{}
 };
 
 //@endcond

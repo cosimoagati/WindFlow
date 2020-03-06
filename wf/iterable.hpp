@@ -39,9 +39,9 @@
 #include <deque>
 #include <stdexcept>
 
-namespace wf {
-
-/** 
+namespace wf
+{
+/**
  *  \class Iterable
  *  
  *  \brief Iterable class providing access to the tuples within a streaming window
@@ -54,183 +54,183 @@ class Iterable
 {
 private:
 	// iterator types
-    using iterator_t = typename std::deque<tuple_t>::iterator;
-    using const_iterator_t = typename std::deque<tuple_t>::const_iterator;
-    iterator_t first; // iterator to the first tuple
-    iterator_t last; // iterator to the last tuple (excluded)
-    size_t n_size; // number of tuples that can be accessed through the iterable object
+	using iterator_t = typename std::deque<tuple_t>::iterator;
+	using const_iterator_t = typename std::deque<tuple_t>::const_iterator;
+	iterator_t first; // iterator to the first tuple
+	iterator_t last; // iterator to the last tuple (excluded)
+	size_t n_size; // number of tuples that can be accessed through the iterable object
 
 public:
-    /** 
-     *  \brief Constructor
-     *  
-     *  \param _first first iterator
-     *  \param _last last iterator
-     */ 
-    Iterable(iterator_t _first,
-             iterator_t _last):
-             first(_first),
-             last(_last),
-             n_size(distance(_first, _last))
-    {}
+	/**
+	 *  \brief Constructor
+	 *
+	 *  \param _first first iterator
+	 *  \param _last last iterator
+	 */
+	Iterable(iterator_t _first,
+		 iterator_t _last):
+		first(_first),
+		last(_last),
+		n_size(distance(_first, _last))
+	{}
 
-    /** 
-     *  \brief Return an iterator to the begin of the iterable object
-     *  
-     *  \return iterator to the begin of the iterable object
-     */ 
-    iterator_t begin()
-    {
-    	return first;
-    }
+	/**
+	 *  \brief Return an iterator to the begin of the iterable object
+	 *
+	 *  \return iterator to the begin of the iterable object
+	 */
+	iterator_t begin()
+	{
+		return first;
+	}
 
-    /** 
-     *  \brief Return a const iterator to the begin of the iterable object
-     *  
-     *  \return const iterator to the begin of the iterable object
-     */ 
-    const_iterator_t begin() const
-    {
-        return first;
-    }
+	/**
+	 *  \brief Return a const iterator to the begin of the iterable object
+	 *
+	 *  \return const iterator to the begin of the iterable object
+	 */
+	const_iterator_t begin() const
+	{
+		return first;
+	}
 
-    /** 
-     *  \brief Return an iterator to the end of the iterable object
-     *  
-     *  \return iterator to the end of the iterable object
-     */ 
-    iterator_t end()
-    {
-    	return last;
-    }
+	/**
+	 *  \brief Return an iterator to the end of the iterable object
+	 *
+	 *  \return iterator to the end of the iterable object
+	 */
+	iterator_t end()
+	{
+		return last;
+	}
 
-    /** 
-     *  \brief Return a const iterator to the end of the iterable object
-     *  
-     *  \return const iterator to the end of the iterable object
-     */ 
-    const_iterator_t end() const
-    {
-        return last;
-    }
+	/**
+	 *  \brief Return a const iterator to the end of the iterable object
+	 *
+	 *  \return const iterator to the end of the iterable object
+	 */
+	const_iterator_t end() const
+	{
+		return last;
+	}
 
-    /** 
-     *  \brief Return the size of the iterable object
-     *  
-     *  \return number of tuples in the iterable object
-     */ 
-    size_t size() const
-    {
-    	return n_size;
-    }
+	/**
+	 *  \brief Return the size of the iterable object
+	 *
+	 *  \return number of tuples in the iterable object
+	 */
+	size_t size() const
+	{
+		return n_size;
+	}
 
-    /** 
-     *  \brief Return a reference to the tuple at a given position
-     *  
-     *  \param i index of the tuple to be accessed
-     *  \return reference to the tuple at position i. Calling this method with
-     *          an invalid argument i causes an out_of_range exception to be thrown.
-     */ 
-    tuple_t &operator[](size_t i)
-    {
-    	if (i >= n_size)
-    		throw std::out_of_range ("Invalid index of the Iterable");
-    	return *(first+i);
-    }
+	/**
+	 *  \brief Return a reference to the tuple at a given position
+	 *
+	 *  \param i index of the tuple to be accessed
+	 *  \return reference to the tuple at position i. Calling this method with
+	 *          an invalid argument i causes an out_of_range exception to be thrown.
+	 */
+	tuple_t &operator[](size_t i)
+	{
+		if (i >= n_size)
+			throw std::out_of_range ("Invalid index of the Iterable");
+		return *(first+i);
+	}
 
-    /** 
-     *  \brief Return a const reference to the tuple at a given position
-     *  
-     *  \param i index of the tuple to be accessed
-     *  \return const reference to the tuple at position i. Calling this method with
-     *          an invalid argument i causes an out_of_range exception to be thrown.
-     */ 
-    const tuple_t &operator[](size_t i) const
-    {
-        if (i >= n_size)
-            throw std::out_of_range ("Invalid index of the Iterable");
-        return *(first+i);
-    }
+	/**
+	 *  \brief Return a const reference to the tuple at a given position
+	 *
+	 *  \param i index of the tuple to be accessed
+	 *  \return const reference to the tuple at position i. Calling this method with
+	 *          an invalid argument i causes an out_of_range exception to be thrown.
+	 */
+	const tuple_t &operator[](size_t i) const
+	{
+		if (i >= n_size)
+			throw std::out_of_range ("Invalid index of the Iterable");
+		return *(first+i);
+	}
 
-    /** 
-     *  \brief Return a reference to the tuple at a given position
-     *  
-     *  \param i index of the tuple to be accessed
-     *  \return reference to the tuple at position i. Calling this method with
-     *          an invalid argument i causes an out_of_range exception to be thrown.
-     */ 
-    tuple_t &at(size_t i)
-    {
-    	if (i >= n_size)
-    		throw std::out_of_range ("Invalid index of the Iterable");
-    	return *(first+i);
-    }
+	/**
+	 *  \brief Return a reference to the tuple at a given position
+	 *
+	 *  \param i index of the tuple to be accessed
+	 *  \return reference to the tuple at position i. Calling this method with
+	 *          an invalid argument i causes an out_of_range exception to be thrown.
+	 */
+	tuple_t &at(size_t i)
+	{
+		if (i >= n_size)
+			throw std::out_of_range ("Invalid index of the Iterable");
+		return *(first+i);
+	}
 
-    /** 
-     *  \brief Return a const reference to the tuple at a given position
-     *  
-     *  \param i index of the tuple to be accessed
-     *  \return const reference to the tuple at position i. Calling this method with
-     *          an invalid argument i causes an out_of_range exception to be thrown.
-     */ 
-    const tuple_t &at(size_t i) const
-    {
-        if (i >= n_size)
-            throw std::out_of_range ("Invalid index of the Iterable");
-        return *(first+i);
-    }
+	/**
+	 *  \brief Return a const reference to the tuple at a given position
+	 *
+	 *  \param i index of the tuple to be accessed
+	 *  \return const reference to the tuple at position i. Calling this method with
+	 *          an invalid argument i causes an out_of_range exception to be thrown.
+	 */
+	const tuple_t &at(size_t i) const
+	{
+		if (i >= n_size)
+			throw std::out_of_range ("Invalid index of the Iterable");
+		return *(first+i);
+	}
 
-    /** 
-     *  \brief Return a reference to the first tuple of the iterable object
-     *  
-     *  \return reference to the first tuple. Calling this method on an empty iterable
-     *          object causes an out_of_range exception to be thrown.
-     */ 
-    tuple_t &front()
-    {
-    	if (n_size == 0)
-    		throw std::out_of_range ("Invalid index of the Iterable");
-    	return *(first);
-    }
+	/**
+	 *  \brief Return a reference to the first tuple of the iterable object
+	 *
+	 *  \return reference to the first tuple. Calling this method on an empty iterable
+	 *          object causes an out_of_range exception to be thrown.
+	 */
+	tuple_t &front()
+	{
+		if (n_size == 0)
+			throw std::out_of_range ("Invalid index of the Iterable");
+		return *(first);
+	}
 
-    /** 
-     *  \brief Return a const reference to the first tuple of the iterable object
-     *  
-     *  \return const reference to the first tuple. Calling this method on an empty iterable
-     *          object causes an out_of_range exception to be thrown.
-     */ 
-    const tuple_t &front() const
-    {
-        if (n_size == 0)
-            throw std::out_of_range ("Invalid index of the Iterable");
-        return *(first);
-    }
+	/**
+	 *  \brief Return a const reference to the first tuple of the iterable object
+	 *
+	 *  \return const reference to the first tuple. Calling this method on an empty iterable
+	 *          object causes an out_of_range exception to be thrown.
+	 */
+	const tuple_t &front() const
+	{
+		if (n_size == 0)
+			throw std::out_of_range ("Invalid index of the Iterable");
+		return *(first);
+	}
 
-    /** 
-     *  \brief Return a reference to the last tuple of the iterable object
-     *  
-     *  \return reference to the last tuple. Calling this method on an empty iterable
-     *          object causes an out_of_range exception to be thrown.
-     */ 
-    tuple_t &back()
-    {
-    	if (n_size == 0)
-    		throw std::out_of_range ("Invalid index of the Iterable");
-    	return *(last-1);
-    }
+	/**
+	 *  \brief Return a reference to the last tuple of the iterable object
+	 *
+	 *  \return reference to the last tuple. Calling this method on an empty iterable
+	 *          object causes an out_of_range exception to be thrown.
+	 */
+	tuple_t &back()
+	{
+		if (n_size == 0)
+			throw std::out_of_range ("Invalid index of the Iterable");
+		return *(last-1);
+	}
 
-    /** 
-     *  \brief Return a const reference to the last tuple of the iterable object
-     *  
-     *  \return const reference to the last tuple. Calling this method on an empty iterable
-     *          object causes an out_of_range exception to be thrown.
-     */ 
-    const tuple_t &back() const
-    {
-        if (n_size == 0)
-            throw std::out_of_range ("Invalid index of the Iterable");
-        return *(last-1);
-    }
+	/**
+	 *  \brief Return a const reference to the last tuple of the iterable object
+	 *
+	 *  \return const reference to the last tuple. Calling this method on an empty iterable
+	 *          object causes an out_of_range exception to be thrown.
+	 */
+	const tuple_t &back() const
+	{
+		if (n_size == 0)
+			throw std::out_of_range ("Invalid index of the Iterable");
+		return *(last-1);
+	}
 };
 
 } // namespace wf

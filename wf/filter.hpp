@@ -44,9 +44,9 @@
 #include "context.hpp"
 #include "standard_nodes.hpp"
 
-namespace wf {
-
-/** 
+namespace wf
+{
+/**
  *  \class Filter
  *  
  *  \brief Filter operator dropping data items not respecting a given predicate

@@ -35,6 +35,7 @@
 #define ACCUMULATOR_H
 
 /// includes
+#include <cstdlib>
 #include <string>
 #include <iostream>
 #include <unordered_map>
@@ -160,7 +161,7 @@ private:
 					std::cerr << RED
 						  << "WindFlow Error: directory for log files cannot be created"
 						  << DEFAULT_COLOR << std::endl;
-					exit(EXIT_FAILURE);
+					std::exit(EXIT_FAILURE);
 				}
 			}
 			logfile->open(filename);
@@ -249,7 +250,7 @@ public:
 			std::cerr << RED
 				  << "WindFlow Error: Accumulator has parallelism zero"
 				  << DEFAULT_COLOR << std::endl;
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of Accumulator_Node
 		std::vector<ff_node *> workers;
@@ -292,7 +293,7 @@ public:
 			std::cerr << RED
 				  << "WindFlow Error: Accumulator has parallelism zero"
 				  << DEFAULT_COLOR << std::endl;
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		// vector of Accumulator_Node
 		std::vector<ff_node *> workers;
