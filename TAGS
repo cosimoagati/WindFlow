@@ -1,0 +1,2270 @@
+
+wf/accumulator.hpp,1222
+#define ACCUMULATOR_H35,1467
+namespace wf 48,1714
+template<typename tuple_t,58,1983
+class Accumulator:Accumulator59,2029
+    tuple_t tmp;72,2618
+    bool used;77,2854
+    class Accumulator_Node:Accumulator_Node79,2961
+        acc_func_t acc_func;82,3044
+        rich_acc_func_t rich_acc_func;83,3097
+        closing_func_t closing_func;84,3165
+        std::string name;85,3222
+        bool isRich;86,3293
+        RuntimeContext context;87,3415
+        result_t init_value;88,3465
+        struct Key_Descriptor90,3570
+            result_t result;92,3610
+            Key_Descriptor(95,3667
+        std::unordered_map<std::unordered_map100,3854
+        std::unordered_map<key_t, Key_Descriptor> keyMap;100,3854
+        volatile unsigned long startTD,105,4037
+        volatile unsigned long startTD, startTS,105,4037
+        volatile unsigned long startTD, startTS, endTD,105,4037
+        volatile unsigned long startTD, startTS, endTD, endTS;105,4037
+        Accumulator_Node(111,4183
+        Accumulator_Node(125,4726
+        int svc_init(139,5334
+        result_t *svc(svc165,6369
+        void svc_end(203,7910
+    Accumulator(232,9222
+    Accumulator(268,10932
+    bool isUsed(298,12248
+
+wf/basic.hpp,4732
+#define BASIC_H31,1183
+namespace wf 42,1350
+inline unsigned long current_time_usecs(51,1631
+inline unsigned long current_time_nsecs(65,2056
+#define DEFAULT_VECTOR_CAPACITY 73,2231
+#define DEFAULT_BATCH_SIZE_TB 74,2330
+#define DEFAULT_CUDA_NUM_THREAD_BLOCK 75,2452
+#define gpuErrChk(76,2556
+enum class Mode 79,2669
+enum class Mode { DEFAULT,79,2669
+enum class Mode { DEFAULT, DETERMINISTIC 79,2669
+enum win_type_t 82,2740
+enum win_type_t { CB,82,2740
+enum win_type_t { CB, TB 82,2740
+enum opt_level_t 85,2802
+enum opt_level_t { LEVEL0,85,2802
+enum opt_level_t { LEVEL0, LEVEL1,85,2802
+enum opt_level_t { LEVEL0, LEVEL1, LEVEL2 85,2802
+#define STRINGIFY(90,2880
+#define XSTRINGIFY(91,2915
+enum win_event_t 94,2968
+enum win_event_t { OLD,94,2968
+enum win_event_t { OLD, IN,94,2968
+enum win_event_t { OLD, IN, DELAYED,94,2968
+enum win_event_t { OLD, IN, DELAYED, FIRED,94,2968
+enum win_event_t { OLD, IN, DELAYED, FIRED, BATCHED 94,2968
+enum ordering_mode_t 97,3052
+enum ordering_mode_t { ID,97,3052
+enum ordering_mode_t { ID, TS,97,3052
+enum ordering_mode_t { ID, TS, TS_RENUMBERING 97,3052
+enum role_t 100,3158
+enum role_t { SEQ,100,3158
+enum role_t { SEQ, PLQ,100,3158
+enum role_t { SEQ, PLQ, WLQ,100,3158
+enum role_t { SEQ, PLQ, WLQ, MAP,100,3158
+enum role_t { SEQ, PLQ, WLQ, MAP, REDUCE 100,3158
+enum pattern_t 103,3253
+enum pattern_t { SEQ_CPU,103,3253
+enum pattern_t { SEQ_CPU, SEQ_GPU,103,3253
+enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU,103,3253
+enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU,103,3253
+enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU,103,3253
+enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU,103,3253
+enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU, PF_CPU,103,3253
+enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU, PF_CPU, PF_GPU,103,3253
+enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU, PF_CPU, PF_GPU, WMR_CPU,103,3253
+enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU, PF_CPU, PF_GPU, WMR_CPU, WMR_GPU 103,3253
+#define DEFAULT_COLOR 106,3397
+#define BLACK 107,3430
+#define RED 108,3463
+#define GREEN 109,3496
+#define YELLOW 110,3530
+#define BLUE 111,3564
+#define MAGENTA 112,3598
+#define CYAN 113,3632
+#define WHITE 114,3666
+#define BOLDBLACK 115,3700
+#define BOLDRED 116,3742
+#define BOLDGREEN 117,3784
+#define BOLDYELLOW 118,3826
+#define BOLDBLUE 119,3868
+#define BOLDMAGENTA 120,3910
+#define BOLDCYAN 121,3952
+#define BOLDWHITE 122,3994
+struct PatternConfig 125,4103
+    size_t id_outer;126,4126
+    size_t n_outer;127,4187
+    uint64_t slide_outer;128,4255
+    size_t id_inner;129,4325
+    size_t n_inner;130,4386
+    uint64_t slide_inner;131,4454
+    PatternConfig(134,4546
+    PatternConfig(143,4783
+template<typename tuple_t,165,5405
+template<typename tuple_t,169,5521
+template<typename tuple_t,181,5824
+template<typename tuple_t,185,5938
+template<typename tuple_t,189,6052
+template<typename tuple_t, typename result_t,189,6052
+template<typename tuple_t, typename result_t, typename input_t=189,6052
+template<typename tuple_t,193,6189
+template<typename tuple_t, typename result_t,193,6189
+template<typename tuple_t, typename result_t, typename input_t=193,6189
+template<typename tuple_t,197,6327
+template<typename tuple_t,201,6440
+template<typename tuple_t, typename result_t,201,6440
+template<typename tuple_t, typename result_t, typename input_t=201,6440
+template<typename tuple_t,205,6584
+template<typename tuple_t, typename result_t,205,6584
+template<typename tuple_t, typename result_t, typename input_t=205,6584
+template<typename tuple_t,209,6730
+template<typename tuple_t, typename result_t,209,6730
+template<typename tuple_t, typename result_t, typename fun_t,209,6730
+template<typename tuple_t, typename result_t, typename fun_t, typename input_t=209,6730
+template<typename tuple_t,213,6891
+template<typename tuple_t, typename result_t,213,6891
+template<typename tuple_t, typename result_t, typename fun_t,213,6891
+template<typename tuple_t, typename result_t, typename fun_t, typename input_t=213,6891
+template<typename tuple_t,217,7053
+template<typename tuple_t, typename result_t,217,7053
+template<typename tuple_t,221,7190
+template<typename tuple_t, typename result_t,221,7190
+template<typename tuple_t, typename result_t, typename fun_t,221,7190
+template<typename tuple_t, typename result_t, typename fun_t, typename input_t=221,7190
+template<typename tuple_t,225,7358
+template<typename tuple_t, typename result_t,225,7358
+template<typename tuple_t, typename result_t, typename fun_t,225,7358
+template<typename tuple_t, typename result_t, typename fun_t, typename input_t=225,7358
+
+wf/basic_emitter.hpp,178
+#define BASIC_EMITTER_H31,1221
+namespace wf 37,1305
+class Basic_Emitter:Basic_Emitter40,1344
+    virtual ~Basic_Emitter(44,1414
+    virtual std::vector<std::vector56,1707
+
+wf/broadcast_emitter.hpp,142
+#define BROADCASTNODE_H30,1184
+namespace wf 38,1323
+template<typename tuple_t,41,1366
+template<typename tuple_t, typename input_t=41,1366
+
+wf/builders.hpp,16086
+#define BUILDERS_H30,1161
+namespace wf40,1319
+class Source_Builder50,1507
+	F_t func;53,1539
+	Source_Builder(68,2005
+	Source_Builder<F_t>& withName(76,2212
+	Source_Builder<F_t>& withParallelism(88,2464
+	Source_Builder<F_t>& withClosingFunction(100,2762
+	source_t build(112,3043
+	source_t *build_ptr(build_ptr123,3314
+	std::unique_ptr<source_t> build_unique(133,3524
+class Filter_Builder148,3832
+	F_t func;151,3864
+	using filter_t 153,3930
+	using closing_func_t 155,4018
+	using routing_func_t 157,4182
+	std::uint64_t pardegree 158,4260
+	std::string name 159,4290
+	bool isKeyed 160,4330
+	closing_func_t closing_func 161,4353
+	routing_func_t routing_func 162,4427
+	Filter_Builder(170,4617
+	Filter_Builder<F_t>& withName(178,4824
+	Filter_Builder<F_t>& withParallelism(190,5076
+	Filter_Builder<F_t>& enable_KeyBy(201,5283
+	Filter_Builder<F_t>& withClosingFunction(213,5548
+	filter_t build(225,5826
+	filter_t *build_ptr(build_ptr240,6222
+	std::unique_ptr<filter_t> build_unique(254,6540
+class Map_Builder275,6980
+	F_t func;278,7009
+	using map_t 280,7075
+	using closing_func_t 283,7192
+	using routing_func_t 285,7356
+	std::uint64_t pardegree 286,7434
+	std::string name 287,7464
+	bool isKeyed 288,7501
+	closing_func_t closing_func 289,7524
+	routing_func_t routing_func 290,7598
+	Map_Builder(298,7786
+	Map_Builder<F_t>& withName(306,7987
+	Map_Builder<F_t>& withParallelism(318,8230
+	Map_Builder<F_t>& enable_KeyBy(329,8434
+	Map_Builder<F_t>& withClosingFunction(341,8696
+	map_t build(353,8968
+	map_t *build_ptr(build_ptr368,9353
+	std::unique_ptr<map_t> build_unique(382,9653
+class MapGPU_Builder396,9958
+	F_t func;399,9990
+	using map_t 401,10056
+	using closing_func_t 405,10180
+	using routing_func_t 407,10344
+	std::uint64_t pardegree 408,10422
+	std::string name 409,10452
+	bool isKeyed 410,10489
+	closing_func_t closing_func 411,10512
+	routing_func_t routing_func 412,10586
+	MapGPU_Builder(421,10780
+	MapGPU_Builder<F_t>& withName(429,10984
+	MapGPU_Builder<F_t>& withParallelism(441,11230
+	MapGPU_Builder<F_t>& enable_KeyBy(452,11437
+	MapGPU_Builder<F_t>& withClosingFunction(464,11702
+	map_t build(476,11977
+	map_t *build_ptr(build_ptr491,12362
+	std::unique_ptr<map_t> build_unique(505,12662
+class FlatMap_Builder525,13108
+	F_t func;528,13141
+	using flatmap_t 530,13207
+	using closing_func_t 533,13333
+	using routing_func_t 535,13497
+	std::uint64_t pardegree 536,13575
+	std::string name 537,13605
+	bool isKeyed 538,13646
+	closing_func_t closing_func 539,13669
+	routing_func_t routing_func 540,13743
+	FlatMap_Builder(548,13931
+	FlatMap_Builder<F_t>& withName(556,14140
+	FlatMap_Builder<F_t>& withParallelism(568,14395
+	FlatMap_Builder<F_t>& enable_KeyBy(579,14603
+	FlatMap_Builder<F_t>& withClosingFunction(591,14869
+	flatmap_t build(603,15153
+	flatmap_t *build_ptr(build_ptr618,15555
+	std::unique_ptr<flatmap_t> build_unique(633,15889
+class Accumulator_Builder655,16370
+	F_t func;658,16407
+	using accumulator_t 660,16473
+	using closing_func_t 663,16608
+	using routing_func_t 665,16772
+	using result_t 667,16901
+	std::uint64_t pardegree 668,16949
+	std::string name 669,16979
+	result_t init_value;670,17024
+	closing_func_t closing_func 671,17046
+	routing_func_t routing_func 672,17120
+	Accumulator_Builder(680,17304
+	Accumulator_Builder<F_t>& withName(688,17521
+	Accumulator_Builder<F_t>& withInitialValue(702,17880
+	Accumulator_Builder<F_t>& withParallelism(714,18170
+	Accumulator_Builder<F_t>& withClosingFunction(726,18473
+	accumulator_t build(738,18769
+	accumulator_t *build_ptr(build_ptr751,19104
+	std::unique_ptr<accumulator_t> build_unique(763,19372
+class WinSeq_Builder780,19749
+	F_t func;783,19781
+	using winseq_t 785,19847
+	using closing_func_t 788,19971
+	std::uint64_t win_len 789,20033
+	std::uint64_t slide_len 790,20061
+	std::uint64_t triggering_delay 791,20091
+	win_type_t winType 792,20128
+	std::string name 793,20154
+	closing_func_t closing_func 794,20191
+	WinSeq_Builder(802,20367
+	WinSeq_Builder<F_t>& withCBWindows(811,20637
+	WinSeq_Builder<F_t>& withTBWindows(828,21089
+	WinSeq_Builder<F_t>& withName(845,21609
+	WinSeq_Builder<F_t>& withClosingFunction(857,21885
+	winseq_t build(869,22168
+	winseq_t *build_ptr(build_ptr884,22569
+	std::unique_ptr<winseq_t> build_unique(898,22925
+class WinSeqGPU_Builder919,23406
+	F_t func;922,23441
+	using winseq_gpu_t 924,23507
+					 decltype(925,23570
+	std::uint64_t win_len 927,23629
+	std::uint64_t slide_len 928,23657
+	std::uint64_t triggering_delay 929,23687
+	win_type_t winType 930,23724
+	std::size_t batch_len 931,23750
+	std::size_t n_thread_block 932,23778
+	std::string name 933,23839
+	std::size_t scratchpad_size 934,23880
+	WinSeqGPU_Builder(942,24000
+	WinSeqGPU_Builder<F_t>& withCBWindows(951,24273
+	WinSeqGPU_Builder<F_t>& withTBWindows(968,24731
+	WinSeqGPU_Builder<F_t>& withBatch(986,25340
+	WinSeqGPU_Builder<F_t>& withName(1000,25718
+	WinSeqGPU_Builder<F_t>& withScratchpad(1012,26028
+	winseq_gpu_t *build_ptr(build_ptr1023,26327
+	std::unique_ptr<winseq_gpu_t> build_unique(1035,26631
+class WinFarm_Builder1052,27044
+	T &input;input1055,27077
+	using winfarm_t 1057,27143
+	using closing_func_t 1059,27258
+	std::uint64_t win_len 1060,27320
+	std::uint64_t slide_len 1061,27348
+	std::uint64_t triggering_delay 1062,27378
+	win_type_t winType 1063,27415
+	std::size_t pardegree 1064,27441
+	std::string name 1065,27469
+	opt_level_t opt_level 1066,27505
+	closing_func_t closing_func 1067,27538
+	void initWindowConf(1071,27701
+	void initWindowConf(1081,27968
+	void initWindowConf(1091,28229
+	WinFarm_Builder(1105,28490
+	WinFarm_Builder<T>& withCBWindows(1117,28791
+	WinFarm_Builder<T>& withTBWindows(1133,29234
+	WinFarm_Builder<T>& withParallelism(1150,29745
+	WinFarm_Builder<T>& withName(1162,30020
+	WinFarm_Builder<T>& withOptLevel(1174,30281
+	WinFarm_Builder<T>& withClosingFunction(1188,30722
+	winfarm_t build(1200,31006
+	winfarm_t *build_ptr(build_ptr1213,31358
+	std::unique_ptr<winfarm_t> build_unique(1225,31657
+class WinFarmGPU_Builder1243,32074
+	T &input;input1246,32110
+	using winfarm_gpu_t 1248,32176
+	std::uint64_t win_len 1249,32266
+	std::uint64_t slide_len 1250,32294
+	std::uint64_t triggering_delay 1251,32324
+	win_type_t winType 1252,32361
+	std::size_t pardegree 1253,32387
+	std::size_t batch_len 1254,32415
+	std::size_t n_thread_block 1255,32443
+	std::string name 1256,32504
+	std::size_t scratchpad_size 1257,32544
+	opt_level_t opt_level 1258,32578
+	void initWindowConf(1262,32704
+	void initWindowConf(1274,33047
+	void initWindowConf(1286,33380
+	WinFarmGPU_Builder(1302,33728
+	WinFarmGPU_Builder<T>& withCBWindows(1313,34031
+	WinFarmGPU_Builder<T>& withTBWindows(1330,34487
+	WinFarmGPU_Builder<T>& withParallelism(1347,35011
+	WinFarmGPU_Builder<T>& withBatch(1360,35368
+	WinFarmGPU_Builder<T>& withName(1374,35745
+	WinFarmGPU_Builder<T>& withScratchpad(1386,36054
+	WinFarmGPU_Builder<T>& withOptLevel(1398,36361
+	winfarm_gpu_t *build_ptr(build_ptr1409,36641
+	std::unique_ptr<winfarm_gpu_t> build_unique(1422,36986
+class KeyFarm_Builder1443,37485
+	T &input;input1446,37518
+	using keyfarm_t 1448,37584
+	using closing_func_t 1450,37699
+	using routing_func_t 1452,37863
+	std::uint64_t win_len 1453,37941
+	std::uint64_t slide_len 1454,37969
+	std::uint64_t triggering_delay 1455,37999
+	win_type_t winType 1456,38036
+	std::size_t pardegree 1457,38062
+	std::string name 1458,38090
+	routing_func_t routing_func 1459,38126
+	opt_level_t opt_level 1460,38207
+	closing_func_t closing_func 1461,38240
+	void initWindowConf(1465,38403
+	void initWindowConf(1475,38670
+	void initWindowConf(1485,38931
+	KeyFarm_Builder(1499,39192
+	KeyFarm_Builder<T>& withCBWindows(1511,39493
+	KeyFarm_Builder<T>& withTBWindows(1528,39943
+	KeyFarm_Builder<T>& withParallelism(1545,40454
+	KeyFarm_Builder<T>& withName(1557,40729
+	KeyFarm_Builder<T>& withOptLevel(1569,40990
+	KeyFarm_Builder<T>& withClosingFunction(1581,41284
+	keyfarm_t build(1593,41568
+	keyfarm_t *build_ptr(build_ptr1606,41928
+	std::unique_ptr<keyfarm_t> build_unique(1618,42235
+class KeyFarmGPU_Builder1636,42660
+	T &input;input1639,42696
+	using routing_func_t 1641,42809
+	using keyfarm_gpu_t 1643,42942
+	std::uint64_t win_len 1644,43032
+	std::uint64_t slide_len 1645,43060
+	std::uint64_t triggering_delay 1646,43090
+	win_type_t winType 1647,43127
+	std::size_t pardegree 1648,43153
+	std::size_t batch_len 1649,43181
+	std::size_t n_thread_block 1650,43209
+	std::string name 1651,43270
+	std::size_t scratchpad_size 1652,43310
+	routing_func_t routing_func 1653,43344
+	opt_level_t opt_level 1654,43425
+	void initWindowConf(1658,43551
+	void initWindowConf(1670,43894
+	void initWindowConf(1682,44227
+	KeyFarmGPU_Builder(1698,44575
+	KeyFarmGPU_Builder<T>& withCBWindows(1709,44878
+	KeyFarmGPU_Builder<T>& withTBWindows(1726,45334
+	KeyFarmGPU_Builder<T>& withParallelism(1743,45858
+	KeyFarmGPU_Builder<T>& withBatch(1756,46215
+	KeyFarmGPU_Builder<T>& withName(1770,46592
+	KeyFarmGPU_Builder<T>& withScratchpad(1782,46901
+	KeyFarmGPU_Builder<T>& withOptLevel(1794,47208
+	keyfarm_gpu_t *build_ptr(build_ptr1805,47488
+	std::unique_ptr<keyfarm_gpu_t> build_unique(1819,47847
+template<typename F_t,1839,48336
+class PaneFarm_Builder1840,48373
+	F_t func_F;1843,48407
+	G_t func_G;1844,48420
+	using panefarm_t 1845,48433
+	using closing_func_t 1848,48569
+	std::uint64_t win_len 1849,48631
+	std::uint64_t slide_len 1850,48659
+	std::uint64_t triggering_delay 1851,48689
+	win_type_t winType 1852,48726
+	std::size_t plq_degree 1853,48752
+	std::size_t wlq_degree 1854,48781
+	std::string name 1855,48810
+	opt_level_t opt_level 1856,48846
+	closing_func_t closing_func 1857,48879
+	PaneFarm_Builder(1866,49150
+	PaneFarm_Builder<PaneFarm_Builder1875,49458
+	PaneFarm_Builder<F_t, G_t>& withCBWindows(1875,49458
+	PaneFarm_Builder<PaneFarm_Builder1892,49917
+	PaneFarm_Builder<F_t, G_t>& withTBWindows(1892,49917
+	PaneFarm_Builder<PaneFarm_Builder1910,50529
+	PaneFarm_Builder<F_t, G_t>& withParallelism(1910,50529
+	PaneFarm_Builder<PaneFarm_Builder1924,50879
+	PaneFarm_Builder<F_t, G_t>& withName(1924,50879
+	PaneFarm_Builder<PaneFarm_Builder1936,51149
+	PaneFarm_Builder<F_t, G_t>& withOptLevel(1936,51149
+	PaneFarm_Builder<PaneFarm_Builder1947,51390
+	PaneFarm_Builder<F_t, G_t>& prepare4Nesting(1947,51390
+	PaneFarm_Builder<PaneFarm_Builder1959,51669
+	PaneFarm_Builder<F_t, G_t>& withClosingFunction(1959,51669
+	panefarm_t build(1971,51963
+	panefarm_t *build_ptr(build_ptr1985,52349
+	std::unique_ptr<panefarm_t> build_unique(1998,52686
+template<typename F_t,2016,53123
+class PaneFarmGPU_Builder2017,53160
+	F_t func_F;2020,53197
+	G_t func_G;2021,53210
+	using panefarm_gpu_t 2022,53223
+					     decltype(2023,53292
+	std::uint64_t win_len 2026,53410
+	std::uint64_t slide_len 2027,53438
+	std::uint64_t triggering_delay 2028,53468
+	win_type_t winType 2029,53505
+	std::size_t plq_degree 2030,53531
+	std::size_t wlq_degree 2031,53560
+	std::size_t batch_len 2032,53589
+	std::size_t n_thread_block 2033,53617
+	std::string name 2034,53678
+	std::size_t scratchpad_size 2035,53718
+	opt_level_t opt_level 2036,53752
+	PaneFarmGPU_Builder(2047,54064
+	PaneFarmGPU_Builder<PaneFarmGPU_Builder2057,54388
+	PaneFarmGPU_Builder<F_t, G_t>& withCBWindows(2057,54388
+	PaneFarmGPU_Builder<PaneFarmGPU_Builder2074,54853
+	PaneFarmGPU_Builder<F_t, G_t>& withTBWindows(2074,54853
+	PaneFarmGPU_Builder<PaneFarmGPU_Builder2092,55484
+	PaneFarmGPU_Builder<F_t, G_t>& withParallelism(2092,55484
+	PaneFarmGPU_Builder<PaneFarmGPU_Builder2107,55918
+	PaneFarmGPU_Builder<F_t, G_t>& withBatch(2107,55918
+	PaneFarmGPU_Builder<PaneFarmGPU_Builder2121,56305
+	PaneFarmGPU_Builder<F_t, G_t>& withName(2121,56305
+	PaneFarmGPU_Builder<PaneFarmGPU_Builder2133,56622
+	PaneFarmGPU_Builder<F_t, G_t>& withScratchpad(2133,56622
+	PaneFarmGPU_Builder<PaneFarmGPU_Builder2145,56938
+	PaneFarmGPU_Builder<F_t, G_t>& withOptLevel(2145,56938
+	PaneFarmGPU_Builder<PaneFarmGPU_Builder2156,57190
+	PaneFarmGPU_Builder<F_t, G_t>& prepare4Nesting(2156,57190
+	panefarm_gpu_t *build_ptr(build_ptr2167,57457
+	std::unique_ptr<panefarm_gpu_t> build_unique(2181,57838
+template<typename F_t,2201,58313
+class WinMapReduce_Builder2202,58350
+	F_t func_F;2205,58388
+	G_t func_G;2206,58401
+	using winmapreduce_t 2208,58469
+	using closing_func_t 2211,58614
+	std::uint64_t win_len 2212,58676
+	std::uint64_t slide_len 2213,58704
+	std::uint64_t triggering_delay 2214,58734
+	win_type_t winType 2215,58771
+	std::size_t map_degree 2216,58797
+	std::size_t reduce_degree 2217,58826
+	std::string name 2218,58858
+	opt_level_t opt_level 2219,58895
+	closing_func_t closing_func 2220,58928
+	WinMapReduce_Builder(2229,59202
+	WinMapReduce_Builder<WinMapReduce_Builder2239,59521
+	WinMapReduce_Builder<F_t, G_t>& withCBWindows(2239,59521
+	WinMapReduce_Builder<WinMapReduce_Builder2256,59988
+	WinMapReduce_Builder<F_t, G_t>& withTBWindows(2256,59988
+	WinMapReduce_Builder<WinMapReduce_Builder2274,60628
+	WinMapReduce_Builder<F_t, G_t>& withParallelism(2274,60628
+	WinMapReduce_Builder<WinMapReduce_Builder2288,60992
+	WinMapReduce_Builder<F_t, G_t>& withName(2288,60992
+	WinMapReduce_Builder<WinMapReduce_Builder2300,61270
+	WinMapReduce_Builder<F_t, G_t>& withOptLevel(2300,61270
+	WinMapReduce_Builder<WinMapReduce_Builder2311,61515
+	WinMapReduce_Builder<F_t, G_t>& prepare4Nesting(2311,61515
+	WinMapReduce_Builder<WinMapReduce_Builder2323,61798
+	WinMapReduce_Builder<F_t, G_t>& withClosingFunction(2323,61798
+	winmapreduce_t build(2335,62104
+	winmapreduce_t *build_ptr(build_ptr2349,62521
+	std::unique_ptr<winmapreduce_t> build_unique(2362,62868
+template<typename F_t,2381,63320
+class WinMapReduceGPU_Builder2382,63357
+	F_t func_F;2385,63398
+	G_t func_G;2386,63411
+	using winmapreduce_gpu_t 2387,63424
+						     decltype(2388,63501
+	std::uint64_t win_len 2391,63622
+	std::uint64_t slide_len 2392,63650
+	std::uint64_t triggering_delay 2393,63680
+	win_type_t winType 2394,63717
+	std::size_t map_degree 2395,63743
+	std::size_t reduce_degree 2396,63772
+	std::size_t batch_len 2397,63804
+	std::size_t n_thread_block 2398,63832
+	std::string name 2399,63893
+	std::size_t scratchpad_size 2400,63934
+	opt_level_t opt_level 2401,63968
+	WinMapReduceGPU_Builder(2412,64283
+	WinMapReduceGPU_Builder<WinMapReduceGPU_Builder2422,64608
+	WinMapReduceGPU_Builder<F_t, G_t>& withCBWindows(2422,64608
+	WinMapReduceGPU_Builder<WinMapReduceGPU_Builder2439,65074
+	WinMapReduceGPU_Builder<F_t, G_t>& withTBWindows(2439,65074
+	WinMapReduceGPU_Builder<WinMapReduceGPU_Builder2457,65713
+	WinMapReduceGPU_Builder<F_t, G_t>& withParallelism(2457,65713
+	WinMapReduceGPU_Builder<WinMapReduceGPU_Builder2472,66157
+	WinMapReduceGPU_Builder<F_t, G_t>& withBatch(2472,66157
+	WinMapReduceGPU_Builder<WinMapReduceGPU_Builder2486,66556
+	WinMapReduceGPU_Builder<F_t, G_t>& withName(2486,66556
+	WinMapReduceGPU_Builder<WinMapReduceGPU_Builder2498,66877
+	WinMapReduceGPU_Builder<F_t, G_t>& withScratchpad(2498,66877
+	WinMapReduceGPU_Builder<WinMapReduceGPU_Builder2510,67201
+	WinMapReduceGPU_Builder<F_t, G_t>& withOptLevel(2510,67201
+	WinMapReduceGPU_Builder<WinMapReduceGPU_Builder2521,67457
+	WinMapReduceGPU_Builder<F_t, G_t>& prepare4Nesting(2521,67457
+	winmapreduce_gpu_t *build_ptr(build_ptr2532,67728
+	std::unique_ptr<winmapreduce_gpu_t> build_unique(2547,68147
+class Sink_Builder2570,68680
+	F_t func;2573,68710
+	using sink_t 2575,68776
+	using closing_func_t 2577,68860
+	using routing_func_t 2579,69024
+	std::uint64_t pardegree 2580,69102
+	std::string name 2581,69132
+	bool isKeyed 2582,69170
+	closing_func_t closing_func 2583,69193
+	routing_func_t routing_func 2584,69267
+	Sink_Builder(2592,69452
+	Sink_Builder<F_t>& withName(2600,69655
+	Sink_Builder<F_t>& withParallelism(2612,69901
+	Sink_Builder<F_t>& enable_KeyBy(2623,70106
+	Sink_Builder<F_t>& withClosingFunction(2635,70369
+	sink_t build(2647,70644
+	sink_t *build_ptr(build_ptr2662,71035
+	std::unique_ptr<sink_t> build_unique(2676,71341
+
+wf/context.hpp,356
+#define CONTEXT_H34,1433
+namespace wf 39,1495
+class RuntimeContext51,1955
+    size_t parallelism;54,1987
+    size_t index;55,2049
+    LocalStorage storage;56,2091
+    RuntimeContext(60,2165
+    RuntimeContext(70,2435
+    size_t getParallelism(81,2782
+    size_t getReplicaIndex(91,3022
+    LocalStorage &getLocalStorage(getLocalStorage101,3250
+
+wf/filter.hpp,829
+#define FILTER_H35,1446
+namespace wf 47,1663
+class Filter:Filter58,1997
+	bool used;73,2598
+	bool keyed;74,2672
+	class Filter_Node:Filter_Node76,2774
+		filter_func_t filter_func;79,2837
+		rich_filter_func_t rich_filter_func;80,2897
+		closing_func_t closing_func;81,2972
+		std::string name;82,3023
+		bool isRich;83,3088
+		RuntimeContext context;84,3204
+		volatile unsigned long startTD,89,3355
+		volatile unsigned long startTD, startTS,89,3355
+		volatile unsigned long startTD, startTS, endTD,89,3355
+		volatile unsigned long startTD, startTS, endTD, endTS;89,3355
+		Filter_Node(95,3484
+		Filter_Node(107,3765
+		int svc_init(118,4098
+		tuple_t *svc(svc144,4944
+		void svc_end(176,5824
+	Filter(203,6715
+	Filter(239,8000
+	Filter(275,9231
+	Filter(311,10526
+	bool isKeyed(343,11647
+	bool isUsed(352,11848
+
+wf/filter_gpu.hpp,1315
+#define FILTER_GPU_H35,1440
+namespace wf 49,1697
+class FilterGPU:FilterGPU59,2033
+	bool used;74,2637
+	bool keyed;75,2711
+	class FilterGPU_Node:FilterGPU_Node77,2819
+		std::array<std::array80,2926
+		std::array<tuple_t *, max_buffered_tuples> cpu_tuple_buffer;80,2926
+		tuple_t *gpu_tuple_buffer;gpu_tuple_buffer81,2989
+		bool *tuple_mask_array;tuple_mask_array82,3018
+		filter_func_t filter_func;84,3045
+		rich_filter_func_t rich_filter_func;85,3105
+		closing_func_t closing_func;86,3180
+		std::string name;87,3231
+		bool isRich;88,3296
+		RuntimeContext context;89,3412
+		decltype(90,3456
+		unsigned long rcvTuples 93,3532
+		double avg_td_us 94,3563
+		double avg_ts_us 95,3587
+		volatile unsigned long startTD,96,3611
+		volatile unsigned long startTD, startTS,96,3611
+		volatile unsigned long startTD, startTS, endTD,96,3611
+		volatile unsigned long startTD, startTS, endTD, endTS;96,3611
+		__global__ void filter_kernel(103,3851
+		inline void fill_tuple_buffers(113,4245
+		inline void send_filtered_tuples(119,4387
+		FilterGPU_Node(131,4645
+		FilterGPU_Node(143,4938
+		int svc_init(154,5283
+		tuple_t *svc(svc185,6302
+		void svc_end(217,7257
+	FilterGPU(245,8211
+	FilterGPU(281,9504
+	FilterGPU(317,10739
+	FilterGPU(353,12042
+	bool isKeyed(387,13179
+	bool isUsed(396,13380
+
+wf/flatmap.hpp,999
+#define FLATMAP_H36,1598
+namespace wf 48,1819
+template<typename tuple_t,58,2084
+class FlatMap:FlatMap59,2130
+    bool keyed;74,2814
+    bool used;75,2898
+    class FlatMap_Node:FlatMap_Node77,3001
+        flatmap_func_t flatmap_func;80,3080
+        rich_flatmap_func_t rich_flatmap_func;81,3137
+        closing_func_t closing_func;82,3209
+        std::string name;83,3266
+        bool isRich;84,3337
+        RuntimeContext context;87,3564
+        volatile unsigned long startTD,94,3815
+        volatile unsigned long startTD, startTS,94,3815
+        volatile unsigned long startTD, startTS, endTD,94,3815
+        volatile unsigned long startTD, startTS, endTD, endTS;94,3815
+        FlatMap_Node(100,3961
+        FlatMap_Node(112,4398
+        int svc_init(124,4889
+        result_t *svc(svc151,5976
+        void svc_end(180,7075
+    FlatMap(209,8213
+    FlatMap(245,9675
+    FlatMap(281,11084
+    FlatMap(317,12556
+    bool isKeyed(349,13859
+    bool isUsed(358,14090
+
+wf/iterable.hpp,548
+#define ITERABLE_H36,1582
+namespace wf 42,1654
+class Iterable53,2001
+    iterator_t first;59,2184
+    iterator_t last;60,2237
+    size_t n_size;61,2299
+    Iterable(70,2522
+    iterator_t begin(82,2851
+    const_iterator_t begin(92,3075
+    iterator_t end(102,3299
+    const_iterator_t end(112,3516
+    size_t size(122,3720
+    tuple_t &at(at162,5056
+    const tuple_t &at(at176,5527
+    tuple_t &front(front189,5961
+    const tuple_t &front(front202,6376
+    tuple_t &back(back215,6801
+    const tuple_t &back(back228,7214
+
+wf/key_farm.hpp,1003
+#define KEY_FARM_H39,1758
+namespace wf 55,2099
+template<typename tuple_t,66,2456
+class Key_Farm:Key_Farm67,2502
+    bool hasComplexWorkers;101,4384
+    opt_level_t outer_opt_level;103,4454
+    opt_level_t inner_opt_level;105,4536
+    pattern_t inner_type;107,4604
+    size_t parallelism;109,4665
+    size_t inner_parallelism_1;111,4739
+    size_t inner_parallelism_2;112,4771
+    win_type_t winType;114,4833
+    bool used;115,4857
+    Key_Farm(119,4991
+    void optimize_KeyFarm(172,7323
+    Key_Farm(220,9560
+    Key_Farm(249,11012
+    Key_Farm(278,12472
+    Key_Farm(307,13944
+    Key_Farm(336,15446
+    Key_Farm(444,24702
+    bool useComplexNesting(542,33554
+    opt_level_t getOptLevel(551,33781
+    pattern_t getInnerType(560,33989
+    opt_level_t getInnerOptLevel(569,34233
+    size_t getParallelism(578,34446
+    std::pair<std::pair587,34693
+    std::pair<size_t, size_t> getInnerParallelism(587,34693
+    win_type_t getWinType(596,34993
+    bool isUsed(605,35237
+
+wf/key_farm_gpu.hpp,1197
+#define KEY_FARM_GPU_H41,1951
+namespace wf 57,2300
+template<typename tuple_t,69,2833
+template<typename tuple_t, typename result_t,69,2833
+class Key_Farm_GPU:Key_Farm_GPU70,2897
+    using pane_farm_gpu_t = Pane_Farm_GPU<tuple_t, result_t,76,3186
+    using win_mapreduce_gpu_t = Win_MapReduce_GPU<tuple_t, result_t,78,3336
+    using win_seq_gpu_t = Win_Seq_GPU<tuple_t, result_t,84,3595
+    bool hasComplexWorkers;94,4105
+    opt_level_t outer_opt_level;96,4179
+    opt_level_t inner_opt_level;98,4261
+    pattern_t inner_type;100,4329
+    size_t parallelism;102,4394
+    size_t inner_parallelism_1;104,4468
+    size_t inner_parallelism_2;105,4500
+    win_type_t winType;107,4562
+    bool used;108,4586
+    void optimize_KeyFarmGPU(111,4733
+    Key_Farm_GPU(161,7224
+    Key_Farm_GPU(234,10909
+    Key_Farm_GPU(332,16879
+    bool useComplexNesting(418,21998
+    opt_level_t getOptLevel(427,22225
+    pattern_t getInnerType(436,22437
+    opt_level_t getInnerOptLevel(445,22685
+    size_t getParallelism(454,22906
+    std::pair<std::pair463,23157
+    std::pair<size_t, size_t> getInnerParallelism(463,23157
+    win_type_t getWinType(472,23457
+    bool isUsed(481,23709
+
+wf/kf_nodes.hpp,1075
+#define KF_NODES_H31,1248
+namespace wf 38,1356
+class KF_Emitter:KF_Emitter42,1419
+    routing_func_t routing_func;47,1640
+    size_t pardegree;48,1693
+    bool isCombined;49,1765
+    std::vector<std::vector50,1842
+    std::vector<std::pair<void *, int>> output_queue;50,1842
+    KF_Emitter(54,1961
+    Basic_Emitter *clone(clone62,2184
+    int svc_init(69,2377
+    void *svc(svc75,2480
+    void svc_end(91,3090
+    size_t getNDestinations(94,3151
+    void setTree_EmitterMode(100,3265
+    std::vector<std::vector106,3435
+    std::vector<std::pair<void *, int>> &getOutputQueue(getOutputQueue106,3435
+class KF_Collector:KF_Collector114,3588
+    result_t tmp;117,3662
+    using key_t 119,3715
+    struct Key_Descriptor121,3858
+        uint64_t next_win;123,3890
+        std::deque<result_t *> resultsSet;124,3962
+        Key_Descriptor(127,4075
+    std::unordered_map<std::unordered_map131,4189
+    std::unordered_map<key_t, Key_Descriptor> keyMap;131,4189
+    int svc_init(135,4310
+    result_t *svc(svc141,4413
+    void svc_end(177,5831
+
+wf/local_storage.hpp,348
+#define LOCALSTORAGE_H32,1353
+namespace wf 38,1434
+class LocalStorage50,1896
+    size_t n_fields;53,1926
+    std::unordered_map<std::unordered_map54,1990
+    std::unordered_map<std::string, void *> storage;54,1990
+    LocalStorage(58,2108
+    type_t get(70,2649
+    void put(94,3513
+    void remove(118,4358
+    size_t getSize(132,4719
+
+wf/map.hpp,1926
+#define MAP_H36,1555
+namespace wf 47,1749
+template<typename tuple_t,57,2012
+class Map:Map58,2058
+    bool keyed;77,3006
+    bool used;78,3086
+    class Map_Node:Map_Node80,3185
+        map_func_ip_t func_ip;83,3260
+        rich_map_func_ip_t rich_func_ip;84,3316
+        map_func_nip_t func_nip;85,3387
+        rich_map_func_nip_t rich_func_nip;86,3449
+        closing_func_t closing_func;87,3526
+        std::string name;88,3583
+        bool isIP;89,3654
+        bool isRich;90,3770
+        RuntimeContext context;91,3892
+        volatile unsigned long startTD,96,4067
+        volatile unsigned long startTD, startTS,96,4067
+        volatile unsigned long startTD, startTS, endTD,96,4067
+        volatile unsigned long startTD, startTS, endTD, endTS;96,4067
+                 name(108,4540
+                 isIP(109,4570
+                 isRich(110,4599
+                 context(111,4631
+                 closing_func(112,4667
+                 name(122,5087
+                 isIP(123,5117
+                 isRich(124,5146
+                 context(125,5177
+                 closing_func(126,5213
+                 name(136,5627
+                 isIP(137,5657
+                 isRich(138,5687
+                 context(139,5719
+                 closing_func(140,5755
+                 name(151,6195
+                 isIP(152,6225
+                 isRich(153,6255
+                 context(154,6286
+                 closing_func(155,6322
+        int svc_init(159,6441
+        result_t *svc(svc185,7476
+        void svc_end(223,8762
+        keyed(false), used(255,10071
+        keyed(true), used(293,11699
+        keyed(false), used(329,13198
+        keyed(true), used(367,14835
+        keyed(false), used(403,16328
+        keyed(true), used(441,17961
+        keyed(false), used(477,19466
+        keyed(true), used(515,21111
+    bool isKeyed(542,22200
+    bool isUsed(551,22423
+
+wf/map_gpu.hpp,1413
+#define MAP_GPU_H36,1552
+namespace wf 49,1787
+template<typename tuple_t,58,2043
+class MapGPU:MapGPU59,2089
+	bool keyed;73,2725
+	bool used;74,2805
+	class MapGPU_Node:MapGPU_Node76,2839
+		tuple_t *tuple_buffer;tuple_buffer79,2953
+		result_t *result_buffer;result_buffer80,2978
+		map_func_ip_t func_ip;82,3006
+		map_func_nip_t func_nip;83,3056
+		closing_func_t closing_func;84,3112
+		std::string name;85,3163
+		bool isIP;86,3228
+		RuntimeContext context;87,3338
+		decltype(88,3382
+		unsigned long rcvTuples 91,3458
+		double avg_td_us 92,3489
+		double avg_ts_us 93,3513
+		volatile unsigned long startTD,94,3537
+		volatile unsigned long startTD, startTS,94,3537
+		volatile unsigned long startTD, startTS, endTD,94,3537
+		volatile unsigned long startTD, startTS, endTD, endTS;94,3537
+		__global__ void map_kernel_ip(97,3637
+		__global__ void map_kernel_nip(106,3956
+		inline void fill_tuple_buffer(116,4353
+		inline void send_mapped_tuples(122,4467
+			name(140,5043
+			isIP(141,5059
+			context(142,5074
+			closing_func(143,5096
+			name(153,5437
+			isIP(154,5453
+			isRich(155,5468
+			context(156,5485
+			closing_func(157,5507
+			name(167,5842
+			isIP(168,5858
+			context(169,5874
+			closing_func(170,5896
+			isIP(181,6238
+			context(182,6254
+			closing_func(183,6276
+		int svc_init(187,6369
+		result_t *svc(svc207,6917
+		void svc_end(244,7956
+	bool isKeyed(603,20595
+
+wf/meta_utils.hpp,8389
+#define META_H30,1123
+    namespace std 36,1245
+namespace wf 45,1479
+template<typename F_t,48,1562
+template<typename F_t, typename Arg1,48,1562
+template<typename F_t,51,1695
+template<typename F_t, typename Arg1,51,1695
+template<typename Arg1,54,1822
+template<typename F_t,61,2118
+template<typename F_t, typename Arg1,61,2118
+template<typename F_t,64,2266
+template<typename F_t, typename Arg1,64,2266
+template<typename Arg1,67,2408
+template<typename F_t,70,2531
+template<typename F_t, typename Arg1,70,2531
+template<typename F_t,73,2696
+template<typename F_t, typename Arg1,73,2696
+template<typename Arg1,76,2855
+template<typename F_t,79,2995
+template<typename F_t,82,3097
+template<typename F_t,88,3270
+template<typename F_t,91,3389
+template<typename F_t,97,3596
+template<typename F_t,100,3710
+template<typename F_t,106,3907
+template<typename F_t,109,4038
+template<typename F_t,115,4269
+template<typename F_t, typename Arg1,115,4269
+template<typename F_t,118,4403
+template<typename F_t, typename Arg1,118,4403
+template<typename Arg1,121,4531
+template<typename F_t,124,4640
+template<typename F_t, typename Arg1,124,4640
+template<typename F_t,127,4791
+template<typename F_t, typename Arg1,127,4791
+template<typename Arg1,130,4936
+template<typename F_t,133,5062
+template<typename F_t,136,5175
+template<typename F_t,142,5370
+template<typename F_t,145,5500
+template<typename F_t,151,5729
+template<typename F_t,154,5835
+template<typename F_t,160,6016
+template<typename F_t,163,6139
+template<typename F_t,169,6354
+template<typename F_t, typename Ret,169,6354
+template<typename F_t, typename Ret, typename Arg1,169,6354
+template<typename F_t,172,6544
+template<typename F_t, typename Ret,172,6544
+template<typename F_t, typename Ret, typename Arg1,172,6544
+template<typename F_t,175,6751
+template<typename F_t, typename Ret,175,6751
+template<typename F_t, typename Ret, typename Arg1,175,6751
+template<typename F_t,178,6935
+template<typename F_t, typename Ret,178,6935
+template<typename F_t, typename Ret, typename Arg1,178,6935
+template<typename Ret,181,7136
+template<typename Ret, typename Arg1,181,7136
+template<typename Ret,184,7301
+template<typename Ret, typename Arg1,184,7301
+template<typename F_t,187,7483
+template<typename F_t, typename Ret,187,7483
+template<typename F_t, typename Ret, typename Arg1,187,7483
+template<typename F_t,190,7659
+template<typename F_t, typename Ret,190,7659
+template<typename F_t, typename Ret, typename Arg1,190,7659
+template<typename F_t,193,7852
+template<typename F_t, typename Ret,193,7852
+template<typename F_t, typename Ret, typename Arg1,193,7852
+template<typename F_t,196,8022
+template<typename F_t, typename Ret,196,8022
+template<typename F_t, typename Ret, typename Arg1,196,8022
+template<typename Ret,199,8209
+template<typename Ret, typename Arg1,199,8209
+template<typename Ret,202,8360
+template<typename Ret, typename Arg1,202,8360
+template<typename F_t,205,8528
+template<typename F_t, typename Ret,205,8528
+template<typename F_t, typename Ret, typename Arg1,205,8528
+template<typename F_t,208,8730
+template<typename F_t, typename Ret,208,8730
+template<typename F_t, typename Ret, typename Arg1,208,8730
+template<typename Ret,211,8926
+template<typename Ret, typename Arg1,211,8926
+template<typename F_t,218,9280
+template<typename F_t, typename Arg1,218,9280
+template<typename F_t,221,9429
+template<typename F_t, typename Arg1,221,9429
+template<typename Arg1,224,9572
+template<typename F_t,227,9696
+template<typename F_t, typename Arg1,227,9696
+template<typename F_t,230,9862
+template<typename F_t, typename Arg1,230,9862
+template<typename Arg1,233,10022
+template<typename F_t,236,10163
+template<typename F_t,239,10266
+template<typename F_t,245,10441
+template<typename F_t,248,10561
+template<typename F_t,254,10770
+template<typename F_t, typename Arg1,254,10770
+template<typename F_t,257,10905
+template<typename F_t, typename Arg1,257,10905
+template<typename Arg1,260,11034
+template<typename F_t,263,11144
+template<typename F_t, typename Arg1,263,11144
+template<typename F_t,266,11296
+template<typename F_t, typename Arg1,266,11296
+template<typename Arg1,269,11442
+template<typename F_t,272,11569
+template<typename F_t, typename Ret,272,11569
+template<typename F_t, typename Ret, typename Arg1,272,11569
+template<typename F_t,275,11726
+template<typename F_t, typename Ret,275,11726
+template<typename F_t, typename Ret, typename Arg1,275,11726
+template<typename F_t,278,11900
+template<typename F_t, typename Ret,278,11900
+template<typename F_t, typename Ret, typename Arg1,278,11900
+template<typename F_t,281,12051
+template<typename F_t, typename Ret,281,12051
+template<typename F_t, typename Ret, typename Arg1,281,12051
+template<typename Ret,284,12219
+template<typename Ret, typename Arg1,284,12219
+template<typename Ret,287,12351
+template<typename Ret, typename Arg1,287,12351
+template<typename F_t,290,12500
+template<typename F_t, typename Ret,290,12500
+template<typename F_t, typename Ret, typename Arg1,290,12500
+template<typename F_t,293,12687
+template<typename F_t, typename Ret,293,12687
+template<typename F_t, typename Ret, typename Arg1,293,12687
+template<typename Ret,296,12868
+template<typename Ret, typename Arg1,296,12868
+auto *get_WF_nested_type(get_WF_nested_type312,13616
+auto *get_WF_GPU_nested_type(get_WF_GPU_nested_type329,14320
+template<typename arg1,338,14618
+template<typename arg1, typename arg2,338,14618
+template<typename arg1,342,14845
+template<typename arg1, typename arg2,342,14845
+auto *get_KF_nested_type(get_KF_nested_type347,15108
+template<typename arg1,355,15364
+template<typename arg1, typename arg2,355,15364
+template<typename arg1, typename arg2, typename arg3,355,15364
+template<typename arg1,359,15638
+template<typename arg1, typename arg2,359,15638
+template<typename arg1, typename arg2, typename arg3,359,15638
+auto *get_KF_GPU_nested_type(get_KF_GPU_nested_type364,15944
+template<typename F_t,373,16249
+template<typename F_t, typename G_t,373,16249
+template<typename F_t, typename G_t, typename Ret,373,16249
+template<typename F_t, typename G_t, typename Ret, typename Arg1,373,16249
+template<typename F_t,376,16471
+template<typename F_t, typename Ret,376,16471
+template<typename F_t, typename Ret, typename Arg1,376,16471
+template<typename F_t,379,16668
+template<typename F_t, typename G_t,379,16668
+template<typename F_t, typename G_t, typename Ret,379,16668
+template<typename F_t, typename G_t, typename Ret, typename Arg1,379,16668
+template<typename F_t,382,16880
+template<typename F_t, typename Ret,382,16880
+template<typename F_t, typename Ret, typename Arg1,382,16880
+template<typename F_t,385,17067
+template<typename F_t, typename G_t,385,17067
+template<typename F_t, typename G_t, typename Ret,385,17067
+template<typename F_t, typename G_t, typename Ret, typename Arg1,385,17067
+template<typename G_t,388,17288
+template<typename G_t, typename Ret,388,17288
+template<typename G_t, typename Ret, typename Arg1,388,17288
+template<typename F_t,391,17484
+template<typename F_t, typename G_t,391,17484
+template<typename F_t, typename G_t, typename Ret,391,17484
+template<typename F_t, typename G_t, typename Ret, typename Arg1,391,17484
+template<typename G_t,394,17695
+template<typename G_t, typename Ret,394,17695
+template<typename G_t, typename Ret, typename Arg1,394,17695
+struct wrapper_tuple_t399,17942
+    tuple_t *tuple;tuple401,17967
+    std::atomic<size_t> counter;402,18009
+    bool eos;403,18070
+    wrapper_tuple_t(406,18142
+template <typename T1,416,18418
+T1 *extractTuple(extractTuple417,18454
+template <typename T1,423,18679
+T1 *extractTuple(extractTuple424,18715
+template <typename T1,430,18920
+void deleteTuple(431,18956
+template <typename T1,443,19369
+void deleteTuple(444,19405
+template<typename T1,450,19612
+template<typename T1, typename T2,450,19612
+T1 *createWrapper(createWrapper451,19660
+template<typename T1,458,19950
+template<typename T1, typename T2,458,19950
+T2 *createWrapper(createWrapper459,19998
+template<typename T1,467,20344
+T2 *prepareWrapper(prepareWrapper468,20379
+template<typename T1,475,20646
+T2 *prepareWrapper(prepareWrapper476,20681
+template<typename T1,483,20940
+bool isEOSMarker(484,20975
+template<typename T1,490,21202
+bool isEOSMarker(491,21237
+
+wf/ordering_node.hpp,616
+#define ORDERINGNODE_H33,1382
+namespace wf 43,1553
+template<typename tuple_t,46,1592
+template<typename tuple_t, typename input_t=46,1592
+    struct Comparator 54,1950
+        ordering_mode_t mode;56,1999
+        Comparator(59,2053
+        bool operator() operator()62,2134
+    struct Key_Descriptor78,2877
+        uint64_t emit_counter;80,2909
+    	std::vector<uint64_t> maxs;81,2996
+        input_t *eos_marker;eos_marker82,3119
+    	std::priority_queue<std::priority_queue84,3271
+    	std::priority_queue<input_t *, std::deque<input_t *>, Comparator> queue;84,3271
+        Key_Descriptor(87,3373
+
+wf/pane_farm.hpp,1869
+#define PANE_FARM_H41,1914
+namespace wf 50,2070
+template<typename tuple_t,62,2507
+template<typename tuple_t, typename result_t,62,2507
+class Pane_Farm:Pane_Farm63,2571
+private:private85,4051
+    template<typename T1,89,4192
+    plq_func_t plq_func;106,4713
+    rich_plq_func_t rich_plq_func;107,4738
+    plqupdate_funct_t plqupdate_func;108,4773
+    rich_plqupdate_funct_t rich_plqupdate_func;109,4811
+    wlq_func_t wlq_func;110,4859
+    rich_wlq_func_t rich_wlq_func;111,4884
+    wlqupdate_func_t wlqupdate_func;112,4919
+    rich_wlqupdate_func_t rich_wlqupdate_func;113,4956
+    closing_func_t closing_func;114,5003
+    bool isNICPLQ;115,5036
+    bool isNICWLQ;116,5055
+    bool isRichPLQ;117,5074
+    bool isRichWLQ;118,5094
+    uint64_t win_len;119,5114
+    uint64_t slide_len;120,5136
+    uint64_t triggering_delay;121,5160
+    win_type_t winType;122,5191
+    size_t plq_degree;123,5215
+    size_t wlq_degree;124,5238
+    std::string name;125,5261
+    bool ordered;126,5283
+    opt_level_t opt_level;127,5301
+    PatternConfig config;128,5328
+    bool used;129,5354
+    bool used4Nesting;130,5431
+    template<typename F_t,133,5542
+    Pane_Farm(134,5583
+    const ff::ff_pipeline optimize_PaneFarm(213,9962
+    Pane_Farm(275,12940
+    Pane_Farm(315,14794
+    Pane_Farm(355,16673
+    Pane_Farm(395,18561
+    Pane_Farm(435,20456
+    Pane_Farm(475,22377
+    Pane_Farm(515,24323
+    Pane_Farm(555,26280
+    Pane_Farm(595,28236
+    Pane_Farm(635,30122
+    Pane_Farm(675,32033
+    Pane_Farm(715,33955
+    Pane_Farm(755,35882
+    Pane_Farm(795,37771
+    Pane_Farm(835,39683
+    Pane_Farm(875,41606
+    opt_level_t getOptLevel(903,42708
+    win_type_t getWinType(912,42937
+    size_t getPLQParallelism(921,43122
+    size_t getWLQParallelism(930,43313
+    bool isUsed(939,43563
+    bool isUsed4Nesting(948,43791
+
+wf/pane_farm_gpu.hpp,1659
+#define PANE_FARM_GPU_H44,2201
+namespace wf 54,2389
+template<typename tuple_t,69,3012
+template<typename tuple_t, typename result_t,69,3012
+template<typename tuple_t, typename result_t, typename F_t,69,3012
+class Pane_Farm_GPU:Pane_Farm_GPU70,3090
+private:private82,3749
+    template<typename T1,86,3907
+    template<typename T1, typename T2,86,3907
+    F_t gpuFunction;103,4455
+    plq_func_t plq_func;104,4476
+    plqupdate_func_t plqupdate_func;105,4501
+    wlq_func_t wlq_func;106,4538
+    wlqupdate_func_t wlqupdate_func;107,4563
+    bool isGPUPLQ;108,4600
+    bool isGPUWLQ;109,4619
+    bool isNICPLQ;110,4638
+    bool isNICWLQ;111,4657
+    uint64_t win_len;112,4676
+    uint64_t slide_len;113,4698
+    uint64_t triggering_delay;114,4722
+    win_type_t winType;115,4753
+    size_t plq_degree;116,4777
+    size_t wlq_degree;117,4800
+    size_t batch_len;118,4823
+    size_t n_thread_block;119,4845
+    std::string name;120,4872
+    size_t scratchpad_size;121,4894
+    bool ordered;122,4922
+    opt_level_t opt_level;123,4940
+    PatternConfig config;124,4967
+    bool used;125,4993
+    bool used4Nesting;126,5070
+    Pane_Farm_GPU(129,5183
+    Pane_Farm_GPU(224,10350
+    Pane_Farm_GPU(319,15555
+    Pane_Farm_GPU(414,20720
+    const ff::ff_pipeline optimize_PaneFarmGPU(509,25961
+    Pane_Farm_GPU(572,29150
+    Pane_Farm_GPU(610,31216
+    Pane_Farm_GPU(648,33300
+    Pane_Farm_GPU(686,35366
+    opt_level_t getOptLevel(710,36397
+    win_type_t getWinType(719,36626
+    size_t getPLQParallelism(728,36811
+    size_t getWLQParallelism(737,37002
+    bool isUsed(746,37260
+    bool isUsed4Nesting(755,37496
+
+wf/pipegraph.hpp,5707
+#define PIPEGRAPH_H36,1566
+namespace wf 59,2056
+struct AppNode64,2142
+	MultiPipe *mp;mp66,2159
+    AppNode *parent;parent67,2175
+	std::vector<AppNode *> children;68,2196
+	AppNode(71,2247
+class selfkiller_node:selfkiller_node79,2450
+    int svc_init(82,2547
+    void *svc(svc89,2678
+class PipeGraph105,3000
+	std::string name;108,3027
+	AppNode *root;root109,3071
+	std::vector<MultiPipe *> toBeDeteled;110,3134
+    Mode mode;111,3220
+	PipeGraph(146,4721
+class MultiPipe:MultiPipe191,6054
+    enum routing_types_t 195,6145
+    enum routing_types_t { STATELESS,195,6145
+    enum routing_types_t { STATELESS, KEYED,195,6145
+    enum routing_types_t { STATELESS, KEYED, COMPLEX 195,6145
+    PipeGraph *graph;graph196,6201
+	bool has_source;197,6260
+	bool has_sink;198,6324
+	ff::ff_a2a *last;last199,6382
+    ff::ff_a2a *secondToLast;secondToLast200,6434
+    bool isMerged;201,6507
+    bool isSplit;202,6598
+    bool fromSplitting;203,6687
+    size_t splittingBranches;204,6785
+    MultiPipe *splittingParent splittingParent205,6879
+    Basic_Emitter *splittingEmitterRoot splittingEmitterRoot206,6994
+    std::vector<Basic_Emitter *> splittingEmitterLeaves;207,7098
+    std::vector<MultiPipe *> splittingChildren;208,7209
+    bool forceShuffling;209,7331
+    size_t lastParallelism;210,7455
+    std::string outputType;211,7561
+    MultiPipe(216,7826
+    MultiPipe(232,8358
+    template<typename emitter_t,263,9584
+    template<typename MULTIPIPE,281,10286
+    template<typename tuple_t,330,11627
+    template<typename tuple_t,338,11908
+    template<typename tuple_t,346,12164
+    template<typename tuple_t,354,12465
+    template<typename tuple_t,362,12737
+    template<typename tuple_t,370,12996
+    template<typename tuple_t,378,13262
+    template<typename tuple_t, typename result_t,378,13262
+    template<typename tuple_t,386,13540
+    template<typename tuple_t,394,13806
+    template<typename tuple_t, typename result_t,394,13806
+    template<typename tuple_t,402,14086
+    template<typename tuple_t,410,14355
+    template<typename tuple_t, typename result_t,410,14355
+    template<typename tuple_t,418,14645
+    template<typename tuple_t,426,14928
+    template<typename tuple_t, typename result_t,426,14928
+inline PipeGraph::~PipeGraph(~PipeGraph481,16968
+inline AppNode *PipeGraph::find_AppNode(find_AppNode491,17283
+inline std::vector<AppNode *> PipeGraph::get_LeavesList(get_LeavesList509,17732
+inline AppNode *PipeGraph::get_LCA(get_LCA528,18270
+inline void PipeGraph::delete_AppNodes(delete_AppNodes546,18933
+inline bool PipeGraph::get_MergedNodes1(get_MergedNodes1560,19299
+inline AppNode *PipeGraph::get_MergedNodes2(get_MergedNodes2617,21994
+inline std::vector<MultiPipe *> PipeGraph::execute_Split(execute_Split657,23557
+inline MultiPipe *PipeGraph::execute_Merge(execute_Merge696,25178
+MultiPipe &PipeGraph::add_source(add_source868,33857
+inline int PipeGraph::run(run880,34201
+inline size_t PipeGraph::getNumThreads(getNumThreads939,36791
+MultiPipe &MultiPipe::add_source(add_source951,37166
+template<typename emitter_t,992,38749
+void MultiPipe::add_operator(add_operator993,38800
+bool MultiPipe::chain_operator(chain_operator1100,43795
+inline std::vector<ff::ff_node *> MultiPipe::normalize(normalize1146,45881
+inline std::vector<MultiPipe *> MultiPipe::prepareMergeSet(prepareMergeSet1208,48427
+std::vector<MultiPipe *> MultiPipe::prepareMergeSet(prepareMergeSet1215,48622
+template<typename MULTIPIPE,1233,49307
+std::vector<MultiPipe *> MultiPipe::prepareMergeSet(prepareMergeSet1234,49360
+inline void MultiPipe::prepareSplittingEmitters(prepareSplittingEmitters1254,50161
+inline int MultiPipe::run(run1272,50916
+inline int MultiPipe::wait(wait1284,51236
+inline int MultiPipe::run_and_wait_end(run_and_wait_end1296,51570
+MultiPipe &MultiPipe::add(add1309,51971
+MultiPipe &MultiPipe::chain(chain1339,53271
+template<typename tuple_t,1369,54418
+MultiPipe &MultiPipe::add(add1370,54464
+template<typename tuple_t,1400,55735
+MultiPipe &MultiPipe::chain(chain1401,55781
+template<typename tuple_t,1432,56937
+MultiPipe &MultiPipe::add(add1433,56983
+template<typename tuple_t,1463,58289
+MultiPipe &MultiPipe::chain(chain1464,58335
+template<typename tuple_t,1494,59496
+MultiPipe &MultiPipe::add(add1495,59542
+template<typename tuple_t,1525,60793
+MultiPipe &MultiPipe::add(add1526,60839
+template<typename tuple_t,1649,67451
+template<typename tuple_t, typename result_t,1649,67451
+MultiPipe &MultiPipe::add(add1650,67511
+template<typename tuple_t,1773,74154
+MultiPipe &MultiPipe::add(add1774,74200
+template<typename tuple_t,1910,81446
+template<typename tuple_t, typename result_t,1910,81446
+MultiPipe &MultiPipe::add(add1911,81506
+template<typename tuple_t,2047,88802
+MultiPipe &MultiPipe::add(add2048,88848
+template<typename tuple_t,2148,93493
+template<typename tuple_t, typename result_t,2148,93493
+MultiPipe &MultiPipe::add(add2149,93553
+template<typename tuple_t,2249,98223
+MultiPipe &MultiPipe::add(add2250,98269
+template<typename tuple_t,2337,102405
+template<typename tuple_t, typename result_t,2337,102405
+MultiPipe &MultiPipe::add(add2338,102465
+MultiPipe &MultiPipe::add_sink(add_sink2426,106644
+MultiPipe &MultiPipe::chain_sink(chain_sink2457,107943
+MultiPipe &MultiPipe::merge(merge2489,109167
+MultiPipe &MultiPipe::split(split2522,110549
+inline MultiPipe &MultiPipe::select(select2543,111506
+inline bool MultiPipe::isRunnable(isRunnable2562,112293
+inline bool MultiPipe::hasSource(hasSource2568,112475
+inline bool MultiPipe::hasSink(hasSink2574,112613
+inline size_t MultiPipe::getNumThreads(getNumThreads2580,112766
+
+wf/shipper.hpp,250
+#define SHIPPER_H35,1490
+namespace wf 40,1546
+class Shipper51,1876
+    ff::ff_node *node;node55,1944
+    unsigned long n_delivered;57,2007
+    Shipper(65,2169
+    unsigned long delivered(75,2379
+    bool push(86,2641
+    bool push(100,3051
+
+wf/sink.hpp,976
+#define SINK_H35,1371
+    namespace std 41,1493
+namespace wf 52,1788
+class Sink:Sink62,1997
+    bool keyed;77,2642
+    bool used;78,2723
+    class Sink_Node:Sink_Node80,2823
+        sink_func_t sink_fun;83,2895
+        rich_sink_func_t rich_sink_func;84,2942
+        closing_func_t closing_func;85,3005
+        std::string name;86,3062
+        bool isRich;87,3133
+        RuntimeContext context;88,3255
+        volatile unsigned long startTD,93,3430
+        volatile unsigned long startTD, startTS,93,3430
+        volatile unsigned long startTD, startTS, endTD,93,3430
+        volatile unsigned long startTD, startTS, endTD, endTS;93,3430
+        Sink_Node(99,3580
+        Sink_Node(111,3974
+        int svc_init(123,4424
+        tuple_t *svc(svc149,5459
+        void eosnotify(179,6596
+        void svc_end(191,6982
+    Sink(218,7995
+    Sink(252,9334
+    Sink(286,10617
+    Sink(320,11966
+    bool isKeyed(350,13148
+    bool isUsed(359,13373
+
+wf/source.hpp,913
+#define SOURCE_H35,1383
+namespace wf 47,1606
+class Source:Source57,1823
+    bool used;74,2705
+    class Source_Node:Source_Node76,2807
+        source_item_func_t source_func_item;79,2879
+        rich_source_item_func_t rich_source_func_item;80,2970
+        source_loop_func_t source_func_loop;81,3076
+        rich_source_loop_func_t rich_source_func_loop;82,3166
+        closing_func_t closing_func;83,3271
+        std::string name;84,3328
+        bool isItemized;85,3399
+        bool isRich;86,3513
+        bool isEND;87,3635
+        RuntimeContext context;89,3845
+        Source_Node(97,4048
+        Source_Node(111,4563
+        Source_Node(125,5099
+        Source_Node(139,5615
+        int svc_init(153,6186
+        tuple_t *svc(svc180,7272
+        void svc_end(214,8478
+    Source(240,9389
+    Source(272,10630
+    Source(304,11871
+    Source(337,13257
+    bool isUsed(366,14506
+
+wf/splitting_emitter.hpp,748
+#define SPLITTING_H30,1182
+namespace wf 37,1291
+class Splitting_Emitter:Splitting_Emitter41,1361
+    unicast_func_t unicast_func;48,1709
+    multicast_func_t multicast_func;49,1762
+    bool isUnicast;50,1834
+    size_t n_dest;51,1917
+    bool isCombined;52,1962
+    std::vector<std::vector53,2039
+    std::vector<std::pair<void *, int>> output_queue;53,2039
+    Splitting_Emitter(57,2160
+    Splitting_Emitter(66,2449
+    Basic_Emitter *clone(clone75,2741
+    int svc_init(82,2948
+    void *svc(svc88,3051
+    void svc_end(121,4215
+    size_t getNDestinations(124,4276
+    void setTree_EmitterMode(130,4387
+    std::vector<std::vector136,4557
+    std::vector<std::pair<void *, int>> &getOutputQueue(getOutputQueue136,4557
+
+wf/standard_nodes.hpp,838
+#define STANDARD_H30,1191
+namespace wf 38,1320
+class Standard_Emitter:Standard_Emitter42,1389
+    bool isKeyed;47,1616
+    routing_func_t routing_func;48,1700
+    bool isCombined;49,1753
+    std::vector<std::vector50,1830
+    std::vector<std::pair<void *, int>> output_queue;50,1830
+    size_t dest_w;51,1921
+    size_t n_dest;52,1974
+    Standard_Emitter(56,2049
+    Standard_Emitter(64,2263
+    Basic_Emitter *clone(clone74,2575
+    int svc_init(81,2780
+    void *svc(svc87,2883
+    void svc_end(115,3870
+    size_t getNDestinations(118,3931
+    void setTree_EmitterMode(124,4042
+    std::vector<std::vector130,4212
+    std::vector<std::pair<void *, int>> &getOutputQueue(getOutputQueue130,4212
+class Standard_Collector:Standard_Collector137,4343
+    Standard_Collector(141,4419
+    void *svc(svc145,4506
+
+wf/stream_archive.hpp,140
+#define ARCHIVE_H31,1154
+namespace wf 40,1285
+template<typename tuple_t,43,1324
+template<typename tuple_t, typename container_t=43,1324
+
+wf/transformations.hpp,425
+#define TRANSF_H31,1205
+namespace wf 36,1257
+struct dummy_mi:dummy_mi39,1313
+    void *svc(svc41,1346
+struct dummy_mo:dummy_mo48,1445
+    void *svc(svc50,1478
+inline ff::ff_a2a *farm2A2A_collector(farm2A2A_collector57,1602
+inline ff::ff_a2a *farm2A2A_emitter(farm2A2A_emitter75,2201
+inline void combine_a2a_withFirstNodes(93,2798
+inline ff::ff_node *remove_emitter_from_pipe(remove_emitter_from_pipe107,3363
+
+wf/tree_emitter.hpp,913
+#define TREEEMITTER_H32,1280
+namespace wf 39,1391
+class Tree_Emitter:Tree_Emitter42,1429
+    Basic_Emitter *root;root45,1481
+    std::vector<Basic_Emitter *> children;46,1519
+    bool cleanUpRoot;47,1590
+    bool cleanUpChildren;48,1660
+    bool isCombined;49,1739
+    std::vector<std::vector50,1816
+    std::vector<std::pair<void *, int>> output_queue;50,1816
+    Tree_Emitter(54,1935
+    Tree_Emitter(71,2529
+    ~Tree_Emitter(85,2979
+    Basic_Emitter *clone(clone96,3212
+    int svc_init(108,3656
+    void *svc(svc114,3759
+    void eosnotify(139,4641
+    void svc_end(177,6069
+    size_t getNDestinations(180,6130
+    void setTree_EmitterMode(189,6363
+    std::vector<std::vector195,6533
+    std::vector<std::pair<void *, int>> &getOutputQueue(getOutputQueue195,6533
+    Basic_Emitter *getRootNode(getRootNode201,6671
+    std::vector<Basic_Emitter *> getChildrenNodes(207,6781
+
+wf/wf_nodes.hpp,734
+#define WF_NODES_H31,1249
+namespace wf 40,1400
+template<typename tuple_t,43,1436
+template<typename tuple_t, typename input_t=43,1436
+    struct Key_Descriptor62,2457
+        uint64_t rcv_counter;64,2489
+        tuple_t last_tuple;65,2560
+        Key_Descriptor(68,2692
+class WF_Collector:WF_Collector247,9495
+    result_t tmp;250,9569
+    using key_t 252,9622
+    struct Key_Descriptor254,9765
+        uint64_t next_win;256,9797
+        std::deque<result_t *> resultsSet;257,9869
+        Key_Descriptor(260,9982
+    std::unordered_map<std::unordered_map263,10095
+    std::unordered_map<key_t, Key_Descriptor> keyMap;263,10095
+    int svc_init(267,10216
+    result_t *svc(svc273,10319
+    void svc_end(309,11737
+
+wf/win_farm.hpp,1558
+#define WIN_FARM_H37,1604
+namespace wf 53,1950
+template<typename tuple_t,63,2209
+template<typename tuple_t, typename result_t,63,2209
+class Win_Farm:Win_Farm64,2273
+    using win_seq_t = Win_Seq<tuple_t, result_t,90,3701
+    template<typename T1,92,3818
+    template<typename T1, typename T2,92,3818
+    template<typename T1,94,3898
+    template<typename T1, typename T2,94,3898
+    template<typename T1,96,3982
+    template<typename T1, typename T2,96,3982
+    template<typename T1, typename T2, typename T3,96,3982
+    template<typename T1,98,4079
+    template<typename T1, typename T2,98,4079
+    template<typename T1, typename T2, typename T3,98,4079
+    bool hasComplexWorkers;104,4385
+    opt_level_t outer_opt_level;106,4455
+    opt_level_t inner_opt_level;108,4537
+    pattern_t inner_type;110,4605
+    size_t parallelism;112,4666
+    size_t inner_parallelism_1;114,4740
+    size_t inner_parallelism_2;115,4772
+    win_type_t winType;117,4834
+    bool used;118,4858
+    Win_Farm(122,4992
+    void optimize_WinFarm(181,7714
+    Win_Farm(229,9926
+    Win_Farm(258,11345
+    Win_Farm(287,12772
+    Win_Farm(316,14211
+    Win_Farm(345,15680
+    Win_Farm(458,25466
+    bool useComplexNesting(561,34765
+    opt_level_t getOptLevel(570,34992
+    pattern_t getInnerType(579,35200
+    opt_level_t getInnerOptLevel(588,35444
+    size_t getParallelism(597,35657
+    std::pair<std::pair606,35896
+    std::pair<size_t, size_t> getInnerParallelism(606,35896
+    win_type_t getWinType(615,36196
+    bool isUsed(624,36440
+
+wf/win_farm_gpu.hpp,1653
+#define WIN_FARM_GPU_H39,1770
+namespace wf 55,2124
+template<typename tuple_t,68,2581
+template<typename tuple_t, typename result_t,68,2581
+template<typename tuple_t, typename result_t, typename win_F_t,68,2581
+class Win_Farm_GPU:Win_Farm_GPU69,2663
+    using pane_farm_gpu_t = Pane_Farm_GPU<tuple_t, result_t,73,2787
+    using win_mapreduce_gpu_t = Win_MapReduce_GPU<tuple_t, result_t,75,2937
+    using win_seq_gpu_t = Win_Seq_GPU<tuple_t, result_t,81,3196
+    using win_seq_gpu_t = Win_Seq_GPU<tuple_t, result_t, win_F_t,81,3196
+    template<typename T1,87,3508
+    template<typename T1, typename T2,87,3508
+    template<typename T1, typename T2, typename T3,87,3508
+    template<typename T1,89,3605
+    template<typename T1, typename T2,89,3605
+    template<typename T1, typename T2, typename T3,89,3605
+    bool hasComplexWorkers;95,3927
+    opt_level_t outer_opt_level;97,4001
+    opt_level_t inner_opt_level;99,4083
+    pattern_t inner_type;101,4151
+    size_t parallelism;103,4216
+    size_t inner_parallelism_1;105,4290
+    size_t inner_parallelism_2;106,4322
+    win_type_t winType;108,4384
+    bool used;109,4408
+    Win_Farm_GPU(112,4515
+    void optimize_WinFarmGPU(178,7686
+    Win_Farm_GPU(228,10112
+    Win_Farm_GPU(261,11921
+    Win_Farm_GPU(363,18208
+    bool useComplexNesting(453,23677
+    opt_level_t getOptLevel(462,23904
+    pattern_t getInnerType(471,24116
+    opt_level_t getInnerOptLevel(480,24364
+    size_t getParallelism(489,24585
+    std::pair<std::pair498,24835
+    std::pair<size_t, size_t> getInnerParallelism(498,24835
+    win_type_t getWinType(507,25135
+    bool isUsed(516,25387
+
+wf/win_mapreduce.hpp,2045
+#define WIN_MAPREDUCE_H39,1802
+namespace wf 48,1962
+template<typename tuple_t,61,2433
+template<typename tuple_t, typename result_t,61,2433
+class Win_MapReduce:Win_MapReduce62,2497
+    template<typename T1,92,4343
+    template<typename T1, typename T2,92,4343
+    template<typename T1,94,4422
+    map_func_t map_func;102,4686
+    rich_map_func_t rich_map_func;103,4711
+    mapupdate_func_t mapupdate_func;104,4746
+    rich_mapupdate_func_t rich_mapupdate_func;105,4783
+    reduce_func_t reduce_func;106,4830
+    rich_reduce_func_t rich_reduce_func;107,4861
+    reduceupdate_func_t reduceupdate_func;108,4902
+    rich_reduceupdate_func_t rich_reduceupdate_func;109,4945
+    closing_func_t closing_func;110,4998
+    bool isNICMAP;111,5031
+    bool isNICREDUCE;112,5050
+    bool isRichMAP;113,5072
+    bool isRichREDUCE;114,5092
+    uint64_t win_len;115,5115
+    uint64_t slide_len;116,5137
+    uint64_t triggering_delay;117,5161
+    win_type_t winType;118,5192
+    size_t map_degree;119,5216
+    size_t reduce_degree;120,5239
+    std::string name;121,5265
+    bool ordered;122,5287
+    opt_level_t opt_level;123,5305
+    PatternConfig config;124,5332
+    bool used;125,5358
+    bool used4Nesting;126,5435
+    template <typename F_t,129,5546
+    Win_MapReduce(130,5588
+    const ff::ff_pipeline optimize_WinMapReduce(220,10515
+    Win_MapReduce(269,13030
+    Win_MapReduce(309,14992
+    Win_MapReduce(349,16979
+    Win_MapReduce(389,18975
+    Win_MapReduce(429,20963
+    Win_MapReduce(469,22976
+    Win_MapReduce(509,25014
+    Win_MapReduce(549,27063
+    Win_MapReduce(589,29112
+    Win_MapReduce(629,31091
+    Win_MapReduce(669,33095
+    Win_MapReduce(709,35110
+    Win_MapReduce(749,37130
+    Win_MapReduce(789,39111
+    Win_MapReduce(829,41115
+    Win_MapReduce(869,43130
+    opt_level_t getOptLevel(897,44314
+    win_type_t getWinType(906,44543
+    size_t getMAPParallelism(915,44728
+    size_t getREDUCEParallelism(924,44925
+    bool isUsed(933,45189
+    bool isUsed4Nesting(942,45425
+
+wf/win_mapreduce_gpu.hpp,1845
+#define WIN_MAPREDUCE_GPU_H43,2105
+namespace wf 53,2297
+template<typename tuple_t,67,2944
+template<typename tuple_t, typename result_t,67,2944
+template<typename tuple_t, typename result_t, typename F_t,67,2944
+class Win_MapReduce_GPU:Win_MapReduce_GPU68,3022
+    template<typename T1,88,4046
+    template<typename T1, typename T2,88,4046
+    template<typename T1, typename T2, typename T3,88,4046
+    template<typename T1,90,4142
+    template<typename T1, typename T2,90,4142
+    F_t gpuFunction;98,4433
+    map_func_t map_func;99,4454
+    mapupdate_func_t mapupdate_func;100,4479
+    reduce_func_t reduce_func;101,4516
+    reduceupdate_func_t reduceupdate_func;102,4547
+    bool isGPUMAP;103,4590
+    bool isGPUREDUCE;104,4609
+    bool isNICMAP;105,4631
+    bool isNICREDUCE;106,4650
+    uint64_t win_len;107,4672
+    uint64_t slide_len;108,4694
+    uint64_t triggering_delay;109,4718
+    win_type_t winType;110,4749
+    size_t map_degree;111,4773
+    size_t reduce_degree;112,4796
+    size_t batch_len;113,4822
+    size_t n_thread_block;114,4844
+    std::string name;115,4871
+    size_t scratchpad_size;116,4893
+    bool ordered;117,4921
+    opt_level_t opt_level;118,4939
+    PatternConfig config;119,4966
+    bool used;120,4992
+    bool used4Nesting;121,5069
+    Win_MapReduce_GPU(124,5182
+    Win_MapReduce_GPU(230,10964
+    Win_MapReduce_GPU(336,16784
+    Win_MapReduce_GPU(442,22564
+    const ff::ff_pipeline optimize_WinMapReduceGPU(548,28425
+    Win_MapReduce_GPU(599,31197
+    Win_MapReduce_GPU(637,33391
+    Win_MapReduce_GPU(675,35602
+    Win_MapReduce_GPU(713,37795
+    opt_level_t getOptLevel(737,38914
+    win_type_t getWinType(746,39143
+    size_t getMAPParallelism(755,39328
+    size_t getREDUCEParallelism(764,39525
+    bool isUsed(773,39797
+    bool isUsed4Nesting(782,40041
+
+wf/win_seq.hpp,2405
+#define WIN_SEQ_H36,1580
+namespace wf 50,1840
+template<typename tuple_t,60,2093
+template<typename tuple_t, typename result_t,60,2093
+class Win_Seq:Win_Seq61,2157
+    tuple_t tmp;84,3458
+    template<typename T1,88,3666
+    template<typename T1, typename T2,88,3666
+    template<typename T1,90,3745
+    template<typename T1,92,3811
+    template<typename T1, typename T2,92,3811
+    template<typename T1,94,3891
+    template<typename T1, typename T2,94,3891
+    template<typename T1,96,3975
+    template<typename T1, typename T2,96,3975
+    template<typename T1, typename T2, typename T3,96,3975
+    template<typename T1,98,4072
+    template<typename T1, typename T2,98,4072
+    template<typename T1, typename T2, typename T3,98,4072
+    struct Key_Descriptor101,4207
+        archive_t archive;103,4239
+        std::vector<win_t> wins;104,4299
+        uint64_t emit_counter;105,4360
+        uint64_t next_lwid;106,4443
+        int64_t last_lwid;107,4518
+        Key_Descriptor(110,4610
+        Key_Descriptor(121,4986
+    win_func_t win_func;128,5284
+    rich_win_func_t rich_win_func;129,5363
+    winupdate_func_t winupdate_func;130,5457
+    rich_winupdate_func_t rich_winupdate_func;131,5544
+    closing_func_t closing_func;132,5646
+    compare_func_t compare_func;133,5699
+    uint64_t win_len;134,5766
+    uint64_t slide_len;135,5838
+    uint64_t triggering_delay;136,5911
+    win_type_t winType;137,6009
+    std::string name;138,6059
+    bool isNIC;139,6131
+    bool isRich;140,6238
+    RuntimeContext context;141,6311
+    PatternConfig config;142,6357
+    role_t role;143,6434
+    std::unordered_map<std::unordered_map144,6474
+    std::unordered_map<key_t, Key_Descriptor> keyMap;144,6474
+    std::pair<std::pair145,6578
+    size_t dropped_tuples;146,6681
+    volatile unsigned long startTD,155,7001
+    volatile unsigned long startTD, startTS,155,7001
+    volatile unsigned long startTD, startTS, endTD,155,7001
+    volatile unsigned long startTD, startTS, endTD, endTS;155,7001
+    void init(160,7143
+    void setMapIndexes(181,7997
+    Win_Seq(201,8897
+    Win_Seq(242,10428
+    Win_Seq(283,11971
+    Win_Seq(324,13529
+    int svc_init(354,14436
+    result_t *svc(svc380,15451
+    void eosnotify(535,23486
+    void svc_end(586,26017
+    win_type_t getWinType(623,27801
+    virtual int run(629,27934
+    virtual int wait(635,28056
+
+wf/win_seq_gpu.hpp,3546
+#define WIN_SEQ_GPU_H38,1739
+namespace wf 50,1956
+__global__ void kernelBatch(56,2109
+inline void gpuAssert(78,3051
+template<typename tuple_t,100,3778
+template<typename tuple_t, typename result_t,100,3778
+template<typename tuple_t, typename result_t, typename win_F_t,100,3778
+class Win_Seq_GPU:Win_Seq_GPU101,3860
+    using input_iterator_t 105,3972
+    using archive_t 107,4109
+    using win_t 109,4229
+    using compare_func_t 111,4317
+    tuple_t tmp;112,4399
+    using key_t 114,4451
+    template<typename T1,116,4607
+    template<typename T1, typename T2,116,4607
+    template<typename T1, typename T2, typename T3,116,4607
+    template<typename T1,118,4703
+    template<typename T1, typename T2,118,4703
+    template<typename T1,120,4786
+    template<typename T1, typename T2,120,4786
+    template<typename T1, typename T2, typename T3,120,4786
+    template<typename T1,122,4883
+    template<typename T1, typename T2,122,4883
+    template<typename T1, typename T2, typename T3,122,4883
+    struct Key_Descriptor125,5018
+        archive_t archive;127,5050
+        std::vector<win_t> wins;128,5110
+        uint64_t emit_counter;129,5171
+        uint64_t next_lwid;130,5254
+        int64_t last_lwid;131,5329
+        size_t batchedWin;132,5397
+        std::vector<size_t> start,133,5464
+        std::vector<size_t> start, end;133,5464
+        std::vector<uint64_t> gwids;134,5583
+        std::vector<uint64_t> tsWin;135,5680
+        std::optional<tuple_t> start_tuple;136,5792
+        std::optional<tuple_t> end_tuple;137,5894
+        Key_Descriptor(140,6017
+        Key_Descriptor(152,6431
+    compare_func_t compare_func;167,7056
+    uint64_t win_len;168,7123
+    uint64_t slide_len;169,7195
+    uint64_t triggering_delay;170,7268
+    win_type_t winType;171,7366
+    std::string name;172,7416
+    PatternConfig config;173,7488
+    role_t role;174,7569
+    std::unordered_map<std::unordered_map175,7613
+    std::unordered_map<key_t, Key_Descriptor> keyMap;175,7613
+    std::pair<std::pair176,7717
+    std::pair<size_t, size_t> map_indexes 176,7717
+    size_t batch_len;177,7820
+    size_t n_thread_block;178,7940
+    size_t tuples_per_batch;179,7998
+    win_F_t win_func;180,8079
+    result_t *host_results host_results181,8139
+    cudaStream_t cudaStream;183,8243
+    size_t no_thread_block;184,8312
+    tuple_t *Bin Bin185,8376
+    result_t *Bout Bout186,8465
+    size_t *gpu_start,gpu_start187,8557
+    size_t *gpu_start, *gpu_end gpu_end187,8557
+    uint64_t *gpu_gwids gpu_gwids188,8700
+    size_t scratchpad_size 189,8813
+    char *scratchpad_memory scratchpad_memory190,8917
+    size_t dropped_tuples;191,9027
+    bool isTriggering 193,9110
+    unsigned long rcvTuples 194,9141
+    unsigned long rcvTuplesTriggering 195,9174
+    double avg_td_us 196,9261
+    double avg_ts_us 197,9287
+    double avg_ts_triggering_us 198,9313
+    double avg_ts_non_triggering_us 199,9350
+    volatile unsigned long startTD,200,9391
+    volatile unsigned long startTD, startTS,200,9391
+    volatile unsigned long startTD, startTS, endTD,200,9391
+    volatile unsigned long startTD, startTS, endTD, endTS;200,9391
+    std::ofstream *logfile logfile201,9450
+    Win_Seq_GPU(205,9523
+    void setMapIndexes(258,11741
+    Win_Seq_GPU(277,12707
+    int svc_init(292,13334
+    result_t *svc(svc344,15981
+    void eosnotify(551,27800
+    void svc_end(599,30345
+    win_type_t getWinType(636,31899
+    virtual int run(642,32032
+    virtual int wait(648,32154
+
+wf/windflow.hpp,27
+#define WINDFLOW_H30,1127
+
+wf/windflow_gpu.hpp,31
+#define WINDFLOW_GPU_H31,1214
+
+wf/window.hpp,1432
+#define WINDOW_H32,1242
+    namespace std 39,1385
+namespace wf 45,1549
+class Triggerer_CB48,1615
+    uint64_t win_len;51,1645
+    uint64_t slide_len;52,1704
+    uint64_t lwid;53,1764
+    uint64_t initial_id;54,1831
+    Triggerer_CB(58,1917
+    win_event_t operator()(operator()69,2290
+class Triggerer_TB81,2613
+    uint64_t win_len;84,2643
+    uint64_t slide_len;85,2696
+    uint64_t lwid;86,2750
+    uint64_t starting_ts;87,2817
+    uint64_t triggering_delay;88,2865
+    Triggerer_TB(92,2958
+    win_event_t operator()(operator()105,3432
+template<typename tuple_t,119,3828
+class Window120,3874
+    using triggerer_t 124,3934
+    tuple_t tmp;125,3996
+    using key_t 127,4048
+    key_t key;128,4151
+    uint64_t lwid;129,4183
+    uint64_t gwid;130,4257
+    triggerer_t triggerer;131,4332
+    win_type_t winType;132,4428
+    size_t no_tuples;133,4485
+    bool batched;134,4561
+    result_t result;135,4632
+    std::optional<tuple_t> firstTuple;136,4688
+    std::optional<tuple_t> lastTuple;137,4727
+    Window(141,4794
+    Window(164,5472
+    win_event_t onTuple(179,5899
+    void setBatched(236,8255
+    result_t &getResult(getResult242,8364
+    std::optional<tuple_t> getFirstTuple(248,8485
+    std::optional<tuple_t> getLastTuple(254,8632
+    size_t getKEY(260,8759
+    uint64_t getLWID(266,8867
+    uint64_t getGWID(272,8980
+    size_t getSize(278,9128
+    bool isBatched(284,9251
+
+wf/wm_nodes.hpp,1296
+#define WM_NODES_H31,1335
+namespace wf 39,1469
+template<typename tuple_t,42,1509
+template<typename tuple_t, typename input_t=42,1509
+    struct Key_Descriptor54,2014
+        uint64_t rcv_counter;56,2046
+        tuple_t last_tuple;57,2117
+        size_t nextDst;58,2225
+        Key_Descriptor(61,2331
+class WinMap_Dropper:WinMap_Dropper180,6662
+    using wrapper_in_t 184,6811
+    tuple_t tmp;185,6862
+    using key_t 187,6914
+    size_t map_degree;188,7017
+    struct Key_Descriptor190,7108
+        size_t nextDst;192,7140
+        Key_Descriptor(195,7246
+    std::unordered_map<std::unordered_map197,7315
+    std::unordered_map<key_t, Key_Descriptor> keyMap;197,7315
+    size_t my_id;198,7419
+    WinMap_Dropper(202,7538
+    int svc_init(209,7755
+    wrapper_in_t *svc(svc215,7858
+    void svc_end(250,9180
+class WinMap_Collector:WinMap_Collector255,9260
+    result_t tmp;258,9338
+    using key_t 260,9391
+    struct Key_Descriptor262,9534
+        uint64_t next_win;264,9566
+        std::deque<result_t *> resultsSet;265,9638
+        Key_Descriptor(268,9751
+    std::unordered_map<std::unordered_map271,9864
+    std::unordered_map<key_t, Key_Descriptor> keyMap;271,9864
+    int svc_init(275,9985
+    result_t *svc(svc281,10088
+    void svc_end(317,11506
+
+src/graph_test/test_graph_1.cpp,18
+int main(49,1998
+
+src/graph_test/test_graph_2.cpp,18
+int main(52,2222
+
+src/graph_test/test_graph_3.cpp,18
+int main(58,3055
+
+src/graph_test/test_graph_4.cpp,18
+int main(61,3569
+
+src/graph_test/test_graph_5.cpp,18
+int main(56,2229
+
+src/graph_test/test_graph_6.cpp,18
+int main(56,2918
+
+src/graph_test/test_graph_7.cpp,18
+int main(70,4004
+
+src/graph_test/test_graph_8.cpp,18
+int main(56,2918
+
+src/graph_test/test_graph_9.cpp,18
+int main(59,3078
+
+src/merge_test/test_merge_1.cpp,18
+int main(49,1793
+
+src/merge_test/test_merge_2.cpp,18
+int main(56,2080
+
+src/merge_test/test_merge_3.cpp,18
+int main(56,2101
+
+src/merge_test/test_merge_4.cpp,18
+int main(56,2177
+
+src/mp_test_cpu/test_mp_kf+pf_cb.cpp,18
+int main(53,2214
+
+src/mp_test_cpu/test_mp_kf+pf_tb.cpp,18
+int main(53,2216
+
+src/mp_test_cpu/test_mp_kf+pf_tb_2.cpp,18
+int main(53,2206
+
+src/mp_test_cpu/test_mp_kf+wmr_cb.cpp,18
+int main(53,2228
+
+src/mp_test_cpu/test_mp_kf+wmr_tb.cpp,18
+int main(53,2228
+
+src/mp_test_cpu/test_mp_kf+wmr_tb_2.cpp,18
+int main(53,2233
+
+src/mp_test_cpu/test_mp_kf_cb.cpp,18
+int main(43,1452
+
+src/mp_test_cpu/test_mp_kf_cb_chaining.cpp,18
+int main(43,1452
+
+src/mp_test_cpu/test_mp_kf_cb_string.cpp,18
+int main(43,1459
+
+src/mp_test_cpu/test_mp_kf_tb.cpp,18
+int main(43,1452
+
+src/mp_test_cpu/test_mp_kf_tb_2.cpp,18
+int main(43,1443
+
+src/mp_test_cpu/test_mp_kf_tb_chaining.cpp,18
+int main(43,1452
+
+src/mp_test_cpu/test_mp_pf_cb.cpp,18
+int main(43,1452
+
+src/mp_test_cpu/test_mp_pf_cb_chaining.cpp,18
+int main(43,1452
+
+src/mp_test_cpu/test_mp_pf_cb_string.cpp,18
+int main(43,1459
+
+src/mp_test_cpu/test_mp_pf_tb.cpp,18
+int main(43,1452
+
+src/mp_test_cpu/test_mp_pf_tb_2.cpp,18
+int main(43,1443
+
+src/mp_test_cpu/test_mp_pf_tb_chaining.cpp,18
+int main(43,1453
+
+src/mp_test_cpu/test_mp_wf+pf_cb.cpp,18
+int main(53,2214
+
+src/mp_test_cpu/test_mp_wf+pf_tb.cpp,18
+int main(53,2214
+
+src/mp_test_cpu/test_mp_wf+pf_tb_2.cpp,18
+int main(53,2205
+
+src/mp_test_cpu/test_mp_wf+wmr_cb.cpp,18
+int main(53,2228
+
+src/mp_test_cpu/test_mp_wf+wmr_tb.cpp,18
+int main(53,2228
+
+src/mp_test_cpu/test_mp_wf+wmr_tb_2.cpp,18
+int main(53,2219
+
+src/mp_test_cpu/test_mp_wf_cb.cpp,18
+int main(43,1453
+
+src/mp_test_cpu/test_mp_wf_cb_chaining.cpp,18
+int main(43,1453
+
+src/mp_test_cpu/test_mp_wf_cb_string.cpp,18
+int main(43,1460
+
+src/mp_test_cpu/test_mp_wf_tb.cpp,18
+int main(43,1452
+
+src/mp_test_cpu/test_mp_wf_tb_2.cpp,18
+int main(43,1443
+
+src/mp_test_cpu/test_mp_wf_tb_chaining.cpp,18
+int main(43,1452
+
+src/mp_test_cpu/test_mp_wmr_cb.cpp,18
+int main(43,1456
+
+src/mp_test_cpu/test_mp_wmr_cb_chaining.cpp,18
+int main(43,1456
+
+src/mp_test_cpu/test_mp_wmr_cb_string.cpp,18
+int main(43,1463
+
+src/mp_test_cpu/test_mp_wmr_tb.cpp,18
+int main(43,1456
+
+src/mp_test_cpu/test_mp_wmr_tb_2.cpp,18
+int main(43,1447
+
+src/mp_test_cpu/test_mp_wmr_tb_chaining.cpp,18
+int main(43,1456
+
+src/mp_test_gpu/test_mp_gpu_kf+pf_cb.cpp,18
+int main(54,2243
+
+src/mp_test_gpu/test_mp_gpu_kf+pf_tb.cpp,18
+int main(54,2243
+
+src/mp_test_gpu/test_mp_gpu_kf+pf_tb_2.cpp,18
+int main(54,2233
+
+src/mp_test_gpu/test_mp_gpu_kf+wmr_cb.cpp,18
+int main(54,2257
+
+src/mp_test_gpu/test_mp_gpu_kf+wmr_tb.cpp,18
+int main(54,2257
+
+src/mp_test_gpu/test_mp_gpu_kf+wmr_tb_2.cpp,18
+int main(54,2247
+
+src/mp_test_gpu/test_mp_gpu_kf_cb.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_kf_cb_chaining.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_kf_cb_chaining_gpuoperators.cpp,38
+parse_args(45,1510
+int main(74,2232
+
+src/mp_test_gpu/test_mp_gpu_kf_cb_string.cpp,18
+int main(44,1487
+
+src/mp_test_gpu/test_mp_gpu_kf_tb.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_kf_tb_2.cpp,18
+int main(44,1470
+
+src/mp_test_gpu/test_mp_gpu_kf_tb_chaining.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_pf_cb.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_pf_cb_chaining.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_pf_cb_string.cpp,18
+int main(44,1487
+
+src/mp_test_gpu/test_mp_gpu_pf_tb.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_pf_tb_2.cpp,18
+int main(44,1470
+
+src/mp_test_gpu/test_mp_gpu_pf_tb_chaining.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_wf+pf_cb.cpp,18
+int main(54,2243
+
+src/mp_test_gpu/test_mp_gpu_wf+pf_tb.cpp,18
+int main(54,2243
+
+src/mp_test_gpu/test_mp_gpu_wf+pf_tb_2.cpp,18
+int main(54,2233
+
+src/mp_test_gpu/test_mp_gpu_wf+wmr_cb.cpp,18
+int main(54,2257
+
+src/mp_test_gpu/test_mp_gpu_wf+wmr_tb.cpp,18
+int main(54,2257
+
+src/mp_test_gpu/test_mp_gpu_wf+wmr_tb_2.cpp,18
+int main(54,2247
+
+src/mp_test_gpu/test_mp_gpu_wf_cb.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_wf_cb_chaining.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_wf_cb_string.cpp,18
+int main(44,1487
+
+src/mp_test_gpu/test_mp_gpu_wf_tb.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_wf_tb_2.cpp,18
+int main(44,1470
+
+src/mp_test_gpu/test_mp_gpu_wf_tb_chaining.cpp,18
+int main(44,1480
+
+src/mp_test_gpu/test_mp_gpu_wmr_cb.cpp,18
+int main(44,1484
+
+src/mp_test_gpu/test_mp_gpu_wmr_cb_chaining.cpp,18
+int main(44,1484
+
+src/mp_test_gpu/test_mp_gpu_wmr_cb_string.cpp,18
+int main(44,1491
+
+src/mp_test_gpu/test_mp_gpu_wmr_tb.cpp,18
+int main(44,1484
+
+src/mp_test_gpu/test_mp_gpu_wmr_tb_2.cpp,18
+int main(44,1474
+
+src/mp_test_gpu/test_mp_gpu_wmr_tb_chaining.cpp,18
+int main(44,1485
+
+src/split_test/test_split_1.cpp,18
+int main(52,1987
+
+src/split_test/test_split_2.cpp,18
+int main(54,2225
+
+src/split_test/test_split_3.cpp,18
+int main(54,2304
+
+src/split_test/test_split_4.cpp,18
+int main(54,2603
+
+src/split_test/test_split_5.cpp,18
+int main(54,2603
+
+src/yahoo_test_cpu/test_ysb_kf.cpp,18
+int main(59,1858
+
+src/yahoo_test_cpu/test_ysb_wmr.cpp,18
+int main(59,1863
+
+wf/doxygen-mainpage.hpp,0
