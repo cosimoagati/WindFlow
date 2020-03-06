@@ -149,9 +149,11 @@ private:
 		{
 #if defined(TRACE_WINDFLOW)
 			logfile = new std::ofstream();
-			name += "_" + std::to_string(this->get_my_id()) + "_" + std::to_string(getpid()) + ".log";
+			name += "_" + std::to_string(this->get_my_id()) + "_"
+				+ std::to_string(getpid()) + ".log";
 #if defined(LOG_DIR)
-			std::string filename = std::string(STRINGIFY(LOG_DIR)) + "/" + name;
+			std::string filename = std::string(STRINGIFY(LOG_DIR))
+				+ "/" + name;
 			std::string log_dir = std::string(STRINGIFY(LOG_DIR));
 #else
 			std::string filename = "log/" + name;
@@ -246,19 +248,24 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
+			std::cerr << RED
+				  << "WindFlow Error: FilterGPU has parallelism zero"
+				  << DEFAULT << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of FilterGPU_Node
-		std::vector<ff_node *> w;
+		std::vector<ff_node *> workers;
 		for (size_t i=0; i<_pardegree; i++) {
-			auto *seq = new FilterGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
+			auto *seq = new FilterGPU_Node(_func, _name,
+						       RuntimeContext(
+							       _pardegree, i),
+						       _closing_func);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the FilterGPU will be destroyed we need aslo to destroy the emitter, workers and collector
@@ -287,15 +294,15 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of FilterGPU_Node
-		std::vector<ff_node *> w;
+		std::vector<ff_node *> workers;
 		for (size_t i=0; i<_pardegree; i++) {
 			auto *seq = new FilterGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-			w.push_back(seq);
+			workers.push_back(seq);
 		}
 		// add emitter
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
 		// add workers
-		ff::ff_farm::add_workers(w);
+		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
 		// when the FilterGPU will be destroyed we need aslo to destroy the emitter, workers and collector
