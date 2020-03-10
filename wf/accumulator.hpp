@@ -46,9 +46,9 @@
 #include "context.hpp"
 #include "standard_nodes.hpp"
 
-namespace wf {
-
-/** 
+namespace wf
+{
+/**
  *  \class Accumulator
  *  
  *  \brief Accumulator operator executing "rolling" reduce/fold functions on data streams
@@ -156,8 +156,8 @@ private:
 			// create the log directory
 			if (mkdir(log_dir.c_str(), 0777) != 0) {
 				struct stat st;
-				if((stat(log_dir.c_str(),
-					 &st) != 0) || !S_ISDIR(st.st_mode)) {
+				if((stat(log_dir.c_str(), &st) != 0)
+				   || !S_ISDIR(st.st_mode)) {
 					std::cerr << RED
 						  << "WindFlow Error: directory for log files cannot be created"
 						  << DEFAULT_COLOR << std::endl;
