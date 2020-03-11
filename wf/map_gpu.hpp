@@ -65,14 +65,16 @@ public:
 	using map_func_nip_t = std::function<void(const tuple_t &, result_t &)>;
 	/// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext &)>;
-	/// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
+	/// type of the function to map the key hashcode onto an identifier
+	/// starting from zero to pardegree-1
+	using routing_func_t = std::function<std::size_t(std::size_t,
+							 std::size_t)>;
 private:
 	// friendships with other classes in the library
 	friend class MultiPipe;
 	bool keyed; // flag stating whether the MapGPU is configured with keyBy or not
 	bool used;
-	// class MapGPU_Node
+
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		static constexpr auto max_buffered_tuples = 256;
@@ -83,7 +85,8 @@ private:
 		map_func_nip_t func_nip; // not in-place map function
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
-		bool isIP; // flag stating if the in-place map function should be used (otherwise the not in-place version)
+		bool isIP; // flag stating if the in-place map function should
+			   // be used (otherwise the not in-place version)
 		RuntimeContext context; // RuntimeContext
 		decltype(max_buffered_tuples) buf_index {0};
 
@@ -113,12 +116,14 @@ private:
 			for (auto i = index; i < buffer_size; i += stride)
 				result_buffer[i] = f(input_buffer[i]);
 		}
+
 		inline void fill_tuple_buffer(tuple_t *t)
 		{
 			tuple_buffer[buf_index] = *t;
 			buf_index++;
 			delete t;
 		}
+
 		inline void send_mapped_tuples()
 		{
 			const auto &output_buffer = isIP
