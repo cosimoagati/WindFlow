@@ -72,8 +72,8 @@ public:
 private:
 	// friendships with other classes in the library
 	friend class MultiPipe;
-	bool keyed; // flag stating whether the MapGPU is configured with keyBy or not
-	bool used;
+	bool keyed; // is the MapGPU is configured with keyBy or not?
+	// bool used; // (Doesn't seem to be used for now).
 
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{

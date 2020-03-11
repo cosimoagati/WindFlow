@@ -44,9 +44,9 @@
 #include "context.hpp"
 #include "standard_nodes.hpp"
 
-namespace wf {
-
-/** 
+namespace wf
+{
+/**
  *  \class Map
  *  
  *  \brief Map operator executing a one-to-one transformation on the input stream
