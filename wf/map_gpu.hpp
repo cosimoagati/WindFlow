@@ -74,7 +74,7 @@ private:
 	// friendships with other classes in the library
 	friend class MultiPipe;
 	bool keyed; // is the MapGPU is configured with keyBy or not?
-	// bool used; // (Doesn't seem to be used for now).
+	bool used;
 
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
@@ -154,8 +154,9 @@ private:
 #endif
 			cudaMallocManaged(&tuple_buffer,
 					  max_buffered_tuples * sizeof(tuple_t));
-			cudaMallocManaged(&result_buffer,
-					  max_buffered_tuples * sizeof(tuple_t));
+			if constexpr (isIP)
+				cudaMallocManaged(&result_buffer,
+						  max_buffered_tuples * sizeof(tuple_t));
 			return 0;
 		}
 
@@ -207,7 +208,8 @@ private:
 			delete logfile;
 #endif
 			cudaFree(tuple_buffer);
-			cudaFree(result_buffer);
+			if constexpr (isIP)
+				cudaFree(result_buffer);
 		}
 	};
 
@@ -261,7 +263,7 @@ public:
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	template <typename T=std::size_t>
-	MapGPU(func_t func, T _pardegree, std::string _name,
+	MapGPU(func_t _func, T _pardegree, std::string _name,
 	       closing_func_t _closing_func, routing_func_t _routing_func):
 		keyed(true)
 	{
@@ -301,6 +303,21 @@ public:
 	{
 		return keyed;
 	}
+
+	/**
+	 *  \brief Check whether the Map has been used in a MultiPipe
+	 *  \return true if the Map has been added/chained to an existing MultiPipe
+	 */
+	bool isUsed() const
+	{
+		return used;
+	}
+
+	/// deleted constructors/operators
+	Map(const Map &) = delete; // copy constructor
+	Map(Map &&) = delete; // move constructor
+	Map &operator=(const Map &) = delete; // copy assignment operator
+	Map &operator=(Map &&) = delete; // move assignment operator
 };
 
 } // namespace wf
