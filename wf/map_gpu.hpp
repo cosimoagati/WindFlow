@@ -144,47 +144,59 @@ private:
 			(void) output_buffer;
 		}
 
-		template <>
-		inline void
-		send_mapped_tuples(tuple_t *output_buffer)
-
-		{
-			for (auto i = 0; i < max_buffered_tuples; ++i)
-				ff_send_out(new result_t
-					    {reinterpret_cast<result_t>(output_buffer[i])});
-			buf_index = 0;
-		}
-
-		template <>
-		inline void
-		send_mapped_tuples(result_t *output_buffer)
-		{
-			for (auto i = 0; i < max_buffered_tuples; ++i)
-				ff_send_out(new result_t {output_buffer[i]});
-			buf_index = 0;
-		}
-
 		// Do nothing if the function is in place.
 		template<typename T=int>
 		inline void
-		setup_result_buffer(typename std::enable_if<std::is_same<T, T>::value
+		setup_result_buffer(typename std::enable_if<std::is_integral<T>::value
 				    && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
 				    func_t>::type f)
-		{}
+		{
+			// Suppress unused variable warning;
+			(void) f;
+		}
 
 		template<typename T=int>
 		inline void
-		setup_result_buffer(typename std::enable_if<std::is_same<T, T>::value
+		setup_result_buffer(typename std::enable_if<std::is_integral<T>::value
 				    && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
 				    std::size_t>::type size)
 		{
 			cudaMallocManaged(&result_buffer, size);
 		}
 
+		// In-place version.
+		template<typename T=int>
+		inline void
+		process_tuples(typename std::enable_if<std::is_integral<T>::value
+			       && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
+			       func_t>::type f)
+		{
+			map_kernel<<<1, 32>>>(f);
+			cudaDeviceSynchronize();
+			for (auto i = 0; i < max_buffered_tuples; ++i)
+				ff_send_out(new result_t
+					    {reinterpret_cast<result_t>(tuple_buffer[i])});
+			buf_index = 0;
+		}
+
+		// Non in-place version.
+		template<typename T=int>
+		inline void
+		process_tuples(typename std::enable_if<std::is_same<T, T>::value
+			       && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
+			       func_t>::type f)
+		{
+			map_kernel<<<1, 32>>>(f);
+			cudaDeviceSynchronize();
+			for (auto i = 0; i < max_buffered_tuples; ++i)
+				ff_send_out(new result_t {result_buffer[i]});
+			buf_index = 0;
+		}
+
 		// Do nothing if the function is in place.
 		template<typename T=int>
 		inline void
-		deallocate_result_buffer(typename std::enable_if<std::is_same<T, T>::value
+		deallocate_result_buffer(typename std::enable_if<std::is_integral<T>::value
 					 && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
 					 result_t *>::type buffer)
 		{
@@ -244,9 +256,7 @@ private:
 				fill_tuple_buffer(t);
 				return GO_ON;
 			}
-			map_kernel<<<1, 32>>>(map_func);
-			cudaDeviceSynchronize();
-			send_mapped_tuples();
+			process_tuples(map_func);
 #if defined(TRACE_WINDFLOW)
 			endTS = current_time_nsecs();
 			endTD = current_time_nsecs();
