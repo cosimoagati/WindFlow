@@ -56,7 +56,7 @@ namespace wf
  *  This class implements the Map operator executing a one-to-one stateless
  *  transformation on each tuple of the input stream.
  */
-template<bool isIP, typename tuple_t, typename result_t, typename func_t>
+template<typename tuple_t, typename result_t, typename func_t>
 class MapGPU: public ff::ff_farm
 {
 public:
@@ -76,6 +76,8 @@ private:
 	bool keyed; // is the MapGPU is configured with keyBy or not?
 	bool used;
 
+	// This is used to conditionally include result_buffer, depending on
+	// whether the function to be computed is in place or not.
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		static constexpr auto max_buffered_tuples = 256;
@@ -98,17 +100,31 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
+		// The check on std::is_integral<int>, which is trivially true,
+		// is used to force the template form to be evaluated, so that
+		// we can take advantage of std::enable_if.
+		template<typename T=int>
 		__global__ void
-		map_kernel()
+		map_kernel(typename std::enable_if<std::is_integral<T>::value
+			   && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
+			   func_t>::type f)
 		{
 			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 			const auto stride = blockDim.x * gridDim.x;
-			for (auto i = index; i < max_buffered_tuples; i += stride) {
-				if constexpr (isIP)
-					map_func(tuple_buffer[i]);
-				else
-					result_buffer[i] = map_func(tuple_buffer[i]);
-			}
+			for (auto i = index; i < max_buffered_tuples; i += stride)
+				f(tuple_buffer[i]);
+		}
+
+		template<typename T=int>
+		__global__ void
+		map_kernel(typename std::enable_if<std::is_integral<T>::value
+			   && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
+			   func_t>::type f)
+		{
+			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+			const auto stride = blockDim.x * gridDim.x;
+			for (auto i = index; i < max_buffered_tuples; i += stride)
+				result_buffer[i] = f(tuple_buffer[i]);
 		}
 
 		inline void
@@ -119,19 +135,74 @@ private:
 			delete t;
 		}
 
-		inline void
-		send_mapped_tuples()
+		// This is just a stub used for the latter template
+		// specializations.
+		template<typename T>
+		inline void send_mapped_tuples(T output_buffer)
 		{
-			constexpr auto &output_buffer = isIP
-				? tuple_buffer
-				: result_buffer;
+			 // Suppress unused variable warning.
+			(void) output_buffer;
+		}
+
+		template <>
+		inline void
+		send_mapped_tuples(tuple_t *output_buffer)
+
+		{
 			for (auto i = 0; i < max_buffered_tuples; ++i)
 				ff_send_out(new result_t
 					    {reinterpret_cast<result_t>(output_buffer[i])});
 			buf_index = 0;
 		}
+
+		template <>
+		inline void
+		send_mapped_tuples(result_t *output_buffer)
+		{
+			for (auto i = 0; i < max_buffered_tuples; ++i)
+				ff_send_out(new result_t {output_buffer[i]});
+			buf_index = 0;
+		}
+
+		// Do nothing if the function is in place.
+		template<typename T=int>
+		inline void
+		setup_result_buffer(typename std::enable_if<std::is_same<T, T>::value
+				    && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
+				    func_t>::type f)
+		{}
+
+		template<typename T=int>
+		inline void
+		setup_result_buffer(typename std::enable_if<std::is_same<T, T>::value
+				    && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
+				    std::size_t>::type size)
+		{
+			cudaMallocManaged(&result_buffer, size);
+		}
+
+		// Do nothing if the function is in place.
+		template<typename T=int>
+		inline void
+		deallocate_result_buffer(typename std::enable_if<std::is_same<T, T>::value
+					 && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
+					 result_t *>::type buffer)
+		{
+			// Suppress unused variable warning.
+			(void) buffer;
+		}
+
+		template<typename T=int>
+		inline void
+		deallocate_result_buffer(typename std::enable_if<std::is_same<T, T>::value
+					 && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
+					 result_t *>::type buffer)
+		{
+			cudaFree(buffer);
+		}
+
 	public:
-		template <typename T=std::string>
+		template<typename T=std::string>
 		MapGPU_Node(func_t _func, T _name, RuntimeContext _context,
 			    closing_func_t _closing_func):
 			map_func {_func}, name {_name}, context {_context},
@@ -154,9 +225,7 @@ private:
 #endif
 			cudaMallocManaged(&tuple_buffer,
 					  max_buffered_tuples * sizeof(tuple_t));
-			if constexpr (isIP)
-				cudaMallocManaged(&result_buffer,
-						  max_buffered_tuples * sizeof(tuple_t));
+			setup_result_buffer(max_buffered_tuples * sizeof(tuple_t));
 			return 0;
 		}
 
@@ -175,7 +244,7 @@ private:
 				fill_tuple_buffer(t);
 				return GO_ON;
 			}
-			map_kernel<isIP><<<1, 32>>>();
+			map_kernel<<<1, 32>>>(map_func);
 			cudaDeviceSynchronize();
 			send_mapped_tuples();
 #if defined(TRACE_WINDFLOW)
@@ -208,8 +277,7 @@ private:
 			delete logfile;
 #endif
 			cudaFree(tuple_buffer);
-			if constexpr (isIP)
-				cudaFree(result_buffer);
+			deallocate_result_buffer();
 		}
 	};
 
@@ -314,10 +382,10 @@ public:
 	}
 
 	/// deleted constructors/operators
-	Map(const Map &) = delete; // copy constructor
-	Map(Map &&) = delete; // move constructor
-	Map &operator=(const Map &) = delete; // copy assignment operator
-	Map &operator=(Map &&) = delete; // move assignment operator
+	MapGPU(const MapGPU &) = delete; // copy constructor
+	MapGPU(MapGPU &&) = delete; // move constructor
+	MapGPU &operator=(const MapGPU &) = delete; // copy assignment operator
+	MapGPU &operator=(MapGPU &&) = delete; // move assignment operator
 };
 
 } // namespace wf

@@ -157,7 +157,7 @@ template<typename tuple_t, typename result_t>
 class Map;
 
 /// forward declaration of the Map operator (GPU version)
-template<bool isIP, typename tuple_t, typename result_t, typename func_t>
+template<typename tuple_t, typename result_t, typename func_t>
 class MapGPU;
 
 /// forward declaration of the Filter operator
