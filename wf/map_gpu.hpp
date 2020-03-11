@@ -46,23 +46,24 @@
 #include "context.hpp"
 #include "standard_nodes.hpp"
 
-namespace wf {
+namespace wf
+{
 /**
- *  \class Map
+ *  \class MapGPU
  *
- *  \brief Map operator executing a one-to-one transformation on the input stream
+ *  \brief Map operator executing a one-to-one transformation on the input stream, GPU version
  *
- *  This class implements the Map operator executing a one-to-one stateless transformation
- *  on each tuple of the input stream.
+ *  This class implements the Map operator executing a one-to-one stateless
+ *  transformation on each tuple of the input stream.
  */
-template<typename tuple_t, typename result_t>
+template<bool isIP, typename tuple_t, typename result_t, typename func_t>
 class MapGPU: public ff::ff_farm
 {
 public:
 	/// type of the map function (in-place version)
-	using map_func_ip_t = std::function<void(tuple_t &)>;
+	// using map_func_ip_t = std::function<void(tuple_t &)>;
 	/// type of the map function (not in-place version)
-	using map_func_nip_t = std::function<void(const tuple_t &, result_t &)>;
+	// using map_func_nip_t = std::function<void(const tuple_t &, result_t &)>;
 	/// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	/// type of the function to map the key hashcode onto an identifier
@@ -78,15 +79,15 @@ private:
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		static constexpr auto max_buffered_tuples = 256;
+		func_t map_func; // The function to be computed. May be in place
+				 // or not.
 		tuple_t *tuple_buffer;
 		result_t *result_buffer;
 
-		map_func_ip_t func_ip; // in-place map function
-		map_func_nip_t func_nip; // not in-place map function
+		// map_func_ip_t func_ip; // in-place map function
+		// map_func_nip_t func_nip; // not in-place map function
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
-		bool isIP; // flag stating if the in-place map function should
-			   // be used (otherwise the not in-place version)
 		RuntimeContext context; // RuntimeContext
 		decltype(max_buffered_tuples) buf_index {0};
 
@@ -97,36 +98,31 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-		__global__ void map_kernel_ip(const tuple_t *buffer,
-					      const std::size_t buffer_size,
-					      const map_func_ip_t f)
+		__global__ void
+		map_kernel()
 		{
 			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 			const auto stride = blockDim.x * gridDim.x;
-			for (auto i = index; i < buffer_size; i += stride)
-				f(buffer[i]);
-		}
-		__global__ void map_kernel_nip(const tuple_t *input_buffer,
-					       const result_t *result_buffer,
-					       const std::size_t buffer_size,
-					       const map_func_nip_t f)
-		{
-			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
-			const auto stride = blockDim.x * gridDim.x;
-			for (auto i = index; i < buffer_size; i += stride)
-				result_buffer[i] = f(input_buffer[i]);
+			for (auto i = index; i < max_buffered_tuples; i += stride) {
+				if constexpr (isIP)
+					map_func(tuple_buffer[i]);
+				else
+					result_buffer[i] = map_func(tuple_buffer[i]);
+			}
 		}
 
-		inline void fill_tuple_buffer(tuple_t *t)
+		inline void
+		fill_tuple_buffer(tuple_t *t)
 		{
 			tuple_buffer[buf_index] = *t;
 			buf_index++;
 			delete t;
 		}
 
-		inline void send_mapped_tuples()
+		inline void
+		send_mapped_tuples()
 		{
-			const auto &output_buffer = isIP
+			constexpr auto &output_buffer = isIP
 				? tuple_buffer
 				: result_buffer;
 			for (auto i = 0; i < max_buffered_tuples; ++i)
@@ -135,34 +131,16 @@ private:
 			buf_index = 0;
 		}
 	public:
-		// Constructor I
 		template <typename T=std::string>
-		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
-			    T _name,
-			    RuntimeContext _context,
+		MapGPU_Node(func_t _func, T _name, RuntimeContext _context,
 			    closing_func_t _closing_func):
-			func_ip(_func),
-			name(_name),
-			isIP(true),
-			context(_context),
-			closing_func(_closing_func)
-		{}
-
-		// Constructor III
-		template <typename T=std::string>
-		MapGPU_Node(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
-			    T _name,
-			    RuntimeContext _context,
-			    closing_func_t _closing_func):
-			func_nip(_func),
-			name(_name),
-			isIP(false),
-			context(_context),
-			closing_func(_closing_func)
+			map_func {_func}, name {_name}, context {_context},
+			closing_func {_closing_func}
 		{}
 
 		// svc_init method (utilized by the FastFlow runtime)
-		int svc_init()
+		int
+		svc_init()
 		{
 #if defined(TRACE_WINDFLOW)
 			logfile = new std::ofstream();
@@ -182,7 +160,8 @@ private:
 		}
 
 		// svc method (utilized by the FastFlow runtime)
-		result_t *svc(tuple_t *t)
+		result_t *
+		svc(tuple_t *t)
 		{
 #if defined (TRACE_WINDFLOW)
 			startTS = current_time_nsecs();
@@ -195,15 +174,7 @@ private:
 				fill_tuple_buffer(t);
 				return GO_ON;
 			}
-			if (isIP)
-				map_kernel_ip<<<1, 32>>>(tuple_buffer,
-							 max_buffered_tuples,
-							 func_ip);
-			else
-				map_kernel_nip<<<1, 32>>>(tuple_buffer,
-							  result_buffer,
-							  max_buffered_tuples,
-							  func_nip);
+			map_kernel<isIP><<<1, 32>>>();
 			cudaDeviceSynchronize();
 			send_mapped_tuples();
 #if defined(TRACE_WINDFLOW)
@@ -219,7 +190,8 @@ private:
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)
-		void svc_end()
+		void
+		svc_end()
 		{
 			// call the closing function
 			closing_func(context);
@@ -243,15 +215,13 @@ public:
 	/**
 	 *  \brief Constructor I
 	 *
-	 *  \param _func function to be executed on each input tuple (in-place version)
+	 *  \param _func function to be executed on each input tuple
 	 *  \param _pardegree parallelism degree of the MapGPU operator
 	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 */
 	template <typename T=std::size_t>
-	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
-	       T _pardegree,
-	       std::string _name,
+	MapGPU(func_t _func, T _pardegree, std::string _name,
 	       closing_func_t _closing_func):
 		keyed(false)
 	{
@@ -284,18 +254,15 @@ public:
 	/**
 	 *  \brief Constructor II
 	 *
-	 *  \param _func function to be executed on each input tuple (in-place version)
+	 *  \param _func function to be executed on each input tuple
 	 *  \param _pardegree parallelism degree of the MapGPU operator
 	 *  \param _name string with the unique name of the MapGPU operator
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	template <typename T=std::size_t>
-	MapGPU(typename std::enable_if<std::is_same<T,T>::value && std::is_same<tuple_t,result_t>::value, map_func_ip_t>::type _func,
-	       T _pardegree,
-	       std::string _name,
-	       closing_func_t _closing_func,
-	       routing_func_t _routing_func):
+	MapGPU(func_t func, T _pardegree, std::string _name,
+	       closing_func_t _closing_func, routing_func_t _routing_func):
 		keyed(true)
 	{
 		// check the validity of the parallelism degree
@@ -326,91 +293,11 @@ public:
 	}
 
 	/**
-	 *  \brief Constructor V
-	 *
-	 *  \param _func function to be executed on each input tuple (not in-place version)
-	 *  \param _pardegree parallelism degree of the MapGPU operator
-	 *  \param _name string with the unique name of the MapGPU operator
-	 *  \param _closing_func closing function
-	 */
-	template <typename T=std::size_t>
-	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
-	       T _pardegree,
-	       std::string _name,
-	       closing_func_t _closing_func):
-		keyed(false)
-	{
-		// check the validity of the parallelism degree
-		if (_pardegree == 0) {
-			std::cerr << RED << "WindFlow Error: MapGPU has parallelism zero" << DEFAULT << std::endl;
-			std::exit(EXIT_FAILURE);
-		}
-		// vector of MapGPU_Node
-		std::vector<ff_node *> workers;
-		for (std::size_t i = 0; i < _pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name,
-						    RuntimeContext(_pardegree,
-								   i),
-						    _closing_func);
-			workers.push_back(seq);
-		}
-		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
-		// add workers
-		ff::ff_farm::add_workers(workers);
-		// add default collector
-		ff::ff_farm::add_collector(nullptr);
-		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
-	}
-
-	/**
-	 *  \brief Constructor VI
-	 *
-	 *  \param _func function to be executed on each input tuple (not in-place version)
-	 *  \param _pardegree parallelism degree of the MapGPU operator
-	 *  \param _name string with the unique name of the MapGPU operator
-	 *  \param _closing_func closing function
-	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	 */
-	template <typename T=std::size_t>
-	MapGPU(typename std::enable_if<std::is_same<T,T>::value && !std::is_same<tuple_t,result_t>::value, map_func_nip_t>::type _func,
-	       T _pardegree,
-	       std::string _name,
-	       closing_func_t _closing_func,
-	       routing_func_t _routing_func):
-		keyed(true)
-	{
-		// check the validity of the parallelism degree
-		if (_pardegree == 0) {
-			std::cerr << RED
-				  << "WindFlow Error: MapGPU has parallelism zero"
-				  << DEFAULT << std::endl;
-			std::exit(EXIT_FAILURE);
-		}
-		// vector of MapGPU_Node
-		std::vector<ff_node *> workers;
-		for (std::size_t i = 0; i < _pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name,
-						    RuntimeContext(_pardegree, i),
-						    _closing_func);
-			workers.push_back(seq);
-		}
-		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
-		// add workers
-		ff::ff_farm::add_workers(workers);
-		// add default collector
-		ff::ff_farm::add_collector(nullptr);
-		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
-	}
-
-	/**
 	 *  \brief Check whether the MapGPU has been instantiated with a key-based distribution or not
 	 *  \return true if the MapGPU is configured with keyBy
 	 */
-	bool isKeyed() const
+	bool
+	isKeyed() const
 	{
 		return keyed;
 	}
