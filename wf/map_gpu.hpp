@@ -60,10 +60,6 @@ template<typename tuple_t, typename result_t, typename func_t>
 class MapGPU: public ff::ff_farm
 {
 public:
-	/// type of the map function (in-place version)
-	// using map_func_ip_t = std::function<void(tuple_t &)>;
-	/// type of the map function (not in-place version)
-	// using map_func_nip_t = std::function<void(const tuple_t &, result_t &)>;
 	/// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	/// type of the function to map the key hashcode onto an identifier
@@ -76,8 +72,6 @@ private:
 	bool keyed; // is the MapGPU is configured with keyBy or not?
 	bool used;
 
-	// This is used to conditionally include result_buffer, depending on
-	// whether the function to be computed is in place or not.
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		static constexpr auto max_buffered_tuples = 256;
