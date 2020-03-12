@@ -94,14 +94,8 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-		// The check on std::is_integral<int>, which is trivially true,
-		// is used to force the template form to be evaluated, so that
-		// we can take advantage of std::enable_if.
-		template<typename T=int>
 		__global__ void
-		map_kernel(typename std::enable_if<std::is_integral<T>::value
-			   && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
-			   func_t>::type f)
+		map_kernel_ip()
 		{
 			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 			const auto stride = blockDim.x * gridDim.x;
@@ -109,11 +103,8 @@ private:
 				f(tuple_buffer[i]);
 		}
 
-		template<typename T=int>
 		__global__ void
-		map_kernel(typename std::enable_if<std::is_integral<T>::value
-			   && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
-			   func_t>::type f)
+		map_kernel_nip()
 		{
 			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 			const auto stride = blockDim.x * gridDim.x;
@@ -165,7 +156,7 @@ private:
 			       && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
 			       func_t>::type f)
 		{
-			map_kernel<<<1, 32>>>(f);
+			map_kernel_ip<<<1, 32>>>(f);
 			cudaDeviceSynchronize();
 			for (auto i = 0; i < max_buffered_tuples; ++i)
 				ff_send_out(new result_t
@@ -176,11 +167,11 @@ private:
 		// Non in-place version.
 		template<typename T=int>
 		inline void
-		process_tuples(typename std::enable_if<std::is_same<T, T>::value
+		process_tuples(typename std::enable_if<std::is_integral<T>::value
 			       && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
 			       func_t>::type f)
 		{
-			map_kernel<<<1, 32>>>(f);
+			map_kernel_nip<<<1, 32>>>(f);
 			cudaDeviceSynchronize();
 			for (auto i = 0; i < max_buffered_tuples; ++i)
 				ff_send_out(new result_t {result_buffer[i]});
