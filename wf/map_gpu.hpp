@@ -80,8 +80,6 @@ private:
 		tuple_t *tuple_buffer;
 		result_t *result_buffer;
 
-		// map_func_ip_t func_ip; // in-place map function
-		// map_func_nip_t func_nip; // not in-place map function
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
 		RuntimeContext context; // RuntimeContext
@@ -118,15 +116,6 @@ private:
 			tuple_buffer[buf_index] = *t;
 			buf_index++;
 			delete t;
-		}
-
-		// This is just a stub used for the latter template
-		// specializations.
-		template<typename T>
-		inline void send_mapped_tuples(T output_buffer)
-		{
-			 // Suppress unused variable warning.
-			(void) output_buffer;
 		}
 
 		// Do nothing if the function is in place.
