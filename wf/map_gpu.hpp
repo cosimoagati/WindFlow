@@ -83,7 +83,7 @@ private:
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
 		RuntimeContext context; // RuntimeContext
-		decltype(max_buffered_tuples) buf_index {0};
+		std::size_t buf_index {0};
 
 #if defined(TRACE_WINDFLOW)
 		unsigned long rcvTuples {0};
