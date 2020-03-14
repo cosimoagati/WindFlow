@@ -145,7 +145,7 @@ private:
 			       && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
 			       func_t>::type f)
 		{
-			map_kernel_ip<<<1, 32>>>(f);
+			map_kernel_ip<<<1, 32>>>();
 			cudaDeviceSynchronize();
 			for (auto i = 0; i < max_buffered_tuples; ++i)
 				ff_send_out(new result_t
