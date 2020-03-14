@@ -92,7 +92,7 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-		__global__ void
+		__device__ void
 		map_kernel_ip()
 		{
 			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -101,7 +101,7 @@ private:
 				f(tuple_buffer[i]);
 		}
 
-		__global__ void
+		__device__ void
 		map_kernel_nip()
 		{
 			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -283,7 +283,7 @@ public:
 		if (_pardegree == 0) {
 			std::cerr << RED
 				  << "WindFlow Error: MapGPU has parallelism zero"
-				  << DEFAULT << std::endl;
+				  << DEFAULT_COLOR << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
@@ -323,7 +323,7 @@ public:
 		if (_pardegree == 0) {
 			std::cerr << RED
 				  << "WindFlow Error: MapGPU has parallelism zero"
-				  << DEFAULT << std::endl;
+				  << DEFAULT_COLOR << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of MapGPU_Node
