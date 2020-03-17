@@ -48,6 +48,41 @@
 
 namespace wf
 {
+// Reimplementation of std::is_invocable, unfortunately needed
+// since CUDA doesn't yet support C++17
+template <typename F, typename... Args>
+struct is_invocable :
+		std::is_constructible<std::function<void(Args ...)>,
+				      std::reference_wrapper<typename std::remove_reference<F>::type>>
+{};
+
+// N.B.: CUDA __global__ kernels must not be member functions.
+// TODO: can we make the distinction simpler, with less repetition?
+template<typename tuple_t, typename func_t>
+__global__ void
+run_map_kernel_ip(func_t map_func,
+		  tuple_t *tuple_buffer,
+		  const std::size_t max_buffered_tuples)
+{
+	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto stride = blockDim.x * gridDim.x;
+	for (auto i = index; i < max_buffered_tuples; i += stride)
+		map_func(tuple_buffer[i]);
+}
+
+template<typename tuple_t, typename result_t, typename func_t>
+__global__ void
+run_map_kernel_nip(func_t map_func,
+		   tuple_t *tuple_buffer,
+		   result_t *result_buffer,
+		   const std::size_t max_buffered_tuples)
+{
+	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto stride = blockDim.x * gridDim.x;
+	for (auto i = index; i < max_buffered_tuples; i += stride)
+		map_func(tuple_buffer[i], result_buffer[i]);
+}
+
 /**
  *  \class MapGPU
  *
@@ -92,23 +127,7 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-		__device__ void
-		map_kernel_ip()
-		{
-			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
-			const auto stride = blockDim.x * gridDim.x;
-			for (auto i = index; i < max_buffered_tuples; i += stride)
-				f(tuple_buffer[i]);
-		}
 
-		__device__ void
-		map_kernel_nip()
-		{
-			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
-			const auto stride = blockDim.x * gridDim.x;
-			for (auto i = index; i < max_buffered_tuples; i += stride)
-				result_buffer[i] = f(tuple_buffer[i]);
-		}
 
 		inline void
 		fill_tuple_buffer(tuple_t *t)
@@ -121,19 +140,19 @@ private:
 		// Do nothing if the function is in place.
 		template<typename T=int>
 		inline void
-		setup_result_buffer(typename std::enable_if<std::is_integral<T>::value
-				    && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
-				    func_t>::type f)
+		setup_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
+							       && is_invocable<func_t, tuple_t &>::value,
+				    std::size_t> size)
 		{
 			// Suppress unused variable warning;
-			(void) f;
+			(void) size;
 		}
 
 		template<typename T=int>
 		inline void
-		setup_result_buffer(typename std::enable_if<std::is_integral<T>::value
-				    && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
-				    std::size_t>::type size)
+		setup_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
+							       && is_invocable<func_t, tuple_t &, result_t &>::value,
+				    std::size_t> size)
 		{
 			cudaMallocManaged(&result_buffer, size);
 		}
@@ -141,38 +160,43 @@ private:
 		// In-place version.
 		template<typename T=int>
 		inline void
-		process_tuples(typename std::enable_if<std::is_integral<T>::value
-			       && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
-			       func_t>::type f)
+		process_tuples(typename std::enable_if_t<std::is_integral<T>::value
+			       && is_invocable<func_t, tuple_t &>::value,
+			       func_t> f)
 		{
-			map_kernel_ip<<<1, 32>>>();
+			run_map_kernel_ip<tuple_t, func_t>
+				<<<1, 32>>>(map_func, tuple_buffer,
+					    max_buffered_tuples);
 			cudaDeviceSynchronize();
-			for (auto i = 0; i < max_buffered_tuples; ++i)
-				ff_send_out(new result_t
-					    {reinterpret_cast<result_t>(tuple_buffer[i])});
+			for (auto i = 0; i < max_buffered_tuples; ++i) {
+				this->ff_send_out(reinterpret_cast<result_t *>
+						  (new tuple_t {tuple_buffer[i]}));
+			}
 			buf_index = 0;
 		}
 
 		// Non in-place version.
 		template<typename T=int>
 		inline void
-		process_tuples(typename std::enable_if<std::is_integral<T>::value
-			       && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
-			       func_t>::type f)
+		process_tuples(typename std::enable_if_t<std::is_integral<T>::value
+			       && is_invocable<func_t, tuple_t &, result_t &>::value,
+			       func_t> f)
 		{
-			map_kernel_nip<<<1, 32>>>(f);
+			run_map_kernel_nip<tuple_t, result_t, func_t>
+				<<<1, 32>>>(map_func, tuple_buffer,
+					    result_buffer, max_buffered_tuples);
 			cudaDeviceSynchronize();
 			for (auto i = 0; i < max_buffered_tuples; ++i)
-				ff_send_out(new result_t {result_buffer[i]});
+				this->ff_send_out(new result_t {result_buffer[i]});
 			buf_index = 0;
 		}
 
 		// Do nothing if the function is in place.
 		template<typename T=int>
 		inline void
-		deallocate_result_buffer(typename std::enable_if<std::is_integral<T>::value
-					 && std::is_same<typename std::result_of<func_t(tuple_t)>::type, void>::value,
-					 result_t *>::type buffer)
+		deallocate_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
+					 && is_invocable<func_t, tuple_t &>::value,
+					 result_t *> buffer)
 		{
 			// Suppress unused variable warning.
 			(void) buffer;
@@ -180,9 +204,9 @@ private:
 
 		template<typename T=int>
 		inline void
-		deallocate_result_buffer(typename std::enable_if<std::is_same<T, T>::value
-					 && std::is_same<typename std::result_of<func_t(tuple_t)>::type, result_t>::value,
-					 result_t *>::type buffer)
+		deallocate_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
+					 && is_invocable<func_t, tuple_t &, result_t &>::value,
+					 result_t *> buffer)
 		{
 			cudaFree(buffer);
 		}
@@ -228,7 +252,7 @@ private:
 			// in-place version
 			if (buf_index < max_buffered_tuples) {
 				fill_tuple_buffer(t);
-				return GO_ON;
+				return this->GO_ON;
 			}
 			process_tuples(map_func);
 #if defined(TRACE_WINDFLOW)
@@ -240,7 +264,7 @@ private:
 			avg_td_us += (1.0 / rcvTuples) * (elapsedTD_us - avg_td_us);
 			startTD = current_time_nsecs();
 #endif
-			return GO_ON;
+			return this->GO_ON;
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)
@@ -261,7 +285,7 @@ private:
 			delete logfile;
 #endif
 			cudaFree(tuple_buffer);
-			deallocate_result_buffer();
+			deallocate_result_buffer(result_buffer);
 		}
 	};
 
@@ -366,10 +390,10 @@ public:
 	}
 
 	/// deleted constructors/operators
-	MapGPU(const MapGPU &) = delete; // copy constructor
-	MapGPU(MapGPU &&) = delete; // move constructor
-	MapGPU &operator=(const MapGPU &) = delete; // copy assignment operator
-	MapGPU &operator=(MapGPU &&) = delete; // move assignment operator
+	// MapGPU(const MapGPU &) = delete; // copy constructor
+	// MapGPU(MapGPU &&) = delete; // move constructor
+	// MapGPU &operator=(const MapGPU &) = delete; // copy assignment operator
+	// MapGPU &operator=(MapGPU &&) = delete; // move assignment operator
 };
 
 } // namespace wf
