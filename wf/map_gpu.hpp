@@ -110,6 +110,9 @@ private:
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		static constexpr auto max_buffered_tuples = 256;
+		static constexpr auto gpu_blocks = 1;
+		static constexpr auto gpu_threads_per_block = 32;
+
 		func_t map_func; // The function to be computed. May be in place
 				 // or not.
 		tuple_t *tuple_buffer;
@@ -127,13 +130,11 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-
-
 		inline void
 		fill_tuple_buffer(tuple_t *t)
 		{
 			tuple_buffer[buf_index] = *t;
-			buf_index++;
+			++buf_index;
 			delete t;
 		}
 
@@ -142,11 +143,8 @@ private:
 		inline void
 		setup_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
 							       && is_invocable<func_t, tuple_t &>::value,
-				    std::size_t> size)
-		{
-			// Suppress unused variable warning;
-			(void) size;
-		}
+				    std::size_t>)
+		{}
 
 		template<typename T=int>
 		inline void
@@ -165,8 +163,8 @@ private:
 			       func_t> f)
 		{
 			run_map_kernel_ip<tuple_t, func_t>
-				<<<1, 32>>>(map_func, tuple_buffer,
-					    max_buffered_tuples);
+				<<<gpu_blocks, gpu_threads_per_block>>>(map_func, tuple_buffer,
+									max_buffered_tuples);
 			cudaDeviceSynchronize();
 			for (auto i = 0; i < max_buffered_tuples; ++i) {
 				this->ff_send_out(reinterpret_cast<result_t *>
@@ -183,8 +181,8 @@ private:
 			       func_t> f)
 		{
 			run_map_kernel_nip<tuple_t, result_t, func_t>
-				<<<1, 32>>>(map_func, tuple_buffer,
-					    result_buffer, max_buffered_tuples);
+				<<<gpu_blocks, gpu_threads_per_block>>>(map_func, tuple_buffer,
+									result_buffer, max_buffered_tuples);
 			cudaDeviceSynchronize();
 			for (auto i = 0; i < max_buffered_tuples; ++i)
 				this->ff_send_out(new result_t {result_buffer[i]});
@@ -196,11 +194,8 @@ private:
 		inline void
 		deallocate_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
 					 && is_invocable<func_t, tuple_t &>::value,
-					 result_t *> buffer)
-		{
-			// Suppress unused variable warning.
-			(void) buffer;
-		}
+					 result_t *>)
+		{}
 
 		template<typename T=int>
 		inline void
@@ -384,8 +379,7 @@ public:
 	 *  \brief Check whether the Map has been used in a MultiPipe
 	 *  \return true if the Map has been added/chained to an existing MultiPipe
 	 */
-	bool
-	isUsed() const
+	bool isUsed() const
 	{
 		return used;
 	}
