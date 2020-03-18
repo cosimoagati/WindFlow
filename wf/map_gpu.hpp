@@ -384,7 +384,8 @@ public:
 	 *  \brief Check whether the Map has been used in a MultiPipe
 	 *  \return true if the Map has been added/chained to an existing MultiPipe
 	 */
-	bool isUsed() const
+	bool
+	isUsed() const
 	{
 		return used;
 	}

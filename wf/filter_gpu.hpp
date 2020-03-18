@@ -48,6 +48,21 @@
 
 namespace wf {
 /**
+ * Individual results are stored in a boolean mask array, which the CPU
+ * then uses to determine which tuples to send out.
+ */
+template<typename tuple_t, typename filter_func_t>
+__global__ void filter_kernel(const tuple_t *tuple_buffer,
+			      const bool *tuple_mask_array,
+			      const std::size_t buffer_size,
+			      const filter_func_t f)
+{
+	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto stride = blockDim.x * gridDim.x;
+	for (auto i = index; i < buffer_size; i += stride)
+		tuple_mask_array[i] = f(tuple_buffer[i]);
+}
+/**
  *  \class FilterGPU
  *
  *  \brief FilterGPU operator dropping data items not respecting a given predicate
@@ -82,8 +97,8 @@ private:
 		filter_func_t filter_func; // filter function (predicate)
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
-		RuntimeContext context; // RuntimeContext
-		decltype(max_buffered_tuples) buf_index {0};
+		RuntimeContext context;
+		std::size_t buf_index {0};
 
 #if defined(TRACE_WINDFLOW)
 		unsigned long rcvTuples {0};
@@ -92,36 +107,26 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-		/**
-		 * Individual results are stored in a boolean mask array, which the CPU
-		 * then uses to determine which tuples to send out.
-		 */
-		__global__ void filter_kernel(const tuple_t *tuple_buffer,
-					      const bool *tuple_mask_array,
-					      const std::size_t buffer_size,
-					      const filter_func_t f)
-		{
-			const auto index = blockIdx.x * blockDim.x + threadIdx.x;
-			const auto stride = blockDim.x * gridDim.x;
-			for (auto i = index; i < buffer_size; i += stride)
-				tuple_mask_array[i] = f(tuple_buffer[i]);
-		}
-		inline void fill_tuple_buffers(tuple_t *t)
+		inline void
+		fill_tuple_buffers(tuple_t *t)
 		{
 			cpu_tuple_buffer[buf_index] = t;
 			gpu_tuple_buffer[buf_index] = *t;
 			buf_index++;
 		}
-		inline void send_filtered_tuples()
+
+		inline void
+		send_filtered_tuples()
 		{
 			for (auto i = 0; i < max_buffered_tuples; ++i) {
 				if (tuple_mask_array[i])
-					ff_send_out(cpu_tuple_buffer[i]);
-				else
-					delete cpu_tuple_buffer[i];
+					this->ff_send_out(new tuple_t
+							  {cpu_tuple_buffer[i]});
+				delete cpu_tuple_buffer[i];
 			}
 			buf_index = 0;
 		}
+
 	public:
 		// Constructor I
 		FilterGPU_Node(filter_func_t _filter_func,
@@ -134,18 +139,9 @@ private:
 			closing_func(_closing_func)
 		{}
 
-		// Constructor II
-		// FilterGPU_Node(rich_filter_func_t _rich_filter_func,
-		// 	       std::string _name,
-		// 	       RuntimeContext _context,
-		// 	       closing_func_t _closing_func):
-		// 	name(_name),
-		// 	context(_context),
-		// 	closing_func(_closing_func)
-		// {}
-
 		// svc_init method (utilized by the FastFlow runtime)
-		int svc_init()
+		int
+		svc_init()
 		{
 #if defined(TRACE_WINDFLOW)
 			logfile = new std::ofstream();
@@ -172,7 +168,7 @@ private:
 			logfile->open(filename);
 
 #endif
-			cudaMallocManaged(&tuple_buffer,
+			cudaMallocManaged(tuple_buffer,
 					  max_buffered_tuples * sizeof(tuple_t));
 			cudaMallocManaged(&tuple_mask_array,
 					  max_buffered_tuples * sizeof(bool));
@@ -180,7 +176,8 @@ private:
 		}
 
 		// svc method (utilized by the FastFlow runtime)
-		tuple_t *svc(tuple_t *t)
+		tuple_t *
+		svc(tuple_t *t)
 		{
 #if defined(TRACE_WINDFLOW)
 			startTS = current_time_nsecs();
@@ -193,10 +190,9 @@ private:
 				return GO_ON;
 			}
 			// evaluate the predicate on buffered items
-			filter_kernel<<<1, 32>>>(gpu_tuple_buffer,
-						 tuple_mask_array,
-						 max_buffered_tuples,
-						 filter_func);
+			filter_kernel<tuple_t, filter_func_t>
+				<<<1, 32>>>(gpu_tuple_buffer, tuple_mask_array,
+					    max_buffered_tuples, filter_func);
 			cudaDeviceSynchronize();
 #if defined(TRACE_WINDFLOW)
 			endTS = current_time_nsecs();
@@ -212,7 +208,8 @@ private:
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)
-		void svc_end()
+		void
+		svc_end()
 		{
 			// call the closing function
 			closing_func(context);
@@ -310,84 +307,11 @@ public:
 	}
 
 	/**
-	 *  \brief Constructor III
-	 *
-	 *  \param _func rich filter function (boolean predicate)
-	 *  \param _pardegree parallelism degree of the FilterGPU operator
-	 *  \param _name string with the unique name of the FilterGPU operator
-	 *  \param _closing_func closing function
-	 */
-	// FilterGPU(rich_filter_func_t _func,
-	// 	  size_t _pardegree,
-	// 	  std::string _name,
-	// 	  closing_func_t _closing_func):
-	// 	keyed(false), used(false)
-	// {
-	// 	// check the validity of the parallelism degree
-	// 	if (_pardegree == 0) {
-	// 		std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero" << DEFAULT << std::endl;
-	// 		std::exit(EXIT_FAILURE);
-	// 	}
-	// 	// vector of FilterGPU_Node
-	// 	std::vector<ff_node *> w;
-	// 	for (size_t i=0; i<_pardegree; i++) {
-	// 		auto *seq = new FilterGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-	// 		w.push_back(seq);
-	// 	}
-	// 	// add emitter
-	// 	ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
-	// 	// add workers
-	// 	ff::ff_farm::add_workers(w);
-	// 	// add default collector
-	// 	ff::ff_farm::add_collector(nullptr);
-	// 	// when the FilterGPU will be destroyed we need aslo to destroy the emitter, workers and collector
-	// 	ff::ff_farm::cleanup_all();
-	// }
-
-	/**
-	 *  \brief Constructor IV
-	 *
-	 *  \param _func rich filter function (boolean predicate)
-	 *  \param _pardegree parallelism degree of the FilterGPU operator
-	 *  \param _name string with the unique name of the FilterGPU operator
-	 *  \param _closing_func closing function
-	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
-	 */
-	// FilterGPU(rich_filter_func_t _func,
-	// 	  size_t _pardegree,
-	// 	  std::string _name,
-	// 	  closing_func_t _closing_func,
-	// 	  routing_func_t _routing_func):
-	// 	keyed(true), used(false)
-	// {
-	// 	// check the validity of the parallelism degree
-	// 	if (_pardegree == 0) {
-	// 		std::cerr << RED
-	// 			  << "WindFlow Error: FilterGPU has parallelism zero"
-	// 			  << DEFAULT << std::endl;
-	// 		std::exit(EXIT_FAILURE);
-	// 	}
-	// 	// vector of FilterGPU_Node
-	// 	std::vector<ff_node *> w;
-	// 	for (size_t i=0; i<_pardegree; i++) {
-	// 		auto *seq = new FilterGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
-	// 		w.push_back(seq);
-	// 	}
-	// 	// add emitter
-	// 	ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
-	// 	// add workers
-	// 	ff::ff_farm::add_workers(w);
-	// 	// add default collector
-	// 	ff::ff_farm::add_collector(nullptr);
-	// 	// when the FilterGPU will be destroyed we need aslo to destroy the emitter, workers and collector
-	// 	ff::ff_farm::cleanup_all();
-	// }
-
-	/**
 	 *  \brief Check whether the FilterGPU has been instantiated with a key-based distribution or not
 	 *  \return true if the FilterGPU is configured with keyBy
 	 */
-	bool isKeyed() const
+	bool
+	isKeyed() const
 	{
 		return keyed;
 	}
@@ -396,7 +320,8 @@ public:
 	 *  \brief Check whether the Filter has been used in a MultiPipe
 	 *  \return true if the Filter has been added/chained to an existing MultiPipe
 	 */
-	bool isUsed() const
+	bool
+	isUsed() const
 	{
 		return used;
 	}
