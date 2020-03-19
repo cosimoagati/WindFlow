@@ -35,6 +35,9 @@
 #ifndef MAP_GPU_H
 #define MAP_GPU_H
 
+// Enable different CUDA streams per thread.
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
+
 /// includes
 #include <cstdlib>
 #include <string>
