@@ -103,6 +103,9 @@ public:
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
 private:
+	static constexpr auto DEFAULT_MAX_BUFFERED_TUPLES = 256;
+	static constexpr auto DEFAULT_GPU_BLOCKS = 1;
+	static constexpr auto DEFAULT_GPU_THREADS_PER_BLOCK = 256;
 	// friendships with other classes in the library
 	friend class MultiPipe;
 	bool keyed; // is the MapGPU is configured with keyBy or not?
@@ -115,13 +118,14 @@ private:
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
 		RuntimeContext context; // RuntimeContext
-		std::size_t max_buffered_tuples {256};
-		std::size_t gpu_blocks {1};
-		std::size_t gpu_threads_per_block {256};
-		std::size_t buf_index {0};
+		std::size_t max_buffered_tuples;
+		std::size_t gpu_blocks;
+		std::size_t gpu_threads_per_block;
 
 		tuple_t *tuple_buffer;
 		result_t *result_buffer;
+		std::size_t buf_index {0};
+
 
 #if defined(TRACE_WINDFLOW)
 		unsigned long rcvTuples {0};
@@ -206,18 +210,19 @@ private:
 			cudaFree(buffer);
 		}
 
+
 	public:
 		template<typename string_t=std::string, typename int_t=std::size_t>
 		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
 			    int_t max_buffered_tuples,
 			    int_t gpu_blocks,
 			    int_t gpu_threads_per_block,
-			    closing_func_t closing_func):
-			map_func {func}, name {name}, context {context},
-			max_buffered_tuples {max_buffered_tuples},
-			gpu_blocks {gpu_blocks},
-			gpu_threads_per_block {gpu_threads_per_block},
-			closing_func {closing_func}
+			    closing_func_t closing_func)
+			: map_func {func}, name {name}, context {context},
+			  max_buffered_tuples {max_buffered_tuples},
+			  gpu_blocks {gpu_blocks},
+			  gpu_threads_per_block {gpu_threads_per_block},
+			  closing_func {closing_func}
 		{}
 
 		// svc_init method (utilized by the FastFlow runtime)
@@ -303,10 +308,11 @@ public:
 	 */
 	template <typename string_t=std::string, typename int_t=std::size_t>
 	MapGPU(func_t func, int_t pardegree, string_t name,
-	       int_t max_buffered_tuples, int_t gpu_blocks,
-	       int_t gpu_threads_per_block,
-	       closing_func_t closing_func):
-		keyed {false}
+	       closing_func_t closing_func,
+	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
+	       int_t gpu_blocks=DEFAULT_GPU_BLOCKS,
+	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
+		: keyed {false}
 	{
 		// check the validity of the parallelism degree
 		if (pardegree == 0) {
@@ -350,10 +356,11 @@ public:
 	 */
 	template <typename string_t=std::size_t, typename int_t=std::size_t>
 	MapGPU(func_t func, int_t pardegree, std::string name,
-	       int_t max_buffered_tuples, int_t gpu_blocks,
-	       int_t gpu_threads_per_block,
-	       closing_func_t closing_func, routing_func_t routing_func):
-		keyed {true}
+	       closing_func_t closing_func, routing_func_t routing_func,
+	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
+	       int_t gpu_blocks=DEFAULT_GPU_BLOCKS,
+	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
+		: keyed {true}
 	{
 		// check the validity of the parallelism degree
 		if (pardegree == 0) {
