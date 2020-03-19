@@ -105,23 +105,22 @@ private:
 	// friendships with other classes in the library
 	friend class MultiPipe;
 	bool keyed; // is the MapGPU is configured with keyBy or not?
-	bool used;
+	bool used; // is the MapGPU used in a MultiPipe or not?
 
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
-		static constexpr auto max_buffered_tuples = 256;
-		static constexpr auto gpu_blocks = 1;
-		static constexpr auto gpu_threads_per_block = 32;
-
 		func_t map_func; // The function to be computed. May be in place
 				 // or not.
-		tuple_t *tuple_buffer;
-		result_t *result_buffer;
-
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
 		RuntimeContext context; // RuntimeContext
+				std::size_t max_buffered_tuples {256};
+		std::size_t gpu_blocks{1};
+		std::size_t gpu_threads_per_block {256};
 		std::size_t buf_index {0};
+
+		tuple_t *tuple_buffer;
+		result_t *result_buffer;
 
 #if defined(TRACE_WINDFLOW)
 		unsigned long rcvTuples {0};
@@ -207,11 +206,17 @@ private:
 		}
 
 	public:
-		template<typename T=std::string>
-		MapGPU_Node(func_t _func, T _name, RuntimeContext _context,
-			    closing_func_t _closing_func):
-			map_func {_func}, name {_name}, context {_context},
-			closing_func {_closing_func}
+		template<typename string_t=std::string, typename int_t=std::size_t>
+		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
+			    int_t max_buffered_tuples,
+			    int_t gpu_blocks,
+			    int_t gpu_threads_per_block,
+			    closing_func_t closing_func):
+			map_func {func}, name {name}, context {context},
+			max_buffered_tuples {max_buffered_tuples},
+			gpu_blocks {gpu_blocks},
+			gpu_threads_per_block {gpu_threads_per_block},
+			closing_func {closing_func}
 		{}
 
 		// svc_init method (utilized by the FastFlow runtime)
@@ -288,18 +293,23 @@ public:
 	/**
 	 *  \brief Constructor I
 	 *
-	 *  \param _func function to be executed on each input tuple
-	 *  \param _pardegree parallelism degree of the MapGPU operator
-	 *  \param _name string with the unique name of the MapGPU operator
-	 *  \param _closing_func closing function
+	 *  \param func function to be executed on each input tuple
+	 *  \param pardegree parallelism degree of the MapGPU operator
+	 *  \param name string with the unique name of the MapGPU operator
+	 *  \param max_buffered_tuples numbers of tuples to buffer on the GPU
+	 *  \param gpu_blocks the number of blocks to use when calling the GPU kernel
+	 *  \param gpu_threads_per_block number of GPU threads per block
+	 *  \param closing_func closing function
 	 */
-	template <typename T=std::size_t>
-	MapGPU(func_t _func, T _pardegree, std::string _name,
-	       closing_func_t _closing_func):
-		keyed(false)
+	template <typename string_t=std::string, typename int_t=std::size_t>
+	MapGPU(func_t func, int_t pardegree, string_t name,
+	       int_t max_buffered_tuples, int_t gpu_blocks,
+	       int_t gpu_threads_per_block,
+	       closing_func_t closing_func):
+		keyed {false}
 	{
 		// check the validity of the parallelism degree
-		if (_pardegree == 0) {
+		if (pardegree == 0) {
 			std::cerr << RED
 				  << "WindFlow Error: MapGPU has parallelism zero"
 				  << DEFAULT_COLOR << std::endl;
@@ -307,15 +317,17 @@ public:
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> workers;
-		for (std::size_t i = 0; i < _pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name,
-						    RuntimeContext(_pardegree,
-								   i),
-						    _closing_func);
+		for (std::size_t i = 0; i < pardegree; i++) {
+			auto *seq = new MapGPU_Node {func, name,
+						     RuntimeContext {pardegree, i},
+						     max_buffered_tuples,
+						     gpu_blocks,
+						     gpu_threads_per_block,
+						     closing_func};
 			workers.push_back(seq);
 		}
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
+		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t> {pardegree});
 		// add workers
 		ff::ff_farm::add_workers(workers);
 		// add default collector
@@ -327,19 +339,24 @@ public:
 	/**
 	 *  \brief Constructor II
 	 *
-	 *  \param _func function to be executed on each input tuple
-	 *  \param _pardegree parallelism degree of the MapGPU operator
-	 *  \param _name string with the unique name of the MapGPU operator
-	 *  \param _closing_func closing function
-	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
+	 *  \param func function to be executed on each input tuple
+	 *  \param pardegree parallelism degree of the MapGPU operator
+	 *  \param name string with the unique name of the MapGPU operator
+	 *  \param max_buffered_tuples numbers of tuples to buffer on the GPU
+	 *  \param gpu_blocks the number of blocks to use when calling the GPU kernel
+	 *  \param gpu_threads_per_block number of GPU threads per block
+	 *  \param closing_func closing function
+	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename T=std::size_t>
-	MapGPU(func_t _func, T _pardegree, std::string _name,
-	       closing_func_t _closing_func, routing_func_t _routing_func):
-		keyed(true)
+	template <typename string_t=std::size_t, typename int_t=std::size_t>
+	MapGPU(func_t func, int_t pardegree, std::string name,
+	       int_t max_buffered_tuples, int_t gpu_blocks,
+	       int_t gpu_threads_per_block,
+	       closing_func_t closing_func, routing_func_t routing_func):
+		keyed {true}
 	{
 		// check the validity of the parallelism degree
-		if (_pardegree == 0) {
+		if (pardegree == 0) {
 			std::cerr << RED
 				  << "WindFlow Error: MapGPU has parallelism zero"
 				  << DEFAULT_COLOR << std::endl;
@@ -347,16 +364,17 @@ public:
 		}
 		// vector of MapGPU_Node
 		std::vector<ff_node *> workers;
-		for (std::size_t i = 0; i < _pardegree; i++) {
-			auto *seq = new MapGPU_Node(_func, _name,
-						    RuntimeContext(_pardegree,
-								   i),
-						    _closing_func);
+		for (std::size_t i = 0; i < pardegree; i++) {
+			auto *seq = new MapGPU_Node {func, name,
+						     RuntimeContext {pardegree, i},
+						     max_buffered_tuples,
+						     gpu_blocks,
+						     gpu_threads_per_block,
+						     closing_func};
 			workers.push_back(seq);
 		}
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func,
-								       _pardegree));
+		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t> {routing_func, pardegree});
 		// add workers
 		ff::ff_farm::add_workers(workers);
 		// add default collector
