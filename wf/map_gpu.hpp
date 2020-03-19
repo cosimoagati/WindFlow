@@ -247,7 +247,6 @@ private:
 				startTD = current_time_nsecs();
 			rcvTuples++;
 #endif
-			// in-place version
 			if (buf_index < max_buffered_tuples) {
 				buffer_tuple(t);
 				return this->GO_ON;
