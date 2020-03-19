@@ -112,8 +112,8 @@ private:
 		closing_func_t closing_func; // closing function
 		std::string name; // string of the unique name of the operator
 		RuntimeContext context; // RuntimeContext
-				std::size_t max_buffered_tuples {256};
-		std::size_t gpu_blocks{1};
+		std::size_t max_buffered_tuples {256};
+		std::size_t gpu_blocks {1};
 		std::size_t gpu_threads_per_block {256};
 		std::size_t buf_index {0};
 
@@ -157,7 +157,7 @@ private:
 		inline void
 		process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
 					&& is_invocable<func_t, tuple_t &>::value,
-					func_t> f)
+					func_t>)
 		{
 			run_map_kernel_ip<tuple_t, func_t>
 				<<<gpu_blocks, gpu_threads_per_block>>>(map_func, tuple_buffer,
@@ -175,7 +175,7 @@ private:
 		inline void
 		process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
 					&& is_invocable<func_t, tuple_t &, result_t &>::value,
-					func_t> f)
+					func_t>)
 		{
 			run_map_kernel_nip<tuple_t, result_t, func_t>
 				<<<gpu_blocks, gpu_threads_per_block>>>(map_func, tuple_buffer,
