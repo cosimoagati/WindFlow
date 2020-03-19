@@ -60,8 +60,7 @@ struct is_invocable :
 // TODO: can we make the distinction simpler, with less repetition?
 template<typename tuple_t, typename func_t>
 __global__ void
-run_map_kernel_ip(func_t map_func,
-		  tuple_t *tuple_buffer,
+run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
 		  const std::size_t max_buffered_tuples)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -72,8 +71,7 @@ run_map_kernel_ip(func_t map_func,
 
 template<typename tuple_t, typename result_t, typename func_t>
 __global__ void
-run_map_kernel_nip(func_t map_func,
-		   tuple_t *tuple_buffer,
+run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
 		   result_t *result_buffer,
 		   const std::size_t max_buffered_tuples)
 {
@@ -130,7 +128,7 @@ private:
 		std::ofstream *logfile = nullptr;
 #endif
 		inline void
-		fill_tuple_buffer(tuple_t *t)
+		buffer_tuple(tuple_t *t)
 		{
 			tuple_buffer[buf_index] = *t;
 			++buf_index;
@@ -157,9 +155,9 @@ private:
 		// In-place version.
 		template<typename T=int>
 		inline void
-		process_tuples(typename std::enable_if_t<std::is_integral<T>::value
-			       && is_invocable<func_t, tuple_t &>::value,
-			       func_t> f)
+		process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
+					&& is_invocable<func_t, tuple_t &>::value,
+					func_t> f)
 		{
 			run_map_kernel_ip<tuple_t, func_t>
 				<<<gpu_blocks, gpu_threads_per_block>>>(map_func, tuple_buffer,
@@ -175,9 +173,9 @@ private:
 		// Non in-place version.
 		template<typename T=int>
 		inline void
-		process_tuples(typename std::enable_if_t<std::is_integral<T>::value
-			       && is_invocable<func_t, tuple_t &, result_t &>::value,
-			       func_t> f)
+		process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
+					&& is_invocable<func_t, tuple_t &, result_t &>::value,
+					func_t> f)
 		{
 			run_map_kernel_nip<tuple_t, result_t, func_t>
 				<<<gpu_blocks, gpu_threads_per_block>>>(map_func, tuple_buffer,
@@ -251,10 +249,10 @@ private:
 #endif
 			// in-place version
 			if (buf_index < max_buffered_tuples) {
-				fill_tuple_buffer(t);
+				buffer_tuple(t);
 				return this->GO_ON;
 			}
-			process_tuples(map_func);
+			process_buffered_tuples(map_func);
 #if defined(TRACE_WINDFLOW)
 			endTS = current_time_nsecs();
 			endTD = current_time_nsecs();
