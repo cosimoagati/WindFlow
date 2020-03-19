@@ -129,6 +129,14 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
+		inline void
+		fill_tuple_buffer(tuple_t *t)
+		{
+			tuple_buffer[buf_index] = *t;
+			++buf_index;
+			delete t;
+		}
+
 		// Do nothing if the function is in place.
 		template<typename T=int>
 		inline void
@@ -243,9 +251,7 @@ private:
 #endif
 			// in-place version
 			if (buf_index < max_buffered_tuples) {
-				tuple_buffer[buf_index] = *t;
-				++buf_index;
-				delete t;
+				fill_tuple_buffer(t);
 				return this->GO_ON;
 			}
 			process_tuples(map_func);
