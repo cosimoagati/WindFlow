@@ -108,7 +108,7 @@ private:
 	static constexpr auto DEFAULT_GPU_THREADS_PER_BLOCK = 256;
 	// friendships with other classes in the library
 	friend class MultiPipe;
-	bool keyed; // is the MapGPU is configured with keyBy or not?
+	bool is_keyed; // is the MapGPU is configured with keyBy or not?
 	bool used; // is the MapGPU used in a MultiPipe or not?
 
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
@@ -312,7 +312,7 @@ public:
 	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
 	       int_t gpu_blocks=DEFAULT_GPU_BLOCKS,
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
-		: keyed {false}
+		: is_keyed {false}
 	{
 		// check the validity of the parallelism degree
 		if (pardegree == 0) {
@@ -360,7 +360,7 @@ public:
 	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
 	       int_t gpu_blocks=DEFAULT_GPU_BLOCKS,
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
-		: keyed {true}
+		: is_keyed {true}
 	{
 		// check the validity of the parallelism degree
 		if (pardegree == 0) {
@@ -397,7 +397,7 @@ public:
 	bool
 	isKeyed() const
 	{
-		return keyed;
+		return is_keyed;
 	}
 
 	/**

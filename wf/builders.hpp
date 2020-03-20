@@ -392,6 +392,215 @@ public:
 	}
 };
 
+template<typename F_t>
+class MapGPU_Builder
+{
+private:
+	F_t func;
+	// type of the operator to be created by this builder.
+	using mapgpu_t = MapGPU<decltype(get_tuple_t(func)),
+			     decltype(get_result_t(func)), F_t>;
+	// type of the closing function.
+	using closing_func_t = std::function<void(RuntimeContext&)>;
+	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1.
+	using routing_func_t = std::function<std::size_t(std::size_t,
+							 std::size_t)>;
+	std::uint64_t pardegree {1};
+	std::string name {"anonymous_map"};
+	std::size_t max_buffered_tuples {256};
+	std::size_t gpu_blocks {1};
+	std::size_t gpu_threads_per_block {256};
+	bool is_keyed {false};
+
+	closing_func_t closing_func = [](RuntimeContext &) -> void { return; };
+	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
+
+public:
+	/**
+	 *  \brief Constructor
+	 *
+	 *  \param func function of the one-to-one transformation.
+	 */
+	MapGPU_Builder(F_t func): func {func} {}
+
+	/**
+	 *  \brief Method to specify the name of the Map operator.
+	 *
+	 *  \param name std::string with the name to be given.
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+	withName(std::string name)
+	{
+		this->name = name;
+		return *this;
+	}
+
+	/**
+	 *  \brief Method to specify the parallelism of the Map operator.
+	 *
+	 *  \param pardegree number of map replicas.
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+	withParallelism(std::size_t pardegree)
+	{
+		this->pardegree = pardegree;
+		return *this;
+	}
+
+	/**
+	 *  \brief Method to enable key-based routing.
+	 *
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+	enable_KeyBy()
+	{
+		is_keyed = true;
+		return *this;
+	}
+
+	/**
+	 *  \brief Method to disable key-based routing.
+	 *
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+	disable_KeyBy()
+	{
+		is_keyed = false;
+		return *this;
+	}
+
+	/**
+	 *  \brief Method to disable key-based routing.
+	 *
+	 *  \param is_keyed determines whether the MapGPU is keyed or not.
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+	withKeyBy(bool is_keyed)
+	{
+		this->is_keyed = is_keyed;
+		return *this;
+	}
+
+	/**
+	 *  \brief Method to specify the closing function used by the operator.
+	 *
+	 *  \param closing_func closing function to be used by the operator.
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+	withClosingFunction(closing_func_t closing_func)
+	{
+		this->closing_func = closing_func;
+		return *this;
+	}
+
+	/**
+	 *  \brief Method to specify how many tuples should be buffered.
+	 *
+	 *  \param max_buffered_tuples the maximum amount of buffered tuples.
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+        withMaxBufferedTuples(std::size_t max_buffered_tuples)
+	{
+		this->max_buffered_tuples = max_buffered_tuples;
+		return *this;
+	}
+
+	/**
+	 *  \brief Method to specify how many blocks to be used by a single worker.
+	 *
+	 *  \param gpu_blocks the number of blocks used by a single worker.
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+	withGPUBlocks(std::size_t gpu_blocks)
+	{
+		this->gpu_blocks = gpu_blocks;
+		return *this;
+	}
+
+	/**
+	 *  \brief Method to specify how many tuples should be buffered.
+	 *
+	 *  \param _max_buffered_tuples the maximum amount of buffered tuples.
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+	withGPUThreadsPerBlock(std::size_t gpu_threads_per_block)
+	{
+		this->gpu_threads_per_block = gpu_threads_per_block;
+		return *this;
+	}
+
+#if __cplusplus >= 201703L
+	/**
+	 *  \brief Method to create the MapGPU operator (only C++17).
+	 *
+	 *  \return the created MapGPU operator by value.
+	 */
+	mapgpu_t
+	build()
+	{
+		// Copy elision in C++17
+		if (!is_keyed)
+			return mapgpu_t {func, pardegree, name, closing_func,
+					 max_buffered_tuples, gpu_blocks,
+					 gpu_threads_per_block};
+		else
+			return mapgpu_t {func, pardegree, name, closing_func,
+					 routing_func, max_buffered_tuples,
+					 gpu_blocks, gpu_threads_per_block};
+	}
+#endif
+
+	/**
+	 *  \brief Method to create the MapGPU operator.
+	 *
+	 *  \return a pointer to the created MapGPU operator (to be explicitly deallocated/destroyed).
+	 */
+	mapgpu_t *
+	build_ptr()
+	{
+		if (!is_keyed)
+			return new mapgpu_t {func, pardegree, name, closing_func,
+					     max_buffered_tuples, gpu_blocks,
+					     gpu_threads_per_block};
+		else
+			return new mapgpu_t {func, pardegree, name, closing_func,
+					     routing_func, max_buffered_tuples,
+					     gpu_blocks, gpu_threads_per_block};
+	}
+
+	/**
+	 *  \brief Method to create the MapGPU operator
+	 *
+	 *  \return a std::unique_ptr to the newly created MapGPU operator.
+	 */
+	std::unique_ptr<mapgpu_t>
+	build_unique()
+	{
+		if (!is_keyed)
+			return std::make_unique<mapgpu_t>(func, pardegree,
+							  name, closing_func,
+							  max_buffered_tuples,
+							  gpu_blocks,
+							  gpu_threads_per_block);
+		else
+			return std::make_unique<mapgpu_t>(func, pardegree, name,
+							  closing_func,
+							  routing_func,
+							  max_buffered_tuples,
+							  gpu_blocks,
+							  gpu_threads_per_block);
+	}
+};
+
 /**
  *  \class FlatMap_Builder
  *  
