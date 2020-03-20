@@ -199,7 +199,7 @@ private:
 			// cudaDeviceSynchronize();
 			cudaStreamSynchronize(cuda_stream);
 			for (auto i = 0; i < max_buffered_tuples; ++i)
-init				this->ff_send_out(new result_t {result_buffer[i]});
+				this->ff_send_out(new result_t {result_buffer[i]});
 			buf_index = 0;
 		}
 
