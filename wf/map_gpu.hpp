@@ -139,6 +139,17 @@ private:
 		std::ofstream *logfile = nullptr;
 #endif
 		inline void
+		cuda_malloc_managed_fail_on_error(void *ptr, std::size_t size)
+		{
+			if (cudaMallocManaged(&ptr, size) != cudaSuccess) {
+				std::cerr << RED
+					  << "Windflow Error: MapGPU_Node failed to allocate shared memory area"
+					  << DEFAULT_COLOR << std::endl;
+				std::exit(EXIT_FAILURE);
+			}
+		}
+
+		inline void
 		buffer_tuple(tuple_t *t)
 		{
 			tuple_buffer[buf_index] = *t;
@@ -160,7 +171,7 @@ private:
 							       && is_invocable<func_t, tuple_t &, result_t &>::value,
 				    std::size_t> size)
 		{
-			cudaMallocManaged(&result_buffer, size);
+			cuda_malloc_managed_fail_on_error(result_buffer, size));
 		}
 
 		// In-place version.
@@ -249,9 +260,9 @@ private:
 				+ name;
 			logfile->open(filename);
 #endif
-			cudaMallocManaged(&tuple_buffer,
-					  max_buffered_tuples * sizeof(tuple_t));
-			setup_result_buffer(max_buffered_tuples * sizeof(tuple_t));
+			cuda_malloc_managed_fail_on_error(tuple_buffer,
+							  max_buffered_tuples * sizeof(tuple_t));
+			setup_result_buffer(max_buffered_tuples * sizeof(result_t));
 			if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 				std::cerr << RED
 					  << "WindFlow Error: cudaStreamCreate() failed in MapGPU_Node"
