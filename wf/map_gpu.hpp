@@ -36,7 +36,8 @@
 #define MAP_GPU_H
 
 // Enable different CUDA streams per thread.
-#define CUDA_API_PER_THREAD_DEFAULT_STREAM
+// TODO: Does this have to be defined?
+// #define CUDA_API_PER_THREAD_DEFAULT_STREAM
 
 /// includes
 #include <cstdlib>
@@ -53,6 +54,8 @@ namespace wf
 {
 // Reimplementation of std::is_invocable, unfortunately needed
 // since CUDA doesn't yet support C++17
+
+// TODO: Move this in some default utilities header.
 template <typename F, typename... Args>
 struct is_invocable :
 		std::is_constructible<std::function<void(Args ...)>,
@@ -125,6 +128,7 @@ private:
 		tuple_t *tuple_buffer;
 		result_t *result_buffer;
 		std::size_t buf_index {0};
+		cudaStream_t cuda_stream;
 
 
 #if defined(TRACE_WINDFLOW)
@@ -167,9 +171,12 @@ private:
 					func_t>)
 		{
 			run_map_kernel_ip<tuple_t, func_t>
-				<<<gpu_blocks, gpu_threads_per_block>>>(map_func, tuple_buffer,
-									max_buffered_tuples);
-			cudaDeviceSynchronize();
+				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+				(map_func, tuple_buffer,
+				 max_buffered_tuples);
+			// TODO: Should this be removed?
+			// cudaDeviceSynchronize();
+			cudaStreamSynchronize(cuda_stream);
 			for (auto i = 0; i < max_buffered_tuples; ++i) {
 				this->ff_send_out(reinterpret_cast<result_t *>
 						  (new tuple_t {tuple_buffer[i]}));
@@ -185,11 +192,14 @@ private:
 					func_t>)
 		{
 			run_map_kernel_nip<tuple_t, result_t, func_t>
-				<<<gpu_blocks, gpu_threads_per_block>>>(map_func, tuple_buffer,
-									result_buffer, max_buffered_tuples);
-			cudaDeviceSynchronize();
+				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+				(map_func, tuple_buffer,
+				 result_buffer, max_buffered_tuples);
+			// TODO: Should this be removed?
+			// cudaDeviceSynchronize();
+			cudaStreamSynchronize(cuda_stream);
 			for (auto i = 0; i < max_buffered_tuples; ++i)
-				this->ff_send_out(new result_t {result_buffer[i]});
+init				this->ff_send_out(new result_t {result_buffer[i]});
 			buf_index = 0;
 		}
 
@@ -242,6 +252,12 @@ private:
 			cudaMallocManaged(&tuple_buffer,
 					  max_buffered_tuples * sizeof(tuple_t));
 			setup_result_buffer(max_buffered_tuples * sizeof(tuple_t));
+			if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
+				std::cerr << RED
+					  << "WindFlow Error: cudaStreamCreate() failed in MapGPU_Node"
+					  << DEFAULT_COLOR << std::endl;
+				std::exit(EXIT_FAILURE);
+			}
 			return 0;
 		}
 
@@ -291,6 +307,7 @@ private:
 #endif
 			cudaFree(tuple_buffer);
 			deallocate_result_buffer(result_buffer);
+			cudaStreamDestroy(cuda_stream);
 		}
 	};
 
