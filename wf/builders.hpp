@@ -281,7 +281,8 @@ private:
 			  decltype(get_result_t(func))>;
 	// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext&)>;
-	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
+	// type of the function to map the key hashcode onto an identifier
+	// starting from zero to pardegree-1
 	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
 	std::uint64_t pardegree = 1;
 	std::string name = "anonymous_map";
@@ -392,6 +393,8 @@ public:
 	}
 };
 
+// TODO: Could we factor out something in order to avoid duplication between
+// Map_Builder and MapGPU_Builder?
 template<typename F_t>
 class MapGPU_Builder
 {
@@ -402,7 +405,8 @@ private:
 			     decltype(get_result_t(func)), F_t>;
 	// type of the closing function.
 	using closing_func_t = std::function<void(RuntimeContext&)>;
-	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1.
+	// type of the function to map the key hashcode onto an identifier
+	// starting from zero to pardegree-1.
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
 	std::uint64_t pardegree {1};
