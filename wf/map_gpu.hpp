@@ -87,6 +87,14 @@ run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
 		map_func(tuple_buffer[i], result_buffer[i]);
 }
 
+inline void
+failwith(const std::string &err)
+{
+	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
+		  << std::endl;
+	std::exit(EXIT_FAILURE);
+}
+
 /**
  *  \class MapGPU
  *
@@ -125,11 +133,17 @@ private:
 		std::size_t gpu_blocks;
 		std::size_t gpu_threads_per_block;
 
+#ifdef USE_CUDA_MANAGED
 		tuple_t *tuple_buffer;
 		result_t *result_buffer;
 		std::size_t buf_index {0};
+#else
+		std::vector<tuple_t> cpu_tuple_buffer;
+		tuple_t *gpu_tuple_buffer;
+		std::vector<result_t> cpu_result_buffer;
+		result_t *gpu_result_buffer;
+#endif
 		cudaStream_t cuda_stream;
-
 
 #if defined(TRACE_WINDFLOW)
 		unsigned long rcvTuples {0};
@@ -138,25 +152,6 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-		inline void
-		cuda_malloc_managed_fail_on_error(void *ptr, std::size_t size)
-		{
-			if (cudaMallocManaged(&ptr, size) != cudaSuccess) {
-				std::cerr << RED
-					  << "Windflow Error: MapGPU_Node failed to allocate shared memory area"
-					  << DEFAULT_COLOR << std::endl;
-				std::exit(EXIT_FAILURE);
-			}
-		}
-
-		inline void
-		buffer_tuple(tuple_t *t)
-		{
-			tuple_buffer[buf_index] = *t;
-			++buf_index;
-			delete t;
-		}
-
 		// Do nothing if the function is in place.
 		template<typename T=int>
 		inline void
@@ -171,7 +166,13 @@ private:
 							       && is_invocable<func_t, tuple_t &, result_t &>::value,
 				    std::size_t> size)
 		{
-			cuda_malloc_managed_fail_on_error(result_buffer, size));
+#ifdef USE_CUDA_MANAGED
+			const auto alloc_result = cudaMallocManaged(&result_buffer, size);
+#else
+			const auto alloc_result = cudaMalloc(&gpu_result_buffer, size);
+#endif
+			if (alloc_result != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate shared memory area");
 		}
 
 		// In-place version.
@@ -181,18 +182,37 @@ private:
 					&& is_invocable<func_t, tuple_t &>::value,
 					func_t>)
 		{
+#ifdef USE_CUDA_MANAGED
 			run_map_kernel_ip<tuple_t, func_t>
 				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, tuple_buffer,
 				 max_buffered_tuples);
+			cudaStreamSynchronize(cuda_stream);
 			// TODO: Should this be removed?
 			// cudaDeviceSynchronize();
-			cudaStreamSynchronize(cuda_stream);
 			for (auto i = 0; i < max_buffered_tuples; ++i) {
 				this->ff_send_out(reinterpret_cast<result_t *>
 						  (new tuple_t {tuple_buffer[i]}));
 			}
 			buf_index = 0;
+#else
+			cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer.data(),
+				   max_buffered_tuples * sizeof(tuple_t),
+				   cudaMemcpyHostToDevice);
+			run_map_kernel_ip<tuple_t, func_t>
+				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+				(map_func, gpu_tuple_buffer,
+				 max_buffered_tuples);
+
+			cudaMemcpy(cpu_tuple_buffer.data(), gpu_tuple_buffer,
+				   max_buffered_tuples * sizeof(tuple_t),
+				   cudaMemcpyDeviceToHost);
+			cudaStreamSynchronize(cuda_stream);
+			for (auto i = 0; i < max_buffered_tuples; ++i) {
+				this->ff_send_out(reinterpret_cast<result_t *>
+						  (new tuple_t {cpu_tuple_buffer[i]}));
+			}
+#endif
 		}
 
 		// Non in-place version.
@@ -202,7 +222,8 @@ private:
 					&& is_invocable<func_t, tuple_t &, result_t &>::value,
 					func_t>)
 		{
-			run_map_kernel_nip<tuple_t, result_t, func_t>
+#ifdef USE_CUDA_MANAGED
+			run_map_kernel_nip<tuple_t, func_t>
 				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, tuple_buffer,
 				 result_buffer, max_buffered_tuples);
@@ -212,6 +233,22 @@ private:
 			for (auto i = 0; i < max_buffered_tuples; ++i)
 				this->ff_send_out(new result_t {result_buffer[i]});
 			buf_index = 0;
+#else
+			cudaMemCpy(gpu_tuple_buffer, cpu_tuple_buffer.data(),
+				   max_buffered_tuples * sizeof(tuple_t),
+				   cudaMemcpyHostToDevice);
+			run_map_kernel_nip<tuple_t, func_t>
+				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+				(map_func, gpu_tuple_buffer,
+				 gpu_result_buffer, max_buffered_tuples);
+
+			cudaMemCpy(cpu_result_buffer.data(), gpu_result_buffer,
+				   max_buffered_tuples * sizeof(tuple_t),
+				   cudaMemcpyDeviceToHost);
+			cudaStreamSynchronize(cuda_stream);
+			for (auto i = 0; i < max_buffered_tuples; ++i)
+				this->ff_send_out(new result_t {cpu_result_buffer[i]});
+#endif
 		}
 
 		// Do nothing if the function is in place.
@@ -244,7 +281,12 @@ private:
 			  gpu_blocks {gpu_blocks},
 			  gpu_threads_per_block {gpu_threads_per_block},
 			  closing_func {closing_func}
-		{}
+		{
+#ifndef USE_CUDA_MANAGED
+			cpu_tuple_buffer.reserve(max_buffered_tuples);
+			cpu_result_buffer.reserve(max_buffered_tuples);
+#endif
+		}
 
 		// svc_init method (utilized by the FastFlow runtime)
 		int
@@ -260,15 +302,18 @@ private:
 				+ name;
 			logfile->open(filename);
 #endif
-			cuda_malloc_managed_fail_on_error(tuple_buffer,
-							  max_buffered_tuples * sizeof(tuple_t));
+#ifdef USE_CUDA_MANAGED
+			const auto alloc_result = cudaMallocManaged(&tuple_buffer,
+								    max_buffered_tuples * sizeof(tuple_t));
+#else
+			const auto alloc_result = cudaMalloc(&gpu_tuple_buffer,
+							     max_buffered_tuples * sizeof(tuple_t));
+#endif
+			if (alloc_result != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate GPU memory area");
 			setup_result_buffer(max_buffered_tuples * sizeof(result_t));
-			if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
-				std::cerr << RED
-					  << "WindFlow Error: cudaStreamCreate() failed in MapGPU_Node"
-					  << DEFAULT_COLOR << std::endl;
-				std::exit(EXIT_FAILURE);
-			}
+			if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
+				failwith("cudaStreamCreate() failed in MapGPU_Node");
 			return 0;
 		}
 
@@ -282,10 +327,20 @@ private:
 				startTD = current_time_nsecs();
 			rcvTuples++;
 #endif
+#ifdef USE_CUDA_MANAGED
 			if (buf_index < max_buffered_tuples) {
-				buffer_tuple(t);
+				tuple_buffer[buf_index] = *t;
+				++buf_index;
+				delete t;
 				return this->GO_ON;
 			}
+#else
+			if (cpu_tuple_buffer.size() < max_buffered_tuples) {
+				cpu_tuple_buffer.push_back(*t);
+				delete t;
+				return this->GO_ON;
+			}
+#endif
 			process_buffered_tuples(map_func);
 #if defined(TRACE_WINDFLOW)
 			endTS = current_time_nsecs();
@@ -316,8 +371,13 @@ private:
 			logfile->close();
 			delete logfile;
 #endif
+#ifdef USE_CUDA_MANAGED
 			cudaFree(tuple_buffer);
 			deallocate_result_buffer(result_buffer);
+#else
+			cudaFree(gpu_tuple_buffer);
+			deallocate_result_buffer(gpu_result_buffer);
+#endif
 			cudaStreamDestroy(cuda_stream);
 		}
 	};
@@ -382,8 +442,8 @@ public:
 	 *  \param closing_func closing function
 	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename string_t=std::size_t, typename int_t=std::size_t>
-	MapGPU(func_t func, int_t pardegree, std::string name,
+	template <typename string_t=std::string, typename int_t=std::size_t>
+	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func, routing_func_t routing_func,
 	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
 	       int_t gpu_blocks=DEFAULT_GPU_BLOCKS,
@@ -432,18 +492,19 @@ public:
 	 *  \brief Check whether the Map has been used in a MultiPipe
 	 *  \return true if the Map has been added/chained to an existing MultiPipe
 	 */
-	bool isUsed() const
+	bool
+	isUsed() const
 	{
 		return used;
 	}
 
+	// TODO: Should these be removed?
 	/// deleted constructors/operators
 	// MapGPU(const MapGPU &) = delete; // copy constructor
 	// MapGPU(MapGPU &&) = delete; // move constructor
 	// MapGPU &operator=(const MapGPU &) = delete; // copy assignment operator
 	// MapGPU &operator=(MapGPU &&) = delete; // move assignment operator
 };
-
 } // namespace wf
 
 #endif
