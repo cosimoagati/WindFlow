@@ -87,12 +87,36 @@ run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
 		map_func(tuple_buffer[i], result_buffer[i]);
 }
 
+// TODO: This should be included in some utils file, it doesn't belong to
+// the MapGPU class...
+// TODO: Should we always exit with an error or throw an exception?
+// Exiting with an error allows the library to be compiled with exceptions
+// disabled.
 inline void
 failwith(const std::string &err)
 {
 	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
 		  << std::endl;
 	std::exit(EXIT_FAILURE);
+}
+
+/**
+ *  \brief Check whether constructor parameters are correct. Exit with error if this isn't the case.
+ */
+template<typename int_t=std::size_t>
+inline void
+check_operator_parameters(int_t pardegree, int_t max_buffered_tuples,
+			  int_t gpu_blocks, int_t gpu_threads_per_block)
+{
+	if (pardegree <= 0)
+		failwith("MapGPU has non-positive parallelism");
+	if (max_buffered_tuples <= 0)
+		failwith("MapGPU has non-positive maximum buffered tuples");
+	if (gpu_blocks <= 0)
+		failwith("MapGPU has non-positive number of GPU blocks");
+	if (gpu_threads_per_block <= 0)
+		failwith("MapGPU has non-positive number of "
+			 "GPU threads per block");
 }
 
 /**
@@ -268,12 +292,10 @@ private:
 			cudaFree(buffer);
 		}
 
-
 	public:
 		template<typename string_t=std::string, typename int_t=std::size_t>
 		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
-			    int_t max_buffered_tuples,
-			    int_t gpu_blocks,
+			    int_t max_buffered_tuples, int_t gpu_blocks,
 			    int_t gpu_threads_per_block,
 			    closing_func_t closing_func)
 			: map_func {func}, name {name}, context {context},
@@ -402,22 +424,17 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {false}
 	{
-		// check the validity of the parallelism degree
-		if (pardegree == 0) {
-			std::cerr << RED
-				  << "WindFlow Error: MapGPU has parallelism zero"
-				  << DEFAULT_COLOR << std::endl;
-			std::exit(EXIT_FAILURE);
-		}
-		// vector of MapGPU_Node
+		check_operator_parameters(pardegree, max_buffered_tuples,
+					  gpu_blocks, gpu_threads_per_block);
+
 		std::vector<ff_node *> workers;
 		for (std::size_t i = 0; i < pardegree; i++) {
-			auto *seq = new MapGPU_Node {func, name,
-						     RuntimeContext {pardegree, i},
-						     max_buffered_tuples,
-						     gpu_blocks,
-						     gpu_threads_per_block,
-						     closing_func};
+			auto seq = new MapGPU_Node {func, name,
+						    RuntimeContext {pardegree, i},
+						    max_buffered_tuples,
+						    gpu_blocks,
+						    gpu_threads_per_block,
+						    closing_func};
 			workers.push_back(seq);
 		}
 		// add emitter
@@ -450,22 +467,17 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {true}
 	{
-		// check the validity of the parallelism degree
-		if (pardegree == 0) {
-			std::cerr << RED
-				  << "WindFlow Error: MapGPU has parallelism zero"
-				  << DEFAULT_COLOR << std::endl;
-			std::exit(EXIT_FAILURE);
-		}
-		// vector of MapGPU_Node
+		check_operator_parameters(pardegree, max_buffered_tuples,
+					  gpu_blocks, gpu_threads_per_block);
+
 		std::vector<ff_node *> workers;
 		for (std::size_t i = 0; i < pardegree; i++) {
-			auto *seq = new MapGPU_Node {func, name,
-						     RuntimeContext {pardegree, i},
-						     max_buffered_tuples,
-						     gpu_blocks,
-						     gpu_threads_per_block,
-						     closing_func};
+			auto seq = new MapGPU_Node {func, name,
+						    RuntimeContext {pardegree, i},
+						    max_buffered_tuples,
+						    gpu_blocks,
+						    gpu_threads_per_block,
+						    closing_func};
 			workers.push_back(seq);
 		}
 		// add emitter
