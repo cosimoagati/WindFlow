@@ -178,14 +178,14 @@ private:
 #endif
 		// Do nothing if the function is in place.
 		template<typename T=int>
-		inline void
+		void
 		setup_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
 							       && is_invocable<func_t, tuple_t &>::value,
 				    std::size_t>)
 		{}
 
 		template<typename T=int>
-		inline void
+		void
 		setup_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
 							       && is_invocable<func_t, tuple_t &, result_t &>::value,
 				    std::size_t> size)
@@ -201,7 +201,7 @@ private:
 
 		// In-place version.
 		template<typename T=int>
-		inline void
+		void
 		process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
 					&& is_invocable<func_t, tuple_t &>::value,
 					func_t>)
@@ -241,7 +241,7 @@ private:
 
 		// Non in-place version.
 		template<typename T=int>
-		inline void
+		void
 		process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
 					&& is_invocable<func_t, tuple_t &, result_t &>::value,
 					func_t>)
@@ -277,14 +277,14 @@ private:
 
 		// Do nothing if the function is in place.
 		template<typename T=int>
-		inline void
+		void
 		deallocate_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
 					 && is_invocable<func_t, tuple_t &>::value,
 					 result_t *>)
 		{}
 
 		template<typename T=int>
-		inline void
+		void
 		deallocate_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
 					 && is_invocable<func_t, tuple_t &, result_t &>::value,
 					 result_t *> buffer)
