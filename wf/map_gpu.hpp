@@ -119,6 +119,22 @@ failwith(const std::string &err)
 	std::exit(EXIT_FAILURE);
 }
 
+template<typename int_t=std::size_t>
+inline void
+check_constructor_parameters(int_t pardegree, int_t max_buffered_tuples,
+			     int_t gpu_blocks, int_t gpu_threads_per_block)
+{
+	if (pardegree <= 0)
+		failwith("MapGPU has non-positive parallelism");
+	if (max_buffered_tuples <= 0)
+		failwith("MapGPU has non-positive maximum buffered tuples");
+	if (gpu_blocks <= 0)
+		failwith("MapGPU has non-positive number of GPU blocks");
+	if (gpu_threads_per_block <= 0)
+		failwith("MapGPU has non-positive number of "
+			 "GPU threads per block");
+}
+
 /**
  *  \class MapGPU
  *
@@ -404,51 +420,6 @@ private:
 		}
 	};
 
-	/*
-	 * This function encapsulates shared functionality of the constructors.
-	 * It starts a different emitter based on whether the MapGPU is keyed or
-	 * not.
-	 */
-	// TODO: Checking on is_keyed eliminates code duplication, but the check
-	// is redundant! Can we eliminate it or do it at compile time somehow?
-	template<typename int_t=std::size_t>
-	void
-	setup_and_start_workers(int_t pardegree, int_t max_buffered_tuples,
-				int_t gpu_blocks, int_t gpu_threads_per_block)
-	{
-		if (pardegree <= 0)
-			failwith("MapGPU has non-positive parallelism");
-		if (max_buffered_tuples <= 0)
-			failwith("MapGPU has non-positive maximum buffered tuples");
-		if (gpu_blocks <= 0)
-			failwith("MapGPU has non-positive number of GPU blocks");
-		if (gpu_threads_per_block <= 0)
-			failwith("MapGPU has non-positive number of "
-				 "GPU threads per block");
-		std::vector<ff_node *> workers;
-		for (std::size_t i = 0; i < pardegree; i++) {
-			auto seq = new MapGPU_Node {func, name,
-						    RuntimeContext {pardegree, i},
-						    max_buffered_tuples,
-						    gpu_blocks,
-						    gpu_threads_per_block,
-						    closing_func};
-			workers.push_back(seq);
-		}
-		if (is_keyed)
-			ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
-						 {pardegree});
-		else
-			ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
-						 {routing_func, pardegree});
-		ff::ff_farm::add_workers(workers);
-		// add default collector
-		ff::ff_farm::add_collector(nullptr);
-		// when the MapGPU will be destroyed we need aslo to destroy the
-		// emitter, workers and collector
-		ff::ff_farm::cleanup_all();
-	}
-
 public:
 	/**
 	 *  \brief Constructor I
@@ -461,7 +432,7 @@ public:
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 *  \param closing_func closing function
 	 */
-	template <typename string_t=std::string, typename int_t=std::size_t>
+	template<typename string_t=std::string, typename int_t=std::size_t>
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func,
 	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
@@ -469,8 +440,26 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {false}
 	{
-		setup_and_start_workers(pardegree, max_buffered_tuples,
-					gpu_blocks, gpu_threads_per_block);
+		check_constructor_parameters(pardegree, max_buffered_tuples,
+					     gpu_blocks, gpu_threads_per_block);
+		std::vector<ff_node *> workers;
+		for (int_t i = 0; i < pardegree; i++) {
+			auto seq = new MapGPU_Node {func, name,
+						    RuntimeContext {pardegree, i},
+						    max_buffered_tuples,
+						    gpu_blocks,
+						    gpu_threads_per_block,
+						    closing_func};
+			workers.push_back(seq);
+		}
+		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
+					 {pardegree});
+		ff::ff_farm::add_workers(workers);
+		// add default collector
+		ff::ff_farm::add_collector(nullptr);
+		// when the MapGPU will be destroyed we need aslo to destroy the
+		// emitter, workers and collector
+		ff::ff_farm::cleanup_all();
 	}
 
 	/**
@@ -485,7 +474,7 @@ public:
 	 *  \param closing_func closing function
 	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template <typename string_t=std::string, typename int_t=std::size_t>
+	template<typename string_t=std::string, typename int_t=std::size_t>
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func, routing_func_t routing_func,
 	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
@@ -493,8 +482,26 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {true}
 	{
-		setup_and_start_workers(pardegree, max_buffered_tuples,
-					gpu_blocks, gpu_threads_per_block);
+		check_constructor_parameters(pardegree, max_buffered_tuples,
+					     gpu_blocks, gpu_threads_per_block);
+		std::vector<ff_node *> workers;
+		for (int_t i = 0; i < pardegree; i++) {
+			auto seq = new MapGPU_Node {func, name,
+						    RuntimeContext {pardegree, i},
+						    max_buffered_tuples,
+						    gpu_blocks,
+						    gpu_threads_per_block,
+						    closing_func};
+			workers.push_back(seq);
+		}
+		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
+					 {routing_func, pardegree});
+		ff::ff_farm::add_workers(workers);
+		// add default collector
+		ff::ff_farm::add_collector(nullptr);
+		// when the MapGPU will be destroyed we need aslo to destroy the
+		// emitter, workers and collector
+		ff::ff_farm::cleanup_all();
 	}
 
 	/**
@@ -517,12 +524,11 @@ public:
 		return used;
 	}
 
-	// TODO: Should these be removed?
-	/// deleted constructors/operators
-	// MapGPU(const MapGPU &) = delete; // copy constructor
-	// MapGPU(MapGPU &&) = delete; // move constructor
-	// MapGPU &operator=(const MapGPU &) = delete; // copy assignment operator
-	// MapGPU &operator=(MapGPU &&) = delete; // move assignment operator
+	/// deleted constructors/operators. This object may not be copied nor moved.
+	MapGPU(const MapGPU &) = delete;
+	MapGPU(MapGPU &&) = delete;
+	MapGPU &operator=(const MapGPU &) = delete;
+	MapGPU &operator=(MapGPU &&) = delete;
 };
 } // namespace wf
 
