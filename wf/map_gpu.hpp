@@ -173,16 +173,11 @@ private:
 		std::size_t gpu_blocks;
 		std::size_t gpu_threads_per_block;
 
-#ifdef USE_CUDA_MANAGED
-		tuple_t *tuple_buffer;
-		result_t *result_buffer;
-		std::size_t buf_index {0};
-#else
+
 		std::vector<tuple_t> cpu_tuple_buffer;
 		tuple_t *gpu_tuple_buffer;
 		std::vector<result_t> cpu_result_buffer;
 		result_t *gpu_result_buffer;
-#endif
 		cudaStream_t cuda_stream;
 
 #if defined(TRACE_WINDFLOW)
@@ -206,11 +201,8 @@ private:
 							       && is_invocable<func_t, tuple_t &, result_t &>::value,
 				    std::size_t> size)
 		{
-#ifdef USE_CUDA_MANAGED
-			const auto alloc_result = cudaMallocManaged(&result_buffer, size);
-#else
+
 			const auto alloc_result = cudaMalloc(&gpu_result_buffer, size);
-#endif
 			if (alloc_result != cudaSuccess)
 				failwith("MapGPU_Node failed to allocate shared memory area");
 		}
@@ -222,20 +214,6 @@ private:
 					&& is_invocable<func_t, tuple_t &>::value,
 					func_t>)
 		{
-#ifdef USE_CUDA_MANAGED
-			run_map_kernel_ip<tuple_t, func_t>
-				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-				(map_func, tuple_buffer,
-				 max_buffered_tuples);
-			cudaStreamSynchronize(cuda_stream);
-			// TODO: Should this be removed?
-			// cudaDeviceSynchronize();
-			for (auto i = 0; i < max_buffered_tuples; ++i) {
-				this->ff_send_out(reinterpret_cast<result_t *>
-						  (new tuple_t {tuple_buffer[i]}));
-			}
-			buf_index = 0;
-#else
 			cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer.data(),
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyHostToDevice);
@@ -252,7 +230,6 @@ private:
 				this->ff_send_out(reinterpret_cast<result_t *>
 						  (new tuple_t {cpu_tuple_buffer[i]}));
 			}
-#endif
 		}
 
 		// Non in-place version.
@@ -262,18 +239,6 @@ private:
 					&& is_invocable<func_t, tuple_t &, result_t &>::value,
 					func_t>)
 		{
-#ifdef USE_CUDA_MANAGED
-			run_map_kernel_nip<tuple_t, func_t>
-				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-				(map_func, tuple_buffer,
-				 result_buffer, max_buffered_tuples);
-			// TODO: Should this be removed?
-			// cudaDeviceSynchronize();
-			cudaStreamSynchronize(cuda_stream);
-			for (auto i = 0; i < max_buffered_tuples; ++i)
-				this->ff_send_out(new result_t {result_buffer[i]});
-			buf_index = 0;
-#else
 			cudaMemCpy(gpu_tuple_buffer, cpu_tuple_buffer.data(),
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyHostToDevice);
@@ -288,7 +253,6 @@ private:
 			cudaStreamSynchronize(cuda_stream);
 			for (auto i = 0; i < max_buffered_tuples; ++i)
 				this->ff_send_out(new result_t {cpu_result_buffer[i]});
-#endif
 		}
 
 		// Do nothing if the function is in place.
@@ -320,10 +284,8 @@ private:
 			  gpu_threads_per_block {gpu_threads_per_block},
 			  closing_func {closing_func}
 		{
-#ifndef USE_CUDA_MANAGED
 			cpu_tuple_buffer.reserve(max_buffered_tuples);
 			cpu_result_buffer.reserve(max_buffered_tuples);
-#endif
 		}
 
 		// svc_init method (utilized by the FastFlow runtime)
@@ -340,13 +302,8 @@ private:
 				+ name;
 			logfile->open(filename);
 #endif
-#ifdef USE_CUDA_MANAGED
-			const auto alloc_result = cudaMallocManaged(&tuple_buffer,
-								    max_buffered_tuples * sizeof(tuple_t));
-#else
 			const auto alloc_result = cudaMalloc(&gpu_tuple_buffer,
 							     max_buffered_tuples * sizeof(tuple_t));
-#endif
 			if (alloc_result != cudaSuccess)
 				failwith("MapGPU_Node failed to allocate GPU memory area");
 			setup_result_buffer(max_buffered_tuples * sizeof(result_t));
@@ -365,20 +322,11 @@ private:
 				startTD = current_time_nsecs();
 			rcvTuples++;
 #endif
-#ifdef USE_CUDA_MANAGED
-			if (buf_index < max_buffered_tuples) {
-				tuple_buffer[buf_index] = *t;
-				++buf_index;
-				delete t;
-				return this->GO_ON;
-			}
-#else
 			if (cpu_tuple_buffer.size() < max_buffered_tuples) {
 				cpu_tuple_buffer.push_back(*t);
 				delete t;
 				return this->GO_ON;
 			}
-#endif
 			process_buffered_tuples(map_func);
 #if defined(TRACE_WINDFLOW)
 			endTS = current_time_nsecs();
@@ -409,13 +357,8 @@ private:
 			logfile->close();
 			delete logfile;
 #endif
-#ifdef USE_CUDA_MANAGED
-			cudaFree(tuple_buffer);
-			deallocate_result_buffer(result_buffer);
-#else
 			cudaFree(gpu_tuple_buffer);
 			deallocate_result_buffer(gpu_result_buffer);
-#endif
 			cudaStreamDestroy(cuda_stream);
 		}
 	};
