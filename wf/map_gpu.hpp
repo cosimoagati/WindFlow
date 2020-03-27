@@ -164,9 +164,9 @@ private:
 
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
-		func_t map_func; // The function to be computed. May be in place
-				 // or not.
-		closing_func_t closing_func; // closing function
+		func_t map_func; // The function to be computed on the
+				 // tuples. May be in place or not.
+		closing_func_t closing_func;
 		std::string name; // string of the unique name of the operator
 		RuntimeContext context; // RuntimeContext
 		std::size_t max_buffered_tuples;
@@ -187,6 +187,12 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
+		/*
+		 * Through the use of std::enable_if, we define different
+		 * variants of behavior that is different between the in-place
+		 * and the non-in-place versions of the MapGPU operator.  Only
+		 * the desired version will be compiled.
+		 */
 		// Do nothing if the function is in place.
 		template<typename T=int>
 		void
@@ -226,10 +232,11 @@ private:
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyDeviceToHost);
 			cudaStreamSynchronize(cuda_stream);
-			for (auto i = 0; i < max_buffered_tuples; ++i) {
+			for (const auto &t: cpu_tuple_buffer) {
 				this->ff_send_out(reinterpret_cast<result_t *>
-						  (new tuple_t {cpu_tuple_buffer[i]}));
+						  (new tuple_t {t}));
 			}
+			cpu_tuple_buffer.clear();
 		}
 
 		// Non in-place version.
@@ -251,8 +258,9 @@ private:
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyDeviceToHost);
 			cudaStreamSynchronize(cuda_stream);
-			for (auto i = 0; i < max_buffered_tuples; ++i)
-				this->ff_send_out(new result_t {cpu_result_buffer[i]});
+			for (const auto &t : cpu_result_buffer)
+				this->ff_send_out(new result_t {t});
+			cpu_tuple_buffer.clear();
 		}
 
 		// Do nothing if the function is in place.
@@ -263,6 +271,7 @@ private:
 					 result_t *>)
 		{}
 
+		// Non in-place version.
 		template<typename T=int>
 		void
 		deallocate_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
@@ -286,6 +295,20 @@ private:
 		{
 			cpu_tuple_buffer.reserve(max_buffered_tuples);
 			cpu_result_buffer.reserve(max_buffered_tuples);
+			const auto alloc_result = cudaMalloc(&gpu_tuple_buffer,
+							     max_buffered_tuples * sizeof(tuple_t));
+			if (alloc_result != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate GPU memory area");
+			setup_result_buffer(max_buffered_tuples * sizeof(result_t));
+			if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
+				failwith("cudaStreamCreate() failed in MapGPU_Node");
+		}
+
+		~MapGPU_Node()
+		{
+			cudaFree(gpu_tuple_buffer);
+			deallocate_result_buffer(gpu_result_buffer);
+			cudaStreamDestroy(cuda_stream);
 		}
 
 		// svc_init method (utilized by the FastFlow runtime)
@@ -302,13 +325,6 @@ private:
 				+ name;
 			logfile->open(filename);
 #endif
-			const auto alloc_result = cudaMalloc(&gpu_tuple_buffer,
-							     max_buffered_tuples * sizeof(tuple_t));
-			if (alloc_result != cudaSuccess)
-				failwith("MapGPU_Node failed to allocate GPU memory area");
-			setup_result_buffer(max_buffered_tuples * sizeof(result_t));
-			if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
-				failwith("cudaStreamCreate() failed in MapGPU_Node");
 			return 0;
 		}
 
@@ -322,6 +338,7 @@ private:
 				startTD = current_time_nsecs();
 			rcvTuples++;
 #endif
+			std::cout << cpu_tuple_buffer.size() << std::endl;
 			if (cpu_tuple_buffer.size() < max_buffered_tuples) {
 				cpu_tuple_buffer.push_back(*t);
 				delete t;
@@ -340,6 +357,14 @@ private:
 			return this->GO_ON;
 		}
 
+		// void
+		// eosnotify(ssize_t id)
+		// {
+		// 	// For simplicity, compute the last tuples on CPU.
+		// 	for (const auto &t : cpu_tuple_buffer)
+		// 		map_func(t);
+		// }
+
 		// svc_end method (utilized by the FastFlow runtime)
 		void
 		svc_end()
@@ -357,10 +382,6 @@ private:
 			logfile->close();
 			delete logfile;
 #endif
-			// TODO: can we deallocate these in the destructor?
-			cudaFree(gpu_tuple_buffer);
-			deallocate_result_buffer(gpu_result_buffer);
-			cudaStreamDestroy(cuda_stream);
 		}
 	};
 
