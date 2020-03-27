@@ -64,26 +64,41 @@ struct is_invocable :
 
 // N.B.: CUDA __global__ kernels must not be member functions.
 // TODO: can we make the distinction simpler, with less repetition?
+/**
+ * \brief Map kernel (in-place version). Run function and store results in same
+ * buffer
+ * \param map_func The function to be computed on each tuple.
+ * \param tuple_buffer pointer to the start of the buffered tuples
+ * (memory area accessible to GPU)
+ * \param buffer_capacity How many tuples the buffer contains.
+ */
 template<typename tuple_t, typename func_t>
 __global__ void
 run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
-		  const std::size_t max_buffered_tuples)
+		  const std::size_t buffer_capacity)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
-	for (auto i = index; i < max_buffered_tuples; i += stride)
+	for (auto i = index; i < buffer_capacity; i += stride)
 		map_func(tuple_buffer[i]);
 }
 
+/**
+ * \brief Map kernel (non-in-place version). Run function and store results a new buffer
+ * \param map_func The function to be computed on each tuple.
+ * \param tuple_buffer pointer to the start of the buffered tuples
+ * \param result_buffer pointer to the start of the buffer that will contain the results.
+ * (memory area accessible to GPU)
+ * \param buffer_capacity How many tuples the buffer contains.
+ */
 template<typename tuple_t, typename result_t, typename func_t>
 __global__ void
 run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
-		   result_t *result_buffer,
-		   const std::size_t max_buffered_tuples)
+		   result_t *result_buffer, const std::size_t buffer_capacity)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
-	for (auto i = index; i < max_buffered_tuples; i += stride)
+	for (auto i = index; i < buffer_capacity; i += stride)
 		map_func(tuple_buffer[i], result_buffer[i]);
 }
 
@@ -92,31 +107,16 @@ run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
 // TODO: Should we always exit with an error or throw an exception?
 // Exiting with an error allows the library to be compiled with exceptions
 // disabled.
+/**
+ * \brief Prints error on the screen and exits.
+ * \param err The error to be shown.
+ */
 inline void
 failwith(const std::string &err)
 {
 	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
 		  << std::endl;
 	std::exit(EXIT_FAILURE);
-}
-
-/**
- *  \brief Check whether constructor parameters are correct. Exit with error if this isn't the case.
- */
-template<typename int_t=std::size_t>
-inline void
-check_operator_parameters(int_t pardegree, int_t max_buffered_tuples,
-			  int_t gpu_blocks, int_t gpu_threads_per_block)
-{
-	if (pardegree <= 0)
-		failwith("MapGPU has non-positive parallelism");
-	if (max_buffered_tuples <= 0)
-		failwith("MapGPU has non-positive maximum buffered tuples");
-	if (gpu_blocks <= 0)
-		failwith("MapGPU has non-positive number of GPU blocks");
-	if (gpu_threads_per_block <= 0)
-		failwith("MapGPU has non-positive number of "
-			 "GPU threads per block");
 }
 
 /**
@@ -404,6 +404,51 @@ private:
 		}
 	};
 
+	/*
+	 * This function encapsulates shared functionality of the constructors.
+	 * It starts a different emitter based on whether the MapGPU is keyed or
+	 * not.
+	 */
+	// TODO: Checking on is_keyed eliminates code duplication, but the check
+	// is redundant! Can we eliminate it or do it at compile time somehow?
+	template<typename int_t=std::size_t>
+	void
+	setup_and_start_workers(int_t pardegree, int_t max_buffered_tuples,
+				int_t gpu_blocks, int_t gpu_threads_per_block)
+	{
+		if (pardegree <= 0)
+			failwith("MapGPU has non-positive parallelism");
+		if (max_buffered_tuples <= 0)
+			failwith("MapGPU has non-positive maximum buffered tuples");
+		if (gpu_blocks <= 0)
+			failwith("MapGPU has non-positive number of GPU blocks");
+		if (gpu_threads_per_block <= 0)
+			failwith("MapGPU has non-positive number of "
+				 "GPU threads per block");
+		std::vector<ff_node *> workers;
+		for (std::size_t i = 0; i < pardegree; i++) {
+			auto seq = new MapGPU_Node {func, name,
+						    RuntimeContext {pardegree, i},
+						    max_buffered_tuples,
+						    gpu_blocks,
+						    gpu_threads_per_block,
+						    closing_func};
+			workers.push_back(seq);
+		}
+		if (is_keyed)
+			ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
+						 {pardegree});
+		else
+			ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
+						 {routing_func, pardegree});
+		ff::ff_farm::add_workers(workers);
+		// add default collector
+		ff::ff_farm::add_collector(nullptr);
+		// when the MapGPU will be destroyed we need aslo to destroy the
+		// emitter, workers and collector
+		ff::ff_farm::cleanup_all();
+	}
+
 public:
 	/**
 	 *  \brief Constructor I
@@ -424,27 +469,8 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {false}
 	{
-		check_operator_parameters(pardegree, max_buffered_tuples,
-					  gpu_blocks, gpu_threads_per_block);
-
-		std::vector<ff_node *> workers;
-		for (std::size_t i = 0; i < pardegree; i++) {
-			auto seq = new MapGPU_Node {func, name,
-						    RuntimeContext {pardegree, i},
-						    max_buffered_tuples,
-						    gpu_blocks,
-						    gpu_threads_per_block,
-						    closing_func};
-			workers.push_back(seq);
-		}
-		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t> {pardegree});
-		// add workers
-		ff::ff_farm::add_workers(workers);
-		// add default collector
-		ff::ff_farm::add_collector(nullptr);
-		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
+		setup_and_start_workers(pardegree, max_buffered_tuples,
+					gpu_blocks, gpu_threads_per_block);
 	}
 
 	/**
@@ -467,27 +493,8 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {true}
 	{
-		check_operator_parameters(pardegree, max_buffered_tuples,
-					  gpu_blocks, gpu_threads_per_block);
-
-		std::vector<ff_node *> workers;
-		for (std::size_t i = 0; i < pardegree; i++) {
-			auto seq = new MapGPU_Node {func, name,
-						    RuntimeContext {pardegree, i},
-						    max_buffered_tuples,
-						    gpu_blocks,
-						    gpu_threads_per_block,
-						    closing_func};
-			workers.push_back(seq);
-		}
-		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t> {routing_func, pardegree});
-		// add workers
-		ff::ff_farm::add_workers(workers);
-		// add default collector
-		ff::ff_farm::add_collector(nullptr);
-		// when the MapGPU will be destroyed we need aslo to destroy the emitter, workers and collector
-		ff::ff_farm::cleanup_all();
+		setup_and_start_workers(pardegree, max_buffered_tuples,
+					gpu_blocks, gpu_threads_per_block);
 	}
 
 	/**
