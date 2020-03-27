@@ -357,6 +357,7 @@ private:
 			logfile->close();
 			delete logfile;
 #endif
+			// TODO: can we deallocate these in the destructor?
 			cudaFree(gpu_tuple_buffer);
 			deallocate_result_buffer(gpu_result_buffer);
 			cudaStreamDestroy(cuda_stream);
