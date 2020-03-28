@@ -103,6 +103,13 @@ run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
 		map_func(tuple_buffer[i], result_buffer[i]);
 }
 
+/*
+ * The following two are keyed versions of the kernel.  They should work on
+ * tuples all of different keys.  The provided map function accesses an internal
+ * state, which the current tuple updates or makes use of.  The provided
+ * scratchpad memory contains a state for ALL keyes: it's up to the map function
+ * to correctly access and use the state.
+ */
 template<typename tuple_t, typename func_t, typename int_t=std::size_t>
 __global__ void
 run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
