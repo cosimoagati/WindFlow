@@ -106,8 +106,8 @@ int main(int argc, char *argv[])
 		{
 		 y.value = x.value * x.value;
 		};
-	auto map = MapGPU<tuple_t, tuple_t, decltype(square)> {square, 1, "gino",
-							       closing_func};
+	MapGPU<tuple_t, tuple_t, decltype(square)> map {square, 3, "gino",
+								closing_func};
 
 	auto pipe = ff_pipeline {};
 	pipe.add_stage(::Source<tuple_t> {});
