@@ -106,35 +106,40 @@ run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
 /*
  * The following two are keyed versions of the kernel.  They should work on
  * tuples all of different keys.  The provided map function accesses an internal
- * state, which the current tuple updates or makes use of.  The provided
- * scratchpad memory contains a state for ALL keyes: it's up to the map function
- * to correctly access and use the state.
+ * state, saved in a dedicated scratchpad, which the current tuple updates or
+ * makes use of.  This state is allocated on the GPU memory, therefore merely
+ * defined by a location and a size.  All keys have a separate scratchpad, which
+ * are all stored and indexed from a single data structure, using the tuple's
+ * own key.
  */
 template<typename tuple_t, typename func_t, typename int_t=std::size_t>
 __global__ void
 run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
-			char *scratchpad_mem, const int_t scratchpad_size,
+			char **scratchpads, const int_t scratchpad_size,
 			const int_t buffer_capacity)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
-	for (auto i = index; i < buffer_capacity; i += stride)
-		map_func(tuple_buffer[i], scratchpad_mem, scratchpad_size);
+	for (auto i = index; i < buffer_capacity; i += stride) {
+		const auto key = tuple_buffer[i].key;
+		map_func(tuple_buffer[i], scratchpads[key], scratchpad_size);
+	}
 }
 
 template<typename tuple_t, typename result_t, typename func_t,
 	 typename int_t=std::size_t>
 __global__ void
 run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
-			 result_t *result_buffer, char *scratchpad_mem,
+			 result_t *result_buffer, char **scratchpads,
 			 const int_t scratchpad_size,
 			 const int_t buffer_capacity)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride) {
+		const auto key = tuple_buffer[i].key;
 		map_func(tuple_buffer[i], result_buffer[i],
-			 scratchpad_mem, scratchpad_size);
+			 scratchpads[key], scratchpad_size);
 	}
 }
 
@@ -194,10 +199,19 @@ private:
 	static constexpr auto DEFAULT_MAX_BUFFERED_TUPLES = 256;
 	static constexpr auto DEFAULT_GPU_BLOCKS = 1;
 	static constexpr auto DEFAULT_GPU_THREADS_PER_BLOCK = 256;
-	// friendships with other classes in the library
-	friend class MultiPipe;
+
+	// Arbitrary default values for now.
+	static constexpr auto NUMBER_OF_KEYS = 256;
+	static constexpr auto SCRATCHPAD_SIZE = 64; // Size of a single
+						    // scratchpad in chars.
+
 	bool is_keyed; // is the MapGPU is configured with keyBy or not?
 	bool used; // is the MapGPU used in a MultiPipe or not?
+	char *scratchpads; // Points to the GPU memory area containing the
+			   // scratchpads for stateful keyed functions.
+
+	// friendships with other classes in the library
+	friend class MultiPipe;
 
 	class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
@@ -210,11 +224,12 @@ private:
 		std::size_t gpu_blocks;
 		std::size_t gpu_threads_per_block;
 
+		cudaStream_t cuda_stream;
 		std::vector<tuple_t> cpu_tuple_buffer;
 		tuple_t *gpu_tuple_buffer;
 		std::vector<result_t> cpu_result_buffer;
 		result_t *gpu_result_buffer;
-		cudaStream_t cuda_stream;
+		char *scratchpads;
 
 #if defined(TRACE_WINDFLOW)
 		unsigned long rcvTuples {0};
@@ -247,8 +262,7 @@ private:
 			// TODO: allocating all these tuples at the beginning is
 			// not very elegant...
 			cpu_result_buffer.resize(max_buffered_tuples);
-			const auto alloc_result = cudaMalloc(&gpu_result_buffer, size);
-			if (alloc_result != cudaSuccess)
+			if (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess)
 				failwith("MapGPU_Node failed to allocate shared memory area");
 		}
 
@@ -356,6 +370,8 @@ private:
 		 * tuples.  In case the function to be used is NOT in-place, it
 		 * also allocates enough space for the CPU and GPU buffers to
 		 * store the results.
+		 * The first constructor is used for keyless (stateless)
+		 * version, the second is for the keyed version.
 		 */
 		template<typename string_t=std::string, typename int_t=std::size_t>
 		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
@@ -368,9 +384,30 @@ private:
 			  gpu_threads_per_block {gpu_threads_per_block},
 			  closing_func {closing_func}
 		{
-			const auto alloc_result = cudaMalloc(&gpu_tuple_buffer,
-							     max_buffered_tuples * sizeof(tuple_t));
-			if (alloc_result != cudaSuccess)
+			if (cudaMalloc(&gpu_tuple_buffer,
+				       max_buffered_tuples * sizeof(tuple_t)) != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate GPU memory area");
+			setup_result_buffer(max_buffered_tuples * sizeof(result_t));
+			if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
+				failwith("cudaStreamCreate() failed in MapGPU_Node");
+		}
+
+		template<typename string_t=std::string, typename int_t=std::size_t>
+		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
+			    int_t max_buffered_tuples, int_t gpu_blocks,
+			    int_t gpu_threads_per_block,
+			    char *scratchpads,
+			    closing_func_t closing_func)
+			: map_func {func}, name {name}, context {context},
+			  max_buffered_tuples {max_buffered_tuples},
+			  gpu_blocks {gpu_blocks},
+			  gpu_threads_per_block {gpu_threads_per_block},
+			  scratchpads {scratchpads}
+			  closing_func {closing_func}
+		{
+			// TODO: should factor out common constructor behavior.
+			if (cudaMalloc(&gpu_tuple_buffer,
+				       max_buffered_tuples * sizeof(tuple_t)) != cudaSuccess)
 				failwith("MapGPU_Node failed to allocate GPU memory area");
 			setup_result_buffer(max_buffered_tuples * sizeof(result_t));
 			if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
@@ -537,6 +574,9 @@ public:
 	{
 		check_constructor_parameters(pardegree, max_buffered_tuples,
 					     gpu_blocks, gpu_threads_per_block);
+		if (cudaMalloc(&scratchpads,
+			       NUMBER_OF_KEYS * SCRATCHPAD_SIZE) != cudaSuccess)
+			failwith("Failed to allocate scratchpad area");
 		std::vector<ff_node *> workers;
 		for (int_t i = 0; i < pardegree; i++) {
 			auto seq = new MapGPU_Node {func, name,
@@ -555,6 +595,11 @@ public:
 		// when the MapGPU will be destroyed we need aslo to destroy the
 		// emitter, workers and collector
 		ff::ff_farm::cleanup_all();
+	}
+
+	~MapGPU()
+	{
+		cudaFree(scratchpads);
 	}
 
 	/**
