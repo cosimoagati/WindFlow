@@ -72,10 +72,10 @@ struct is_invocable :
  * (memory area accessible to GPU)
  * \param buffer_capacity How many tuples the buffer contains.
  */
-template<typename tuple_t, typename func_t>
+template<typename tuple_t, typename func_t, typename int_t=std::size_t>
 __global__ void
 run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
-		  const std::size_t buffer_capacity)
+		  const int_t buffer_capacity)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
@@ -91,15 +91,44 @@ run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
  * (memory area accessible to GPU)
  * \param buffer_capacity How many tuples the buffer contains.
  */
-template<typename tuple_t, typename result_t, typename func_t>
+template<typename tuple_t, typename result_t, typename func_t,
+	 typename int_t=std::size_t>
 __global__ void
 run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
-		   result_t *result_buffer, const std::size_t buffer_capacity)
+		   result_t *result_buffer, const int_t buffer_capacity)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride)
 		map_func(tuple_buffer[i], result_buffer[i]);
+}
+
+template<typename tuple_t, typename func_t, typename int_t=std::size_t>
+__global__ void
+run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
+			char *scratchpad_mem, const int_t scratchpad_size,
+			const int_t buffer_capacity)
+{
+	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto stride = blockDim.x * gridDim.x;
+	for (auto i = index; i < buffer_capacity; i += stride)
+		map_func(tuple_buffer[i], scratchpad_mem, scratchpad_size);
+}
+
+template<typename tuple_t, typename result_t, typename func_t,
+	 typename int_t=std::size_t>
+__global__ void
+run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
+			 result_t *result_buffer, char *scratchpad_mem,
+			 const int_t scratchpad_size,
+			 const int_t buffer_capacity)
+{
+	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto stride = blockDim.x * gridDim.x;
+	for (auto i = index; i < buffer_capacity; i += stride) {
+		map_func(tuple_buffer[i], result_buffer[i],
+			 scratchpad_mem, scratchpad_size);
+	}
 }
 
 // TODO: This should be included in some utils file, it doesn't belong to
@@ -138,7 +167,8 @@ check_constructor_parameters(int_t pardegree, int_t max_buffered_tuples,
 /**
  *  \class MapGPU
  *
- *  \brief Map operator executing a one-to-one transformation on the input stream, GPU version
+ *  \brief Map operator executing a one-to-one transformation on the input
+ *  stream, GPU version
  *
  *  This class implements the Map operator executing a one-to-one stateless
  *  transformation on each tuple of the input stream.
@@ -173,7 +203,6 @@ private:
 		std::size_t gpu_blocks;
 		std::size_t gpu_threads_per_block;
 
-
 		std::vector<tuple_t> cpu_tuple_buffer;
 		tuple_t *gpu_tuple_buffer;
 		std::vector<result_t> cpu_result_buffer;
@@ -193,13 +222,14 @@ private:
 		 * and the non-in-place versions of the MapGPU operator.  Only
 		 * the desired version will be compiled.
 		 */
-		// Do nothing if the function is in place.
 		template<typename T=int>
 		void
 		setup_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
 							       && is_invocable<func_t, tuple_t &>::value,
 				    std::size_t>)
-		{}
+		{
+			cpu_result_buffer.reserve(0);
+		}
 
 		template<typename T=int>
 		void
@@ -207,12 +237,18 @@ private:
 							       && is_invocable<func_t, tuple_t &, result_t &>::value,
 				    std::size_t> size)
 		{
-
+			// TODO: allocating all these tuples at the beginning is
+			// not very elegant...
+			cpu_result_buffer.resize(max_buffered_tuples);
 			const auto alloc_result = cudaMalloc(&gpu_result_buffer, size);
 			if (alloc_result != cudaSuccess)
 				failwith("MapGPU_Node failed to allocate shared memory area");
 		}
 
+		/*
+		 * When all tuples have been buffered, it's time to feed them
+		 * to the CUDA kernel.
+		 */
 		// In-place version.
 		template<typename T=int>
 		void
@@ -220,18 +256,13 @@ private:
 					&& is_invocable<func_t, tuple_t &>::value,
 					func_t>)
 		{
-			cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer.data(),
-				   max_buffered_tuples * sizeof(tuple_t),
-				   cudaMemcpyHostToDevice);
-			run_map_kernel_ip<tuple_t, func_t>
-				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+			run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
 				 max_buffered_tuples);
-
+			cudaStreamSynchronize(cuda_stream);
 			cudaMemcpy(cpu_tuple_buffer.data(), gpu_tuple_buffer,
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyDeviceToHost);
-			cudaStreamSynchronize(cuda_stream);
 			for (const auto &t: cpu_tuple_buffer) {
 				this->ff_send_out(reinterpret_cast<result_t *>
 						  (new tuple_t {t}));
@@ -243,24 +274,55 @@ private:
 		template<typename T=int>
 		void
 		process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
-					&& is_invocable<func_t, tuple_t &, result_t &>::value,
+					&& is_invocable<func_t, const tuple_t &, result_t &>::value,
 					func_t>)
 		{
-			cudaMemCpy(gpu_tuple_buffer, cpu_tuple_buffer.data(),
-				   max_buffered_tuples * sizeof(tuple_t),
-				   cudaMemcpyHostToDevice);
-			run_map_kernel_nip<tuple_t, func_t>
-				<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+			run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
 				 gpu_result_buffer, max_buffered_tuples);
-
-			cudaMemCpy(cpu_result_buffer.data(), gpu_result_buffer,
-				   max_buffered_tuples * sizeof(tuple_t),
-				   cudaMemcpyDeviceToHost);
 			cudaStreamSynchronize(cuda_stream);
+			cudaMemcpy(cpu_result_buffer.data(), gpu_result_buffer,
+				   max_buffered_tuples * sizeof(result_t),
+				   cudaMemcpyDeviceToHost);
 			for (const auto &t : cpu_result_buffer)
 				this->ff_send_out(new result_t {t});
 			cpu_tuple_buffer.clear();
+		}
+
+		/* 
+		 * Ulness the stream happens to have exactly a number of tuples
+		 * that is a multiple of the buffer capacity, some tuples will
+		 * be "left out" at the end of the stream, since there aren't
+		 * any tuples left to completely fill the buffer.  We compute
+		 * the function on the remaining tuples directly on the CPU, for
+		 * simplicity, since they are likely to be a much smaller number
+		 * than the total stream length.
+		 */
+		// In-place version.
+		template<typename T=int>
+		void
+		process_last_tuples(typename std::enable_if_t<std::is_integral<T>::value
+				    && is_invocable<func_t, tuple_t &>::value,
+				    func_t>)
+		{
+			for (auto &t : cpu_tuple_buffer) {
+				map_func(t);
+				this->ff_send_out(reinterpret_cast<result_t *>
+						  (new tuple_t {t}));
+			}
+		}
+
+		// Non in-place version.
+		template<typename T=int>
+		void
+		process_last_tuples(typename std::enable_if_t<std::is_integral<T>::value
+				    && is_invocable<func_t, tuple_t &, result_t &>::value,
+				    func_t>)
+		{
+			for (auto i = 0; i < cpu_tuple_buffer.size(); ++i) {
+				map_func(cpu_tuple_buffer[i], cpu_result_buffer[i]);
+				this->ff_send_out(new result_t {cpu_result_buffer[i]});
+			}
 		}
 
 		// Do nothing if the function is in place.
@@ -282,6 +344,12 @@ private:
 		}
 
 	public:
+		/*
+		 * A single worker allocates both CPU and GPU buffers to store
+		 * tuples.  In case the function to be used is NOT in-place, it
+		 * also allocates enough space for the CPU and GPU buffers to
+		 * store the results.
+		 */
 		template<typename string_t=std::string, typename int_t=std::size_t>
 		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
 			    int_t max_buffered_tuples, int_t gpu_blocks,
@@ -293,8 +361,6 @@ private:
 			  gpu_threads_per_block {gpu_threads_per_block},
 			  closing_func {closing_func}
 		{
-			cpu_tuple_buffer.reserve(max_buffered_tuples);
-			cpu_result_buffer.reserve(max_buffered_tuples);
 			const auto alloc_result = cudaMalloc(&gpu_tuple_buffer,
 							     max_buffered_tuples * sizeof(tuple_t));
 			if (alloc_result != cudaSuccess)
@@ -338,12 +404,14 @@ private:
 				startTD = current_time_nsecs();
 			rcvTuples++;
 #endif
-			std::cout << cpu_tuple_buffer.size() << std::endl;
 			if (cpu_tuple_buffer.size() < max_buffered_tuples) {
 				cpu_tuple_buffer.push_back(*t);
 				delete t;
 				return this->GO_ON;
 			}
+			cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer.data(),
+				   max_buffered_tuples * sizeof(tuple_t),
+				   cudaMemcpyHostToDevice);
 			process_buffered_tuples(map_func);
 #if defined(TRACE_WINDFLOW)
 			endTS = current_time_nsecs();
@@ -357,13 +425,18 @@ private:
 			return this->GO_ON;
 		}
 
-		// void
-		// eosnotify(ssize_t id)
-		// {
-		// 	// For simplicity, compute the last tuples on CPU.
-		// 	for (const auto &t : cpu_tuple_buffer)
-		// 		map_func(t);
-		// }
+		/*
+		 * Acts on receiving the EOS (End Of Stream) signal by the
+		 * FastFlow runtime.  Based on whether the map function is in
+		 * place or not, it calls a different process_last_tuples method.
+		 */
+		// TODO: Why can't we use std::enable_if directly with this
+		// function?
+		void
+		eosnotify(ssize_t)
+		{
+			process_last_tuples(map_func);
+		}
 
 		// svc_end method (utilized by the FastFlow runtime)
 		void
@@ -386,6 +459,13 @@ private:
 	};
 
 public:
+	/*
+	 * Both constructors set the appropriate values, initialize the workers
+	 * and start their internal farm.  The only difference they have is that
+	 * one of them takes an additional parameter, the routing funciton.
+	 * This is used in the keyed version.
+	 */
+	
 	/**
 	 *  \brief Constructor I
 	 *
@@ -397,6 +477,7 @@ public:
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 *  \param closing_func closing function
 	 */
+	
 	template<typename string_t=std::string, typename int_t=std::size_t>
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func,
@@ -489,7 +570,8 @@ public:
 		return used;
 	}
 
-	/// deleted constructors/operators. This object may not be copied nor moved.
+	/// deleted constructors/operators. This object may not be copied nor
+	/// moved.
 	MapGPU(const MapGPU &) = delete;
 	MapGPU(MapGPU &&) = delete;
 	MapGPU &operator=(const MapGPU &) = delete;
