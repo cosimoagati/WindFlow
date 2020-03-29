@@ -157,8 +157,7 @@ failwith(const std::string &err)
 	std::exit(EXIT_FAILURE);
 }
 
-template<typename tuple_t, typename result_t, typename func_t,
-	 typename int_t=std::size_t>
+template<typename int_t=std::size_t>
 inline void
 check_constructor_parameters(int_t pardegree, int_t max_buffered_tuples,
 			     int_t gpu_blocks, int_t gpu_threads_per_block)
@@ -228,11 +227,11 @@ private:
 	static constexpr auto NUMBER_OF_KEYS = 256;
 	static constexpr auto SCRATCHPAD_SIZE = 64; // Size of a single
 						    // scratchpad in chars.
-
+	char *scratchpads {nullptr}; // Points to the GPU memory area containing
+				     // the scratchpads for stateful keyed
+				     // functions.
 	bool is_keyed; // is the MapGPU is configured with keyBy or not?
 	bool used; // is the MapGPU used in a MultiPipe or not?
-	char *scratchpads; // Points to the GPU memory area containing the
-			   // scratchpads for stateful keyed functions.
 
 	// friendships with other classes in the library
 	friend class MultiPipe;
@@ -634,9 +633,8 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {false}
 	{
-		check_constructor_parameters<tuple_t, result_t, func_t>
-			(pardegree, max_buffered_tuples,
-			 gpu_blocks, gpu_threads_per_block);
+		check_constructor_parameters(pardegree, max_buffered_tuples,
+					     gpu_blocks, gpu_threads_per_block);
 		std::vector<ff_node *> workers;
 		for (int_t i = 0; i < pardegree; i++) {
 			auto seq = new MapGPU_Node {func, name,
@@ -687,9 +685,8 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {true}
 	{
-		check_constructor_parameters<tuple_t, result_t, func_t>
-			(pardegree, max_buffered_tuples,
-			 gpu_blocks, gpu_threads_per_block);
+		check_constructor_parameters(pardegree, max_buffered_tuples,
+					     gpu_blocks, gpu_threads_per_block);
 		if (cudaMalloc(&scratchpads,
 			       NUMBER_OF_KEYS * SCRATCHPAD_SIZE) != cudaSuccess)
 			failwith("Failed to allocate scratchpad area");
@@ -716,30 +713,19 @@ public:
 		ff::ff_farm::cleanup_all();
 	}
 
-	~MapGPU()
-	{
-		cudaFree(scratchpads);
-	}
+	~MapGPU() { cudaFree(scratchpads); }
 
 	/**
 	 *  \brief Check whether the MapGPU has been instantiated with a key-based distribution or not
 	 *  \return true if the MapGPU is configured with keyBy
 	 */
-	bool
-	isKeyed() const
-	{
-		return is_keyed;
-	}
+	bool isKeyed() const { return is_keyed; }
 
 	/**
 	 *  \brief Check whether the Map has been used in a MultiPipe
 	 *  \return true if the Map has been added/chained to an existing MultiPipe
 	 */
-	bool
-	isUsed() const
-	{
-		return used;
-	}
+	bool isUsed() const { return used; }
 
 	/// deleted constructors/operators. This object may not be copied nor
 	/// moved.
