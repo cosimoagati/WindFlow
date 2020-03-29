@@ -157,7 +157,8 @@ failwith(const std::string &err)
 	std::exit(EXIT_FAILURE);
 }
 
-template<typename int_t=std::size_t>
+template<typename tuple_t, typename result_t, typename func_t,
+	 typename int_t=std::size_t>
 inline void
 check_constructor_parameters(int_t pardegree, int_t max_buffered_tuples,
 			     int_t gpu_blocks, int_t gpu_threads_per_block)
@@ -192,6 +193,32 @@ public:
 	/// starting from zero to pardegree-1
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
+	/*
+	 * Performs a compile-time check in order to make sure the function to
+	 * be computed has the correct signature.
+	 */
+	static_assert((is_invocable<func_t, tuple_t &>::value
+		       && !is_invocable<func_t, const tuple_t &, result_t &>::value
+		       && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
+		       && !is_invocable<func_t, const tuple_t &, char *, std::size_t>::value)
+		      || (!is_invocable<func_t, tuple_t &>::value
+			  && is_invocable<func_t, const tuple_t &, result_t &>::value
+			  && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
+			  && !is_invocable<func_t, const tuple_t &, char *, std::size_t>::value)
+		      || (!is_invocable<func_t, tuple_t &>::value
+			  && !is_invocable<func_t, const tuple_t &, result_t &>::value
+			  && is_invocable<func_t, tuple_t &, char *, std::size_t>::value
+			  && !is_invocable<func_t, const tuple_t &, char *, std::size_t>::value)
+		      || (!is_invocable<func_t, tuple_t &>::value
+			  && !is_invocable<func_t, const tuple_t &, result_t &>::value
+			  && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
+			  && is_invocable<func_t, const tuple_t &, char *, std::size_t>::value),
+		      "WindFlow Error: MapGPU function parameter does not have "
+		      "the desired signature. It must be EXACTLY one of:\n"
+		      "void(tuple_t &) (In-place, keyless)\n"
+		      "void(const tuple_t, result_t &) (Non in-place, keyless)\n"
+		      "void(tuple_t &, char *, std::size_t) (In-place, keyed)\n"
+		      "void(const tuple_t &, result_t &, char *, std::size_t) (Non in-place, keyed)");
 private:
 	static constexpr auto DEFAULT_MAX_BUFFERED_TUPLES = 256;
 	static constexpr auto DEFAULT_GPU_BLOCKS = 1;
@@ -607,8 +634,9 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {false}
 	{
-		check_constructor_parameters(pardegree, max_buffered_tuples,
-					     gpu_blocks, gpu_threads_per_block);
+		check_constructor_parameters<tuple_t, result_t, func_t>
+			(pardegree, max_buffered_tuples,
+			 gpu_blocks, gpu_threads_per_block);
 		std::vector<ff_node *> workers;
 		for (int_t i = 0; i < pardegree; i++) {
 			auto seq = new MapGPU_Node {func, name,
@@ -659,8 +687,9 @@ public:
 	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
 		: is_keyed {true}
 	{
-		check_constructor_parameters(pardegree, max_buffered_tuples,
-					     gpu_blocks, gpu_threads_per_block);
+		check_constructor_parameters<tuple_t, result_t, func_t>
+			(pardegree, max_buffered_tuples,
+			 gpu_blocks, gpu_threads_per_block);
 		if (cudaMalloc(&scratchpads,
 			       NUMBER_OF_KEYS * SCRATCHPAD_SIZE) != cudaSuccess)
 			failwith("Failed to allocate scratchpad area");
