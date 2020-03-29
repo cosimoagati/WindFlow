@@ -195,7 +195,7 @@ public:
 							 std::size_t)>;
 	/*
 	 * Performs a compile-time check in order to make sure the function to
-	 * be computed has the correct signature.
+	 * be computed by the MapGPU operator has a valid signature.
 	 */
 	static_assert((is_invocable<func_t, tuple_t &>::value
 		       && !is_invocable<func_t, const tuple_t &, result_t &>::value
@@ -214,7 +214,7 @@ public:
 			  && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
 			  && is_invocable<func_t, const tuple_t &, char *, std::size_t>::value),
 		      "WindFlow Error: MapGPU function parameter does not have "
-		      "the desired signature. It must be EXACTLY one of:\n"
+		      "a valid signature. It must be EXACTLY one of:\n"
 		      "void(tuple_t &) (In-place, keyless)\n"
 		      "void(const tuple_t, result_t &) (Non in-place, keyless)\n"
 		      "void(tuple_t &, char *, std::size_t) (In-place, keyed)\n"
