@@ -186,12 +186,6 @@ template<typename tuple_t, typename result_t, typename func_t>
 class MapGPU: public ff::ff_farm
 {
 public:
-	/// type of the closing function
-	using closing_func_t = std::function<void(RuntimeContext &)>;
-	/// type of the function to map the key hashcode onto an identifier
-	/// starting from zero to pardegree-1
-	using routing_func_t = std::function<std::size_t(std::size_t,
-							 std::size_t)>;
 	/*
 	 * Performs a compile-time check in order to make sure the function to
 	 * be computed by the MapGPU operator has a valid signature.
@@ -218,6 +212,13 @@ public:
 		      "void(const tuple_t, result_t &) (Non in-place, keyless)\n"
 		      "void(tuple_t &, char *, std::size_t) (In-place, keyed)\n"
 		      "void(const tuple_t &, result_t &, char *, std::size_t) (Non in-place, keyed)");
+
+	/// type of the closing function
+	using closing_func_t = std::function<void(RuntimeContext &)>;
+	/// type of the function to map the key hashcode onto an identifier
+	/// starting from zero to pardegree-1
+	using routing_func_t = std::function<std::size_t(std::size_t,
+							 std::size_t)>;
 private:
 	static constexpr auto DEFAULT_MAX_BUFFERED_TUPLES = 256;
 	static constexpr auto DEFAULT_GPU_BLOCKS = 1;
