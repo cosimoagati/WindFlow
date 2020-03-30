@@ -106,20 +106,34 @@ int main(int argc, char *argv[])
 		{
 		 y.value = x.value * x.value;
 		};
-	MapGPU<tuple_t, tuple_t, decltype(square)> map {square, 3, "gino",
-								closing_func};
 
-	auto pipe = ff_pipeline {};
-	pipe.add_stage(::Source<tuple_t> {});
-	pipe.add_stage(&map);
-	pipe.add_stage(::Sink<tuple_t> {});
 
-	if (pipe.run_and_wait_end() < 0) {
+	ff_pipeline ip_pipe;
+	ip_pipe.add_stage(::Source<tuple_t> {});
+	MapGPU<tuple_t, tuple_t, decltype(square)> ip_map {square, 4, "gino",
+			                                   closing_func};
+	ip_pipe.add_stage(&ip_map);
+	ip_pipe.add_stage(::Sink<tuple_t> {});
+
+	if (ip_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline.");
 		return -1;
 	}
-	// cout << "Now outside of constructor" << endl;
-	// cout << wf::is_invocable<decltype(square), tuple_t &>::value << endl;
-	// cout << wf::is_invocable<decltype(square), const tuple_t &, tuple_t &>::value << endl;
+
+	output_stream << "In-pace pipeline finished, now testing non in-place version..."
+		      << endl;
+
+	ff_pipeline nip_pipe;
+	nip_pipe.add_stage(::Source<tuple_t> {});
+	MapGPU<tuple_t, tuple_t, decltype(another_square)> nip_map{another_square,
+								   1, "gino", closing_func};
+	nip_pipe.add_stage(&nip_map);
+	nip_pipe.add_stage(::Sink<tuple_t> {});
+
+	if (nip_pipe.run_and_wait_end() < 0) {
+		error("Error while running pipeline.");
+		return -1;
+	}
+
 	return 0;
 }

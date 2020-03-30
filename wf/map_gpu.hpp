@@ -269,14 +269,18 @@ private:
 		std::ofstream *logfile = nullptr;
 #endif
 
+		/*
+		 * This function encapsulates behavior shared by all constructors.
+		 */
 		void
-		init_tuple_buffer_and_stream()
+		init_node()
 		{
 			if (cudaMalloc(&gpu_tuple_buffer,
 				       max_buffered_tuples * sizeof(tuple_t)) != cudaSuccess)
 				failwith("MapGPU_Node failed to allocate GPU memory area");
 			if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
 				failwith("cudaStreamCreate() failed in MapGPU_Node");
+			setup_result_buffer(max_buffered_tuples * sizeof(result_t));
 		}
 
 		/*
@@ -285,6 +289,27 @@ private:
 		 * and the non-in-place versions of the MapGPU operator.  Only
 		 * the desired version will be compiled.
 		 */
+		template<typename int_t=size_t>
+		void
+		setup_result_buffer(typename std::enable_if_t<is_invocable<func_t, tuple_t &>::value
+				    || is_invocable<func_t, tuple_t &, char *, std::size_t>::value,
+				    int_t>)
+		{
+			cpu_result_buffer.reserve(0);
+		}
+
+		template<typename int_t=std::size_t>
+		void
+		setup_result_buffer(typename std::enable_if_t<is_invocable<func_t, const tuple_t &, result_t &>::value
+				    || is_invocable<func_t, const tuple_t &, result_t & , char *, std::size_t>::value,
+				    int_t> size)
+		{
+			// TODO: allocating all these tuples at the beginning is
+			// not very elegant...
+			cpu_result_buffer.resize(max_buffered_tuples);
+			if (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate shared memory area");
+		}
 
 		/*
 		 * When all tuples have been buffered, it's time to feed them
@@ -480,7 +505,7 @@ private:
 			  gpu_threads_per_block {gpu_threads_per_block},
 			  closing_func {closing_func}
 		{
-			init_tuple_buffer_and_stream();
+			init_node();
 		}
 
 		template<typename string_t=std::string, typename int_t=int>
@@ -498,11 +523,7 @@ private:
 			  scratchpads {scratchpads},
 			  closing_func {closing_func}
 		{
-			init_tuple_buffer_and_stream();
-			cpu_result_buffer.resize(max_buffered_tuples);
-			if (cudaMalloc(&gpu_result_buffer,
-				       max_buffered_tuples * sizeof(result_t))!= cudaSuccess)
-				failwith("MapGPU_Node failed to allocate shared memory area");
+			init_node();
 		}
 
 		~MapGPU_Node()
