@@ -274,20 +274,18 @@ private:
 		 * and the non-in-place versions of the MapGPU operator.  Only
 		 * the desired version will be compiled.
 		 */
-		template<typename T=int>
+		template<typename int_t=size_t>
 		void
-		setup_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
-							       && is_invocable<func_t, tuple_t &>::value,
-				    std::size_t>)
+		setup_result_buffer(typename std::enable_if_t<is_invocable<func_t, tuple_t &>::value,
+				    int_t>)
 		{
 			cpu_result_buffer.reserve(0);
 		}
 
-		template<typename T=int>
+		template<typename int_t=std::size_t>
 		void
-		setup_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
-							       && is_invocable<func_t, const tuple_t &, result_t &>::value,
-				    std::size_t> size)
+		setup_result_buffer(typename std::enable_if_t<is_invocable<func_t, const tuple_t &, result_t &>::value,
+				    int_t> size)
 		{
 			// TODO: allocating all these tuples at the beginning is
 			// not very elegant...
@@ -301,11 +299,10 @@ private:
 		 * to the CUDA kernel.
 		 */
 		// In-place keyless version.
-		template<typename T=int>
+		template<typename F=func_t>
 		void
-		process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
-					&& is_invocable<func_t, tuple_t &>::value,
-					func_t>)
+		process_buffered_tuples(typename std::enable_if_t<
+					is_invocable<F, tuple_t &>::value, F>)
 		{
 			run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
@@ -322,11 +319,11 @@ private:
 		}
 
 		// Non in-place keyless version.
-		template<typename T=int>
+		template<typename F=func_t>
 		void
-		process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
-					&& is_invocable<func_t, const tuple_t &, result_t &>::value,
-					func_t>)
+		process_buffered_tuples(typename std::enable_if_t<
+					is_invocable<F, const tuple_t &, result_t &>::value,
+					F>)
 		{
 			run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
@@ -342,47 +339,50 @@ private:
 
 		// TODO: Why do I get redeclaration error? These should be
 		// ignored since std::enable_if fails and does not have a type.
+		// Answer: if more than one template fails to substitute, they
+		// are considered the exact same template even if they look
+		// different!
 
 		// In-place keyed version.
-		// template<typename T=int>
-		// void
-		// process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
-		// 			&& is_invocable<func_t, tuple_t &, char *, std::size_t>::value,
-		// 			func_t>)
-		// {
-		// 	run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-		// 		(map_func, gpu_tuple_buffer, scratchpads,
-		// 		 scratchpad_size, max_buffered_tuples);
-		// 	cudaStreamSynchronize(cuda_stream);
-		// 	cudaMemcpy(cpu_tuple_buffer.data(), gpu_tuple_buffer,
-		// 		   max_buffered_tuples * sizeof(tuple_t),
-		// 		   cudaMemcpyDeviceToHost);
-		// 	for (const auto &t: cpu_tuple_buffer) {
-		// 		this->ff_send_out(reinterpret_cast<result_t *>
-		// 				  (new tuple_t {t}));
-		// 	}
-		// 	cpu_tuple_buffer.clear();
-		// }
+		template<typename int_t=std::size_t>
+		void
+		process_buffered_tuples(typename std::enable_if_t<
+					is_invocable<func_t, tuple_t &, char *, int_t>::value,
+					func_t>)
+		{
+			run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+				(map_func, gpu_tuple_buffer, scratchpads,
+				 scratchpad_size, max_buffered_tuples);
+			cudaStreamSynchronize(cuda_stream);
+			cudaMemcpy(cpu_tuple_buffer.data(), gpu_tuple_buffer,
+				   max_buffered_tuples * sizeof(tuple_t),
+				   cudaMemcpyDeviceToHost);
+			for (const auto &t: cpu_tuple_buffer) {
+				this->ff_send_out(reinterpret_cast<result_t *>
+						  (new tuple_t {t}));
+			}
+			cpu_tuple_buffer.clear();
+		}
 
 		// Non in-place keyed version.
-		// template<typename T=int>
-		// void
-		// process_buffered_tuples(typename std::enable_if_t<std::is_integral<T>::value
-		// 			&& is_invocable<func_t, const tuple_t &, result_t &, char *, std::size_t>::value,
-		// 			func_t>)
-		// {
-		// 	run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-		// 		(map_func, gpu_tuple_buffer,
-		// 		 gpu_result_buffer, scratchpads,
-		// 		 scratchpad_size, max_buffered_tuples);
-		// 	cudaStreamSynchronize(cuda_stream);
-		// 	cudaMemcpy(cpu_result_buffer.data(), gpu_result_buffer,
-		// 		   max_buffered_tuples * sizeof(result_t),
-		// 		   cudaMemcpyDeviceToHost);
-		// 	for (const auto &t : cpu_result_buffer)
-		// 		this->ff_send_out(new result_t {t});
-		// 	cpu_tuple_buffer.clear();
-		// }
+		template<typename int_t=std::size_t>
+		void
+		process_buffered_tuples(typename std::enable_if_t<
+					is_invocable<func_t, const tuple_t &, result_t &, char *, int_t>::value,
+					func_t>)
+		{
+			run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+				(map_func, gpu_tuple_buffer,
+				 gpu_result_buffer, scratchpads,
+				 scratchpad_size, max_buffered_tuples);
+			cudaStreamSynchronize(cuda_stream);
+			cudaMemcpy(cpu_result_buffer.data(), gpu_result_buffer,
+				   max_buffered_tuples * sizeof(result_t),
+				   cudaMemcpyDeviceToHost);
+			for (const auto &t : cpu_result_buffer)
+				this->ff_send_out(new result_t {t});
+			cpu_tuple_buffer.clear();
+		}
 
 		/* 
 		 * Ulness the stream happens to have exactly a number of tuples
@@ -394,11 +394,10 @@ private:
 		 * than the total stream length.
 		 */
 		// In-place keyless version.
-		template<typename T=int>
+		template<typename F=func_t>
 		void
-		process_last_tuples(typename std::enable_if_t<std::is_integral<T>::value
-				    && is_invocable<func_t, tuple_t &>::value,
-				    func_t>)
+		process_last_tuples(typename std::enable_if_t<
+				    is_invocable<F, tuple_t &>::value, F>)
 		{
 			for (auto &t : cpu_tuple_buffer) {
 				map_func(t);
@@ -408,11 +407,11 @@ private:
 		}
 
 		// Non in-place keyless version.
-		template<typename T=int>
+		template<typename F=func_t>
 		void
-		process_last_tuples(typename std::enable_if_t<std::is_integral<T>::value
-				    && is_invocable<func_t, const tuple_t &, result_t &>::value,
-				    func_t>)
+		process_last_tuples(typename std::enable_if_t<
+				    is_invocable<F, const tuple_t &, result_t &>::value,
+				    F>)
 		{
 			for (auto i = 0; i < cpu_tuple_buffer.size(); ++i) {
 				const auto &t = cpu_tuple_buffer[i];
@@ -423,48 +422,47 @@ private:
 		}
 
 		// In-place keyed version.
-		// template<typename T=int>
-		// void
-		// process_last_tuples(typename std::enable_if_t<std::is_integral<T>::value
-		// 		    && is_invocable<func_t, tuple_t &, char *, std::size_t>::value,
-		// 		    func_t>)
-		// {
-		// 	for (auto &t : cpu_tuple_buffer) {
-		// 		map_func(t, scratchpads[t.key], scratchpad_size);
-		// 		this->ff_send_out(reinterpret_cast<result_t *>
-		// 				  (new tuple_t {t}));
-		// 	}
-		// }
+		template<typename int_t=std::size_t>
+		void
+		process_last_tuples(typename std::enable_if_t<
+				    is_invocable<func_t, tuple_t &, char *, int_t>::value,
+				    func_t>)
+		{
+			for (auto &t : cpu_tuple_buffer) {
+				map_func(t, scratchpads[t.key], scratchpad_size);
+				this->ff_send_out(reinterpret_cast<result_t *>
+						  (new tuple_t {t}));
+			}
+		}
 
 		// Non in-place keyed version.
-		// template<typename T=int>
-		// void
-		// process_last_tuples(typename std::enable_if_t<std::is_integral<T>::value
-		// 		    && is_invocable<func_t, const tuple_t &, result_t &, char *, std::size_t>::value,
-		// 		    func_t>)
-		// {
-		// 	for (auto i = 0; i < cpu_tuple_buffer.size(); ++i) {
-		// 		const auto &t = cpu_tuple_buffer[i];
-		// 		auto &res = cpu_result_buffer[i];
-		// 		map_func(t, res, scratchpads[t.key],
-		// 			 scratchpad_size);
-		// 		this->ff_send_out(new result_t {res});
-		// 	}
-		// }
+		template<typename int_t=std::size_t>
+		void
+		process_last_tuples(typename std::enable_if_t<
+				    is_invocable<func_t, const tuple_t &, result_t &, char *, int_t>::value,
+				    func_t>)
+		{
+			for (auto i = 0; i < cpu_tuple_buffer.size(); ++i) {
+				const auto &t = cpu_tuple_buffer[i];
+				auto &res = cpu_result_buffer[i];
+				map_func(t, res, scratchpads[t.key],
+					 scratchpad_size);
+				this->ff_send_out(new result_t {res});
+			}
+		}
 
 		// Do nothing if the function is in place.
-		template<typename T=int>
+		template<typename F=func_t>
 		void
-		deallocate_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
-					 && is_invocable<func_t, tuple_t &>::value,
-					 result_t *>)
+		deallocate_result_buffer(typename std::enable_if_t<
+					 is_invocable<F, tuple_t &>::value, result_t *>)
 		{}
 
 		// Non in-place version.
-		template<typename T=int>
+		template<typename F=func_t>
 		void
-		deallocate_result_buffer(typename std::enable_if_t<std::is_integral<T>::value
-					 && is_invocable<func_t, const tuple_t &, result_t &>::value,
+		deallocate_result_buffer(typename std::enable_if_t<
+					 is_invocable<F, const tuple_t &, result_t &>::value,
 					 result_t *> buffer)
 		{
 			cudaFree(buffer);
