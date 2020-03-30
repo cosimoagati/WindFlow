@@ -162,6 +162,9 @@ inline void
 check_constructor_parameters(int_t pardegree, int_t max_buffered_tuples,
 			     int_t gpu_blocks, int_t gpu_threads_per_block)
 {
+	static_assert(std::is_signed<int_t>::value,
+		      "WindFlow Error: integer type used for parameters should "
+		      "be signed, can't check for validity otherwise.");
 	if (pardegree <= 0)
 		failwith("MapGPU has non-positive parallelism");
 	if (max_buffered_tuples <= 0)
@@ -244,9 +247,9 @@ private:
 		closing_func_t closing_func;
 		std::string name; // string of the unique name of the operator
 		RuntimeContext context; // RuntimeContext
-		std::size_t max_buffered_tuples;
-		std::size_t gpu_blocks;
-		std::size_t gpu_threads_per_block;
+		int max_buffered_tuples;
+		int gpu_blocks;
+		int gpu_threads_per_block;
 
 		cudaStream_t cuda_stream;
 		std::vector<tuple_t> cpu_tuple_buffer;
@@ -255,7 +258,7 @@ private:
 		result_t *gpu_result_buffer;
 
 		char *scratchpads;
-		std::size_t number_of_keys;
+		int number_of_keys;
 		std::size_t scratchpad_size;
 
 #if defined(TRACE_WINDFLOW)
@@ -476,7 +479,7 @@ private:
 		 * The first constructor is used for keyless (stateless)
 		 * version, the second is for the keyed version.
 		 */
-		template<typename string_t=std::string, typename int_t=std::size_t>
+		template<typename string_t=std::string, typename int_t=int>
 		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
 			    int_t max_buffered_tuples, int_t gpu_blocks,
 			    int_t gpu_threads_per_block,
@@ -495,7 +498,7 @@ private:
 				failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
 
-		template<typename string_t=std::string, typename int_t=std::size_t>
+		template<typename string_t=std::string, typename int_t=int>
 		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
 			    int_t max_buffered_tuples, int_t gpu_blocks,
 			    int_t gpu_threads_per_block,
@@ -626,7 +629,7 @@ public:
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 *  \param closing_func closing function
 	 */
-	template<typename string_t=std::string, typename int_t=std::size_t>
+	template<typename string_t=std::string, typename int_t=int>
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func,
 	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
@@ -678,7 +681,7 @@ public:
 	 *  \param closing_func closing function
 	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template<typename string_t=std::string, typename int_t=std::size_t>
+	template<typename string_t=std::string, typename int_t=int>
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func, routing_func_t routing_func,
 	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
