@@ -93,8 +93,7 @@ public:
 	}
 };
 
-void
-closing_func(RuntimeContext &r) { (void) r; }
+void closing_func(RuntimeContext &) {}
 
 int main(int argc, char *argv[])
 {

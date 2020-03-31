@@ -36,11 +36,14 @@
 #define MAP_GPU_H
 
 #include <cstdlib>
+#include <deque>
 #include <string>
 #include <vector>
+#include <unordered_map>
+
+#include <ff/farm.hpp>
 #include <ff/node.hpp>
 #include <ff/pipeline.hpp>
-#include <ff/farm.hpp>
 #include "basic.hpp"
 #include "context.hpp"
 #include "standard_nodes.hpp"
