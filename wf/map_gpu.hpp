@@ -226,9 +226,9 @@ public:
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
 private:
-	static constexpr auto DEFAULT_MAX_BUFFERED_TUPLES = 256;
-	static constexpr auto DEFAULT_GPU_BLOCKS = 1;
-	static constexpr auto DEFAULT_GPU_THREADS_PER_BLOCK = 256;
+	static constexpr auto default_max_buffered_tuples = 256;
+	static constexpr auto default_gpu_blocks = 1;
+	static constexpr auto default_gpu_threads_per_block = 256;
 
 	// Arbitrary default values for now.
 	static constexpr auto NUMBER_OF_KEYS = 256;
@@ -639,9 +639,9 @@ public:
 	template<typename string_t=std::string, typename int_t=int>
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func,
-	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
-	       int_t gpu_blocks=DEFAULT_GPU_BLOCKS,
-	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
+	       int_t max_buffered_tuples=default_max_buffered_tuples,
+	       int_t gpu_blocks=default_gpu_blocks,
+	       int_t gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {false}
 	{
 		check_constructor_parameters(pardegree, max_buffered_tuples,
@@ -691,9 +691,9 @@ public:
 	template<typename string_t=std::string, typename int_t=int>
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func, routing_func_t routing_func,
-	       int_t max_buffered_tuples=DEFAULT_MAX_BUFFERED_TUPLES,
-	       int_t gpu_blocks=DEFAULT_GPU_BLOCKS,
-	       int_t gpu_threads_per_block=DEFAULT_GPU_THREADS_PER_BLOCK)
+	       int_t max_buffered_tuples=default_max_buffered_tuples,
+	       int_t gpu_blocks=default_gpu_blocks,
+	       int_t gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {true}
 	{
 		check_constructor_parameters(pardegree, max_buffered_tuples,
