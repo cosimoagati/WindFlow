@@ -160,14 +160,10 @@ failwith(const std::string &err)
 	std::exit(EXIT_FAILURE);
 }
 
-template<typename int_t=std::size_t>
 inline void
-check_constructor_parameters(int_t pardegree, int_t max_buffered_tuples,
-			     int_t gpu_blocks, int_t gpu_threads_per_block)
+check_constructor_parameters(int pardegree, int max_buffered_tuples,
+			     int gpu_blocks, int gpu_threads_per_block)
 {
-	static_assert(std::is_signed<int_t>::value,
-		      "WindFlow Error: integer type used for parameters should "
-		      "be signed, can't check for validity otherwise.");
 	if (pardegree <= 0)
 		failwith("MapGPU has non-positive parallelism");
 	if (max_buffered_tuples <= 0)
