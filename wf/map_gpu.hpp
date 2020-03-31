@@ -251,13 +251,14 @@ private:
 		std::string name; // string of the unique name of the operator
 		RuntimeContext context; // RuntimeContext
 		int max_buffered_tuples;
+		int currently_buffered_tuples {0};
 		int gpu_blocks;
 		int gpu_threads_per_block;
 
 		cudaStream_t cuda_stream;
-		std::vector<tuple_t> cpu_tuple_buffer;
+		tuple_t *cpu_tuple_buffer;
 		tuple_t *gpu_tuple_buffer;
-		std::vector<result_t> cpu_result_buffer;
+		result_t *cpu_result_buffer;
 		result_t *gpu_result_buffer;
 
 		char *scratchpads;
@@ -278,12 +279,15 @@ private:
 		void
 		init_node()
 		{
-			if (cudaMalloc(&gpu_tuple_buffer,
-				       max_buffered_tuples * sizeof(tuple_t)) != cudaSuccess)
-				failwith("MapGPU_Node failed to allocate GPU memory area");
+			const auto size = sizeof(tuple_t) * max_buffered_tuples;
+
+			if (cudaMallocHost(&cpu_tuple_buffer, size) != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate CPU tuple buffer");
+			if (cudaMalloc(&gpu_tuple_buffer, size) != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate GPU tuple buffer");
 			if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
 				failwith("cudaStreamCreate() failed in MapGPU_Node");
-			setup_result_buffer(max_buffered_tuples * sizeof(result_t));
+			setup_result_buffer();
 		}
 
 		/*
@@ -292,26 +296,29 @@ private:
 		 * and the non-in-place versions of the MapGPU operator.  Only
 		 * the desired version will be compiled.
 		 */
-		template<typename int_t=size_t>
-		void
-		setup_result_buffer(typename std::enable_if_t<is_invocable<func_t, tuple_t &>::value
-				    || is_invocable<func_t, tuple_t &, char *, std::size_t>::value,
-				    int_t>)
-		{
-			cpu_result_buffer.reserve(0);
-		}
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
+						   || is_invocable<F, tuple_t &,
+								   char *,
+								   std::size_t>::value,
+						   int> = 0>
+		void setup_result_buffer() {}
 
-		template<typename int_t=std::size_t>
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, const tuple_t &,
+								result_t &>::value
+						   || is_invocable<F, const tuple_t &,
+								   result_t &, char *,
+								   std::size_t>::value,
+						   int> = 0>
 		void
-		setup_result_buffer(typename std::enable_if_t<is_invocable<func_t, const tuple_t &, result_t &>::value
-				    || is_invocable<func_t, const tuple_t &, result_t & , char *, std::size_t>::value,
-				    int_t> size)
+		setup_result_buffer()
 		{
-			// TODO: allocating all these tuples at the beginning is
-			// not very elegant...
-			cpu_result_buffer.resize(max_buffered_tuples);
+			const auto size = sizeof(result_t) * max_buffered_tuples;
+			if (cudaMallocHost(&cpu_result_buffer, size) != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate CPU result buffer");
 			if (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess)
-				failwith("MapGPU_Node failed to allocate shared memory area");
+				failwith("MapGPU_Node failed to allocate GPU result buffer");
 		}
 
 		/*
@@ -319,42 +326,48 @@ private:
 		 * to the CUDA kernel.
 		 */
 		// In-place keyless version.
-		template<typename F=func_t>
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, tuple_t &>::value,
+						   int> = 0>
 		void
-		process_buffered_tuples(typename std::enable_if_t<
-					is_invocable<F, tuple_t &>::value, F>)
+		process_buffered_tuples()
 		{
 			run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
 				 max_buffered_tuples);
 			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_tuple_buffer.data(), gpu_tuple_buffer,
+			cudaMemcpy(cpu_tuple_buffer, gpu_tuple_buffer,
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyDeviceToHost);
-			for (const auto &t: cpu_tuple_buffer) {
+			for (auto i = 0; i < max_buffered_tuples; ++i) {
+				const auto &t = cpu_tuple_buffer[i];
 				this->ff_send_out(reinterpret_cast<result_t *>
 						  (new tuple_t {t}));
 			}
-			cpu_tuple_buffer.clear();
+			currently_buffered_tuples = 0;
 		}
 
 		// Non in-place keyless version.
-		template<typename F=func_t>
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F,
+								const tuple_t &,
+								result_t &>::value,
+						   int> = 0>
 		void
-		process_buffered_tuples(typename std::enable_if_t<
-					is_invocable<F, const tuple_t &, result_t &>::value,
-					F>)
+		process_buffered_tuples()
 		{
 			run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
 				 gpu_result_buffer, max_buffered_tuples);
 			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_result_buffer.data(), gpu_result_buffer,
+			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
 				   max_buffered_tuples * sizeof(result_t),
 				   cudaMemcpyDeviceToHost);
-			for (const auto &t : cpu_result_buffer)
+			for (auto i = 0; i < max_buffered_tuples; ++i) {
+				const auto &t = cpu_result_buffer[i];
 				this->ff_send_out(new result_t {t});
-			cpu_tuple_buffer.clear();
+			}
+			currently_buffered_tuples = 0;
 		}
 
 		// TODO: Why do I get redeclaration error? These should be
@@ -364,44 +377,50 @@ private:
 		// different!
 
 		// In-place keyed version.
-		template<typename int_t=std::size_t>
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, tuple_t &,
+								char *, std::size_t>::value,
+						   int> = 0>
 		void
-		process_buffered_tuples(typename std::enable_if_t<
-					is_invocable<func_t, tuple_t &, char *, int_t>::value,
-					func_t>)
+		process_buffered_tuples()
 		{
 			run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer, scratchpads,
 				 scratchpad_size, max_buffered_tuples);
 			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_tuple_buffer.data(), gpu_tuple_buffer,
+			cudaMemcpy(cpu_tuple_buffer, gpu_tuple_buffer,
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyDeviceToHost);
-			for (const auto &t: cpu_tuple_buffer) {
+			for (auto i = 0; i < max_buffered_tuples; ++i) {
+				const auto &t = cpu_tuple_buffer[i];
 				this->ff_send_out(reinterpret_cast<result_t *>
 						  (new tuple_t {t}));
 			}
-			cpu_tuple_buffer.clear();
+			currently_buffered_tuples = 0;
 		}
 
 		// Non in-place keyed version.
-		template<typename int_t=std::size_t>
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, const tuple_t &, result_t &,
+								char *, std::size_t>::value,
+						   int> = 0>
 		void
-		process_buffered_tuples(typename std::enable_if_t<
-					is_invocable<func_t, const tuple_t &, result_t &, char *, int_t>::value,
-					func_t>)
+		process_buffered_tuples()
 		{
 			run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
 				 gpu_result_buffer, scratchpads,
 				 scratchpad_size, max_buffered_tuples);
 			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_result_buffer.data(), gpu_result_buffer,
+			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
 				   max_buffered_tuples * sizeof(result_t),
 				   cudaMemcpyDeviceToHost);
-			for (const auto &t : cpu_result_buffer)
+			for (auto i = 0; i < max_buffered_tuples; ++i) {
+				const auto &t = cpu_result_buffer[i];
 				this->ff_send_out(new result_t {t});
-			cpu_tuple_buffer.clear();
+			}
+			currently_buffered_tuples = 0;
+
 		}
 
 		/* 
@@ -414,12 +433,14 @@ private:
 		 * than the total stream length.
 		 */
 		// In-place keyless version.
-		template<typename F=func_t>
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, tuple_t &>::value,
+						   int> = 0>
 		void
-		process_last_tuples(typename std::enable_if_t<
-				    is_invocable<F, tuple_t &>::value, F>)
+		process_last_tuples()
 		{
-			for (auto &t : cpu_tuple_buffer) {
+			for (auto i = 0; i < currently_buffered_tuples; ++i) {
+				auto &t = cpu_tuple_buffer[i];
 				map_func(t);
 				this->ff_send_out(reinterpret_cast<result_t *>
 						  (new tuple_t {t}));
@@ -427,13 +448,14 @@ private:
 		}
 
 		// Non in-place keyless version.
-		template<typename F=func_t>
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, const tuple_t &,
+								result_t &>::value,
+						   int> = 0>
 		void
-		process_last_tuples(typename std::enable_if_t<
-				    is_invocable<F, const tuple_t &, result_t &>::value,
-				    F>)
+		process_last_tuples()
 		{
-			for (auto i = 0; i < cpu_tuple_buffer.size(); ++i) {
+			for (auto i = 0; i < currently_buffered_tuples; ++i) {
 				const auto &t = cpu_tuple_buffer[i];
 				auto &res = cpu_result_buffer[i];
 				map_func(t, res);
@@ -442,13 +464,15 @@ private:
 		}
 
 		// In-place keyed version.
-		template<typename int_t=std::size_t>
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, tuple_t &,
+								char *, std::size_t>::value,
+						   int> = 0>
 		void
-		process_last_tuples(typename std::enable_if_t<
-				    is_invocable<func_t, tuple_t &, char *, int_t>::value,
-				    func_t>)
+		process_last_tuples()
 		{
-			for (auto &t : cpu_tuple_buffer) {
+			for (auto i = 0; i < currently_buffered_tuples; ++i) {
+				auto &t = cpu_tuple_buffer[i];
 				map_func(t, scratchpads[t.key], scratchpad_size);
 				this->ff_send_out(reinterpret_cast<result_t *>
 						  (new tuple_t {t}));
@@ -456,13 +480,14 @@ private:
 		}
 
 		// Non in-place keyed version.
-		template<typename int_t=std::size_t>
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, const tuple_t &, result_t &,
+								char *, std::size_t>::value,
+						   int> = 0>
 		void
-		process_last_tuples(typename std::enable_if_t<
-				    is_invocable<func_t, const tuple_t &, result_t &, char *, int_t>::value,
-				    func_t>)
+		process_last_tuples()
 		{
-			for (auto i = 0; i < cpu_tuple_buffer.size(); ++i) {
+			for (auto i = 0; i < currently_buffered_tuples; ++i) {
 				const auto &t = cpu_tuple_buffer[i];
 				auto &res = cpu_result_buffer[i];
 				map_func(t, res, scratchpads[t.key],
@@ -472,20 +497,20 @@ private:
 		}
 
 		// Do nothing if the function is in place.
-		template<typename F=func_t>
-		void
-		deallocate_result_buffer(typename std::enable_if_t<
-					 is_invocable<F, tuple_t &>::value, result_t *>)
-		{}
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, tuple_t &>::value,
+						   int> = 0>
+		void deallocate_result_buffer() {}
 
 		// Non in-place version.
-		template<typename F=func_t>
-		void
-		deallocate_result_buffer(typename std::enable_if_t<
-					 is_invocable<F, const tuple_t &, result_t &>::value,
-					 result_t *> buffer)
+		template<typename F=func_t,
+			 typename std::enable_if_t<is_invocable<F, const tuple_t &,
+								result_t &>::value,
+						   int> = 0>
+		void deallocate_result_buffer()
 		{
-			cudaFree(buffer);
+			cudaFreeHost(cpu_result_buffer);
+			cudaFree(gpu_result_buffer);
 		}
 
 	public:
@@ -497,10 +522,9 @@ private:
 		 * The first constructor is used for keyless (stateless)
 		 * version, the second is for the keyed version.
 		 */
-		template<typename string_t=std::string, typename int_t=int>
-		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
-			    int_t max_buffered_tuples, int_t gpu_blocks,
-			    int_t gpu_threads_per_block,
+		MapGPU_Node(func_t func, std::string name, RuntimeContext context,
+			    int max_buffered_tuples, int gpu_blocks,
+			    int gpu_threads_per_block,
 			    closing_func_t closing_func)
 			: map_func {func}, name {name}, context {context},
 			  max_buffered_tuples {max_buffered_tuples},
@@ -511,13 +535,12 @@ private:
 			init_node();
 		}
 
-		template<typename string_t=std::string, typename int_t=int>
-		MapGPU_Node(func_t func, string_t name, RuntimeContext context,
-			    int_t max_buffered_tuples, int_t gpu_blocks,
-			    int_t gpu_threads_per_block,
+		MapGPU_Node(func_t func, std::string name, RuntimeContext context,
+			    int max_buffered_tuples, int gpu_blocks,
+			    int gpu_threads_per_block,
 			    char *scratchpads,
-			    int_t number_of_keys,
-			    int_t scratchpad_size,
+			    int number_of_keys,
+			    int scratchpad_size,
 			    closing_func_t closing_func)
 			: map_func {func}, name {name}, context {context},
 			  max_buffered_tuples {max_buffered_tuples},
@@ -531,8 +554,9 @@ private:
 
 		~MapGPU_Node()
 		{
+			cudaFreeHost(cpu_tuple_buffer);
 			cudaFree(gpu_tuple_buffer);
-			deallocate_result_buffer(gpu_result_buffer);
+			deallocate_result_buffer();
 			cudaStreamDestroy(cuda_stream);
 		}
 
@@ -563,15 +587,16 @@ private:
 				startTD = current_time_nsecs();
 			rcvTuples++;
 #endif
-			if (cpu_tuple_buffer.size() < max_buffered_tuples) {
-				cpu_tuple_buffer.push_back(*t);
+			if (currently_buffered_tuples < max_buffered_tuples) {
+				cpu_tuple_buffer[currently_buffered_tuples] = *t;
+				++currently_buffered_tuples;
 				delete t;
 				return this->GO_ON;
 			}
-			cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer.data(),
+			cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyHostToDevice);
-			process_buffered_tuples(map_func);
+			process_buffered_tuples();
 #if defined(TRACE_WINDFLOW)
 			endTS = current_time_nsecs();
 			endTD = current_time_nsecs();
@@ -594,7 +619,7 @@ private:
 		void
 		eosnotify(ssize_t)
 		{
-			process_last_tuples(map_func);
+			process_last_tuples();
 		}
 
 		// svc_end method (utilized by the FastFlow runtime)
@@ -665,15 +690,15 @@ public:
 		// emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 
-		std::cout << is_invocable<func_t, tuple_t &>::value << std::endl;
-		std::cout << is_invocable<func_t, const tuple_t &, result_t &>::value
-			  << std::endl;
-		std::cout << is_invocable<func_t, tuple_t &, char *,
-					  std::size_t>::value
-			  << std::endl;
-		std::cout << is_invocable<func_t, const tuple_t &, result_t &,
-					  char *, std::size_t>::value
-			  << std::endl;
+		// std::cout << is_invocable<func_t, tuple_t &>::value << std::endl;
+		// std::cout << is_invocable<func_t, const tuple_t &, result_t &>::value
+		// 	  << std::endl;
+		// std::cout << is_invocable<func_t, tuple_t &, char *,
+		// 			  std::size_t>::value
+		// 	  << std::endl;
+		// std::cout << is_invocable<func_t, const tuple_t &, result_t &,
+		// 			  char *, std::size_t>::value
+		// 	  << std::endl;
 	}
 
 	/**
