@@ -72,10 +72,10 @@ struct is_invocable :
  * (memory area accessible to GPU)
  * \param buffer_capacity How many tuples the buffer contains.
  */
-template<typename tuple_t, typename func_t, typename int_t=std::size_t>
+template<typename tuple_t, typename func_t>
 __global__ void
 run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
-		  const int_t buffer_capacity)
+		  const std::size_t buffer_capacity)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
@@ -91,11 +91,10 @@ run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
  * (memory area accessible to GPU)
  * \param buffer_capacity How many tuples the buffer contains.
  */
-template<typename tuple_t, typename result_t, typename func_t,
-	 typename int_t=std::size_t>
+template<typename tuple_t, typename result_t, typename func_t>
 __global__ void
 run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
-		   result_t *result_buffer, const int_t buffer_capacity)
+		   result_t *result_buffer, const std::size_t buffer_capacity)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
@@ -126,13 +125,12 @@ run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
 	}
 }
 
-template<typename tuple_t, typename result_t, typename func_t,
-	 typename int_t=std::size_t>
+template<typename tuple_t, typename result_t, typename func_t>
 __global__ void
 run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
 			 result_t *result_buffer, char *scratchpads,
-			 const int_t scratchpad_size,
-			 const int_t buffer_capacity)
+			 const std::size_t scratchpad_size,
+			 const std::size_t buffer_capacity)
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
@@ -184,6 +182,8 @@ check_constructor_parameters(int pardegree, int max_buffered_tuples,
  *  This class implements the Map operator executing a one-to-one stateless
  *  transformation on each tuple of the input stream.
  */
+// TODO: Can we put set the result_t parameter to be the same as tuple_t
+// if not specified?
 template<typename tuple_t, typename result_t, typename func_t>
 class MapGPU: public ff::ff_farm
 {
@@ -214,6 +214,19 @@ public:
 		      "void(const tuple_t, result_t &) (Non in-place, keyless)\n"
 		      "void(tuple_t &, char *, std::size_t) (In-place, keyed)\n"
 		      "void(const tuple_t &, result_t &, char *, std::size_t) (Non in-place, keyed)");
+
+	/*
+	 * In case the function to be computed is in-place, check if the input
+	 * type (tuple_t) is the same as the output type (result_t).
+	 *
+	 * How does this work? Remember that A -> B is equivalent to !A || B in
+	 * Boolean logic!
+	 */
+	static_assert(!(is_invocable<func_t, tuple &>::value
+			|| is_invocable<func_t, tuple &, char *, std::size_t::value)
+		      || std::is_same<tuple_t, result_t>,
+		      "WindFlow Error: if instantiating MapGPU with an in-place "
+		      "function, the input type and the output type must match.");
 
 	/// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext &)>;
