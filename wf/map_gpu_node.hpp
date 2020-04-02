@@ -458,9 +458,9 @@ public:
 
 	// svc method (utilized by the FastFlow runtime)
 	/*
-	 * Main svc function.  After buffering enough tuples, it sends the
-	 * previously computed results (except for the first time, of course),
-	 * then starts the CUDA kernel on the newly buffered elements.
+	 * After buffering enough tuples, it sends the previously computed
+	 * results (except for the first time, of course), then starts the CUDA
+	 * kernel on the newly buffered elements.
 	 */
 	result_t *
 	svc(tuple_t *t)
