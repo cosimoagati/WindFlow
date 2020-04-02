@@ -228,7 +228,6 @@ public:
 		      "WindFlow Error: if instantiating MapGPU with an in-place "
 		      "function, the input type and the output type must match.");
 
-	/// type of the closing function
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	/// type of the function to map the key hashcode onto an identifier
 	/// starting from zero to pardegree-1
@@ -281,24 +280,6 @@ private:
 		volatile unsigned long startTD, startTS, endTD, endTS;
 		std::ofstream *logfile = nullptr;
 #endif
-
-		/*
-		 * This function encapsulates behavior shared by all constructors.
-		 */
-		void
-		init_node()
-		{
-			const auto size = sizeof(tuple_t) * max_buffered_tuples;
-
-			if (cudaMallocHost(&cpu_tuple_buffer, size) != cudaSuccess)
-				failwith("MapGPU_Node failed to allocate CPU tuple buffer");
-			if (cudaMalloc(&gpu_tuple_buffer, size) != cudaSuccess)
-				failwith("MapGPU_Node failed to allocate GPU tuple buffer");
-			if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
-				failwith("cudaStreamCreate() failed in MapGPU_Node");
-			setup_result_buffer();
-		}
-
 		/*
 		 * Through the use of std::enable_if, we define different
 		 * variants of behavior that is different between the in-place
@@ -528,22 +509,9 @@ private:
 		 * tuples.  In case the function to be used is NOT in-place, it
 		 * also allocates enough space for the CPU and GPU buffers to
 		 * store the results.
-		 * The first constructor is used for keyless (stateless)
-		 * version, the second is for the keyed version.
+		 * The first constructor is used for keyed (stateful)
+		 * version, the second is for the keyless (stateless) version.
 		 */
-		MapGPU_Node(func_t func, std::string name, RuntimeContext context,
-			    int max_buffered_tuples, int gpu_blocks,
-			    int gpu_threads_per_block,
-			    closing_func_t closing_func)
-			: map_func {func}, name {name}, context {context},
-			  max_buffered_tuples {max_buffered_tuples},
-			  gpu_blocks {gpu_blocks},
-			  gpu_threads_per_block {gpu_threads_per_block},
-			  closing_func {closing_func}
-		{
-			init_node();
-		}
-
 		MapGPU_Node(func_t func, std::string name, RuntimeContext context,
 			    int max_buffered_tuples, int gpu_blocks,
 			    int gpu_threads_per_block,
@@ -558,8 +526,25 @@ private:
 			  scratchpads {scratchpads},
 			  closing_func {closing_func}
 		{
-			init_node();
+			const auto size = sizeof(tuple_t) * max_buffered_tuples;
+
+			if (cudaMallocHost(&cpu_tuple_buffer, size) != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate CPU tuple buffer");
+			if (cudaMalloc(&gpu_tuple_buffer, size) != cudaSuccess)
+				failwith("MapGPU_Node failed to allocate GPU tuple buffer");
+			if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
+				failwith("cudaStreamCreate() failed in MapGPU_Node");
+			setup_result_buffer();
 		}
+
+		MapGPU_Node(func_t func, std::string name, RuntimeContext context,
+			    int max_buffered_tuples, int gpu_blocks,
+			    int gpu_threads_per_block,
+			    closing_func_t closing_func)
+			: MapGPU_Node {func, name, context, max_buffered_tuples,
+				       gpu_blocks, gpu_threads_per_block,
+				       nullptr, 0, 0, closing_func}
+		{}
 
 		~MapGPU_Node()
 		{
