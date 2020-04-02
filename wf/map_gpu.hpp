@@ -216,8 +216,10 @@ public:
 		      "void(const tuple_t &, result_t &, char *, std::size_t) (Non in-place, keyed)");
 
 	/*
-	 * In case the function to be computed is in-place, check if the input
-	 * type (tuple_t) is the same as the output type (result_t).
+	 * If the function to be computed is in-place, check if the input
+	 * type (tuple_t) is the same as the output type (result_t).  This
+	 * greatly simplifies class implementation, since we can now send out
+	 * objects of type tuple_t without having to use casts.
 	 *
 	 * How does this work? Remember that A -> B is equivalent to !A || B in
 	 * Boolean logic!
@@ -329,12 +331,7 @@ private:
 			cudaMemcpy(cpu_tuple_buffer, gpu_tuple_buffer,
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyDeviceToHost);
-			for (auto i = 0; i < max_buffered_tuples; ++i) {
-				const auto &t = cpu_tuple_buffer[i];
-				this->ff_send_out(reinterpret_cast<result_t *>
-						  (new tuple_t {t}));
-			}
-			currently_buffered_tuples = 0;
+			send_out_tuples_and_reset_counter(cpu_tuple_buffer);
 		}
 
 		// Non in-place keyless version.
@@ -353,11 +350,7 @@ private:
 			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
 				   max_buffered_tuples * sizeof(result_t),
 				   cudaMemcpyDeviceToHost);
-			for (auto i = 0; i < max_buffered_tuples; ++i) {
-				const auto &t = cpu_result_buffer[i];
-				this->ff_send_out(new result_t {t});
-			}
-			currently_buffered_tuples = 0;
+			send_out_tuples_and_reset_counter(cpu_result_buffer);
 		}
 
 		// TODO: Why do I get redeclaration error? These should be
@@ -381,12 +374,7 @@ private:
 			cudaMemcpy(cpu_tuple_buffer, gpu_tuple_buffer,
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyDeviceToHost);
-			for (auto i = 0; i < max_buffered_tuples; ++i) {
-				const auto &t = cpu_tuple_buffer[i];
-				this->ff_send_out(reinterpret_cast<result_t *>
-						  (new tuple_t {t}));
-			}
-			currently_buffered_tuples = 0;
+			send_out_tuples_and_reset_counter(cpu_tuple_buffer);
 		}
 
 		// Non in-place keyed version.
@@ -405,12 +393,25 @@ private:
 			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
 				   max_buffered_tuples * sizeof(result_t),
 				   cudaMemcpyDeviceToHost);
+			send_out_tuples_and_reset_counter(cpu_result_buffer);
+		}
+
+		/*
+		 * Send out tuples from the indicated buffer, which may be
+		 * either cpu_tuple_buffer (if the function is in-place) or
+		 * cpu_result_buffer (if the function is not in-place).  Once
+		 * everything has been sent, reset the counter of buffered
+		 * tuples.
+		 */
+		template<typename outgoing_tuple_t>
+		void
+		send_out_tuples_and_reset_counter(const outgoing_tuple_t *buffer)
+		{
 			for (auto i = 0; i < max_buffered_tuples; ++i) {
-				const auto &t = cpu_result_buffer[i];
-				this->ff_send_out(new result_t {t});
+				const auto &t = buffer[i];
+				this->ff_send_out(new outgoing_tuple_t {t});
 			}
 			currently_buffered_tuples = 0;
-
 		}
 
 		/* 
@@ -432,8 +433,7 @@ private:
 			for (auto i = 0; i < currently_buffered_tuples; ++i) {
 				auto &t = cpu_tuple_buffer[i];
 				map_func(t);
-				this->ff_send_out(reinterpret_cast<result_t *>
-						  (new tuple_t {t}));
+				this->ff_send_out(new tuple_t {t});
 			}
 		}
 
@@ -464,8 +464,7 @@ private:
 			for (auto i = 0; i < currently_buffered_tuples; ++i) {
 				auto &t = cpu_tuple_buffer[i];
 				map_func(t, scratchpads[t.key], scratchpad_size);
-				this->ff_send_out(reinterpret_cast<result_t *>
-						  (new tuple_t {t}));
+				this->ff_send_out(new tuple_t {t});
 			}
 		}
 
@@ -514,10 +513,8 @@ private:
 		 */
 		MapGPU_Node(func_t func, std::string name, RuntimeContext context,
 			    int max_buffered_tuples, int gpu_blocks,
-			    int gpu_threads_per_block,
-			    char *scratchpads,
-			    int number_of_keys,
-			    int scratchpad_size,
+			    int gpu_threads_per_block, char *scratchpads,
+			    int number_of_keys, int scratchpad_size,
 			    closing_func_t closing_func)
 			: map_func {func}, name {name}, context {context},
 			  max_buffered_tuples {max_buffered_tuples},
