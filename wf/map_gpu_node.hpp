@@ -207,9 +207,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 */
 
 	/*
-	 * If the function is in place, we can conveniently refer to the CPU and
-	 * GPU tuple buffers as if they were the result buffer, since they play
-	 * both roles.
+	 * If the function is in place, the CPU and GPU tuple buffers are
+	 * effectively the same as the respective result buffer.
 	 */
 	template<typename F=func_t,
 		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
@@ -246,8 +245,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	/*
-	  i		 * When all tuples have been buffered, it's time to feed them
-	  * to the CUDA kernel.
+	 * When all tuples have been buffered, it's time to feed them to the
+	  * CUDA kernel.
 	  */
 	// In-place keyless version.
 	template<typename F=func_t,
@@ -260,8 +259,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		// different kernel!  Can we do some template magic with the
 		// kernels themselves in to remove these functions?
 		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-			(map_func, gpu_tuple_buffer,
-			 tuple_buffer_capacity);
+			(map_func, gpu_tuple_buffer, tuple_buffer_capacity);
 	}
 
 	// Non in-place keyless version.
@@ -373,7 +371,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	// Do nothing if the function is in place.
+	// Do nothing if the function is in place, nothing to deallocate.
 	template<typename F=func_t,
 		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value,
 					   int> = 0>
