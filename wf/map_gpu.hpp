@@ -133,7 +133,6 @@ class MapGPU: public ff::ff_farm
 				   closing_func_t, routing_func_t>;
 
 	static constexpr auto default_tuple_buffer_capacity = 256;
-	static constexpr auto default_gpu_blocks = 1;
 	static constexpr auto default_gpu_threads_per_block = 256;
 
 	// Arbitrary default values for now.
