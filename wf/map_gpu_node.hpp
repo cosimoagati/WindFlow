@@ -453,12 +453,19 @@ public:
 		return 0;
 	}
 
-	// svc method (utilized by the FastFlow runtime)
 	/*
+	 * svc function used by the FastFlow runtime, keyless version.
 	 * After buffering enough tuples, send the previously computed results
 	 * (except for the first time), then start the CUDA kernel on the newly
 	 * buffered elements.
 	 */
+	template<typename F=func_t,
+		 typename std::enable_if_t<is_invocable<F, const tuple_t &,
+							result_t &>::value
+					   || is_invocable<F, const tuple_t &,
+							   result_t &, char *,
+							   std::size_t>::value,
+					   int> = 0>
 	result_t *
 	svc(tuple_t *t)
 	{
