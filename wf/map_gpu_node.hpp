@@ -536,7 +536,7 @@ public:
 	}
 
 	/*
-	 * Deleted constructors/assignments. This object may not be copied or
+	 * Deleted constructors/assignments. This object may not be copied nor
 	 * moved
 	 */
 	MapGPU_Node(const MapGPU_Node &) = delete;
