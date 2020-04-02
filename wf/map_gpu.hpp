@@ -127,6 +127,8 @@ class MapGPU: public ff::ff_farm
 	/// starting from zero to pardegree-1
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
+
+	// The type of objects used as internal farm nodes.
 	using node_t = MapGPU_Node<tuple_t, result_t, func_t,
 				   closing_func_t, routing_func_t>;
 
