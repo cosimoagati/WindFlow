@@ -458,9 +458,9 @@ public:
 
 	// svc method (utilized by the FastFlow runtime)
 	/*
-	 * After buffering enough tuples, it sends the previously computed
-	 * results (except for the first time, of course), then starts the CUDA
-	 * kernel on the newly buffered elements.
+	 * After buffering enough tuples, send the previously computed results
+	 * (except for the first time), then start the CUDA kernel on the newly
+	 * buffered elements.
 	 */
 	result_t *
 	svc(tuple_t *t)
@@ -486,10 +486,8 @@ public:
 			   tuple_buffer_capacity * sizeof(result_t),
 			   cudaMemcpyDeviceToHost);
 
-		for (auto i = 0; i < tuple_buffer_capacity; ++i) {
-			const auto &t = cpu_result_buffer[i];
-			this->ff_send_out(new result_t {t});
-		}
+		for (auto i = 0; i < tuple_buffer_capacity; ++i)
+			this->ff_send_out(new result_t {cpu_result_buffer[i]});
 		currently_buffered_tuples = 0;
 
 		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
