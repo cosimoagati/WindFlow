@@ -143,7 +143,7 @@ class MapGPU: public ff::ff_farm
 				     // the scratchpads for stateful keyed
 				     // functions.
 	bool is_keyed; // is the MapGPU is configured with keyBy or not?
-	bool used; // is the MapGPU used in a MultiPipe or not?
+	bool is_used; // is the MapGPU used in a MultiPipe or not?
 
 	// friendships with other classes in the library
 	friend class MultiPipe;
@@ -255,7 +255,7 @@ public:
 	 *  \brief Check whether the Map has been used in a MultiPipe
 	 *  \return true if the Map has been added/chained to an existing MultiPipe
 	 */
-	bool isUsed() const { return used; }
+	bool isUsed() const { return is_used; }
 
 	/// deleted constructors/operators. This object may not be copied nor
 	/// moved.
