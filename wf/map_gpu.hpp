@@ -262,6 +262,9 @@ private:
 		RuntimeContext context; // RuntimeContext
 		int max_buffered_tuples;
 		int currently_buffered_tuples {0};
+
+		// TODO: Both should be removed, you only need the total number
+		// of threads to compute the number of blocks!
 		int gpu_blocks;
 		int gpu_threads_per_block;
 
@@ -274,6 +277,7 @@ private:
 		char *scratchpads;
 		int number_of_keys;
 		std::size_t scratchpad_size;
+		bool was_first_batch_sent {false};
 
 #if defined(TRACE_WINDFLOW)
 		unsigned long rcvTuples {0};
@@ -288,14 +292,29 @@ private:
 		 * and the non-in-place versions of the MapGPU operator.  Only
 		 * the desired version will be compiled.
 		 */
+
+		/*
+		 * If the function is in place, we can conveniently refer to the
+		 * CPU and GPU tuple buffers as if they were the result buffer,
+		 * since they play both roles.
+		 */
 		template<typename F=func_t,
 			 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
 						   || is_invocable<F, tuple_t &,
 								   char *,
 								   std::size_t>::value,
 						   int> = 0>
-		void setup_result_buffer() {}
+		void
+		setup_result_buffer()
+		{
+			cpu_result_buffer = cpu_tuple_buffer;
+			gpu_result_buffer = gpu_tuple_buffer;
+		}
 
+		/*
+		 * If the function is not in place, result buffers are distinct
+		 * and must be allocated.
+		 */
 		template<typename F=func_t,
 			 typename std::enable_if_t<is_invocable<F, const tuple_t &,
 								result_t &>::value
@@ -314,7 +333,7 @@ private:
 		}
 
 		/*
-		 * When all tuples have been buffered, it's time to feed them
+i		 * When all tuples have been buffered, it's time to feed them
 		 * to the CUDA kernel.
 		 */
 		// In-place keyless version.
@@ -322,16 +341,15 @@ private:
 			 typename std::enable_if_t<is_invocable<F, tuple_t &>::value,
 						   int> = 0>
 		void
-		process_buffered_tuples()
+		run_kernel()
 		{
+			// TODO: the only reason these functions are used is to
+			// call a different kernel!  Can we do some template
+			// magic with the kernels themselves in to remove these
+			// functions?
 			run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
 				 max_buffered_tuples);
-			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_tuple_buffer, gpu_tuple_buffer,
-				   max_buffered_tuples * sizeof(tuple_t),
-				   cudaMemcpyDeviceToHost);
-			send_out_tuples_and_reset_counter(cpu_tuple_buffer);
 		}
 
 		// Non in-place keyless version.
@@ -341,16 +359,11 @@ private:
 								result_t &>::value,
 						   int> = 0>
 		void
-		process_buffered_tuples()
+		run_kernel()
 		{
 			run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
 				 gpu_result_buffer, max_buffered_tuples);
-			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
-				   max_buffered_tuples * sizeof(result_t),
-				   cudaMemcpyDeviceToHost);
-			send_out_tuples_and_reset_counter(cpu_result_buffer);
 		}
 
 		// TODO: Why do I get redeclaration error? These should be
@@ -365,16 +378,11 @@ private:
 								char *, std::size_t>::value,
 						   int> = 0>
 		void
-		process_buffered_tuples()
+		run_kernel()
 		{
 			run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer, scratchpads,
 				 scratchpad_size, max_buffered_tuples);
-			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_tuple_buffer, gpu_tuple_buffer,
-				   max_buffered_tuples * sizeof(tuple_t),
-				   cudaMemcpyDeviceToHost);
-			send_out_tuples_and_reset_counter(cpu_tuple_buffer);
 		}
 
 		// Non in-place keyed version.
@@ -383,38 +391,15 @@ private:
 								char *, std::size_t>::value,
 						   int> = 0>
 		void
-		process_buffered_tuples()
+		run_kernel()
 		{
 			run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(map_func, gpu_tuple_buffer,
 				 gpu_result_buffer, scratchpads,
 				 scratchpad_size, max_buffered_tuples);
-			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
-				   max_buffered_tuples * sizeof(result_t),
-				   cudaMemcpyDeviceToHost);
-			send_out_tuples_and_reset_counter(cpu_result_buffer);
 		}
 
 		/*
-		 * Send out tuples from the indicated buffer, which may be
-		 * either cpu_tuple_buffer (if the function is in-place) or
-		 * cpu_result_buffer (if the function is not in-place).  Once
-		 * everything has been sent, reset the counter of buffered
-		 * tuples.
-		 */
-		template<typename outgoing_tuple_t>
-		void
-		send_out_tuples_and_reset_counter(const outgoing_tuple_t *buffer)
-		{
-			for (auto i = 0; i < max_buffered_tuples; ++i) {
-				const auto &t = buffer[i];
-				this->ff_send_out(new outgoing_tuple_t {t});
-			}
-			currently_buffered_tuples = 0;
-		}
-
-		/* 
 		 * Ulness the stream happens to have exactly a number of tuples
 		 * that is a multiple of the buffer capacity, some tuples will
 		 * be "left out" at the end of the stream, since there aren't
@@ -496,7 +481,8 @@ private:
 			 typename std::enable_if_t<is_invocable<F, const tuple_t &,
 								result_t &>::value,
 						   int> = 0>
-		void deallocate_result_buffer()
+		void
+		deallocate_result_buffer()
 		{
 			cudaFreeHost(cpu_result_buffer);
 			cudaFree(gpu_result_buffer);
@@ -584,10 +570,27 @@ private:
 				delete t;
 				return this->GO_ON;
 			}
+			// TODO: very ugly, and a conditional every time is
+			// expensive!  Can we rewrite it better?
+			if (!was_first_batch_sent) {
+				was_first_batch_sent = true;
+				return this->GO_ON;
+			}
+			cudaStreamSynchronize(cuda_stream);
+			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
+				   max_buffered_tuples * sizeof(result_t),
+				   cudaMemcpyDeviceToHost);
+
+			for (auto i = 0; i < max_buffered_tuples; ++i) {
+				const auto &t = cpu_result_buffer[i];
+				this->ff_send_out(new result_t {t});
+			}
+			currently_buffered_tuples = 0;
+
 			cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
 				   max_buffered_tuples * sizeof(tuple_t),
 				   cudaMemcpyHostToDevice);
-			process_buffered_tuples();
+			run_kernel();
 #if defined(TRACE_WINDFLOW)
 			endTS = current_time_nsecs();
 			endTD = current_time_nsecs();
@@ -680,16 +683,6 @@ public:
 		// when the MapGPU will be destroyed we need aslo to destroy the
 		// emitter, workers and collector
 		ff::ff_farm::cleanup_all();
-
-		// std::cout << is_invocable<func_t, tuple_t &>::value << std::endl;
-		// std::cout << is_invocable<func_t, const tuple_t &, result_t &>::value
-		// 	  << std::endl;
-		// std::cout << is_invocable<func_t, tuple_t &, char *,
-		// 			  std::size_t>::value
-		// 	  << std::endl;
-		// std::cout << is_invocable<func_t, const tuple_t &, result_t &,
-		// 			  char *, std::size_t>::value
-		// 	  << std::endl;
 	}
 
 	/**
