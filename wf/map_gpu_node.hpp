@@ -225,8 +225,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	/*
-	 * If the function is not in place, result buffers are distinct
-	 * and must be allocated.
+	 * If the function is not in place, result buffers are distinct and must
+	 * be allocated.
 	 */
 	template<typename F=func_t,
 		 typename std::enable_if_t<is_invocable<F, const tuple_t &,
@@ -274,8 +274,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	run_kernel()
 	{
 		run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-			(map_func, gpu_tuple_buffer,
-			 gpu_result_buffer, tuple_buffer_capacity);
+			(map_func, gpu_tuple_buffer, gpu_result_buffer,
+			 tuple_buffer_capacity);
 	}
 
 	// In-place keyed version.
@@ -300,9 +300,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	run_kernel()
 	{
 		run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-			(map_func, gpu_tuple_buffer,
-			 gpu_result_buffer, scratchpads,
-			 scratchpad_size, tuple_buffer_capacity);
+			(map_func, gpu_tuple_buffer, gpu_result_buffer,
+			 scratchpads, scratchpad_size, tuple_buffer_capacity);
 	}
 
 	/*
@@ -534,8 +533,7 @@ public:
 	}
 
 	/*
-	 * Deleted constructors/assignments. This object may not be copied nor
-	 * moved
+	 * This object may not be copied nor moved.
 	 */
 	MapGPU_Node(const MapGPU_Node &) = delete;
 	MapGPU_Node(MapGPU_Node &&) = delete;

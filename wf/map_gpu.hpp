@@ -55,14 +55,12 @@ namespace wf
 {
 inline void
 check_constructor_parameters(int pardegree, int tuple_buffer_capacity,
-			     int gpu_blocks, int gpu_threads_per_block)
+			     int gpu_threads_per_block)
 {
 	if (pardegree <= 0)
 		failwith("MapGPU has non-positive parallelism");
 	if (tuple_buffer_capacity <= 0)
 		failwith("MapGPU has non-positive maximum buffered tuples");
-	if (gpu_blocks <= 0)
-		failwith("MapGPU has non-positive number of GPU blocks");
 	if (gpu_threads_per_block <= 0)
 		failwith("MapGPU has non-positive number of "
 			 "GPU threads per block");
@@ -162,7 +160,6 @@ public:
 	 *  \param pardegree parallelism degree of the MapGPU operator
 	 *  \param name string with the unique name of the MapGPU operator
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
-	 *  \param gpu_blocks the number of blocks to use when calling the GPU kernel
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 *  \param closing_func closing function
 	 */
@@ -171,12 +168,11 @@ public:
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func,
 	       int_t tuple_buffer_capacity=default_tuple_buffer_capacity,
-	       int_t gpu_blocks=default_gpu_blocks,
 	       int_t gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {false}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
-					     gpu_blocks, gpu_threads_per_block);
+					     gpu_threads_per_block);
 		std::vector<ff_node *> workers;
 		for (int_t i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,
@@ -203,7 +199,6 @@ public:
 	 *  \param pardegree parallelism degree of the MapGPU operator
 	 *  \param name string with the unique name of the MapGPU operator
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
-	 *  \param gpu_blocks the number of blocks to use when calling the GPU kernel
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 *  \param closing_func closing function
 	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
@@ -212,12 +207,11 @@ public:
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func, routing_func_t routing_func,
 	       int_t tuple_buffer_capacity=default_tuple_buffer_capacity,
-	       int_t gpu_blocks=default_gpu_blocks,
 	       int_t gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {true}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
-					     gpu_blocks, gpu_threads_per_block);
+					     gpu_threads_per_block);
 		if (cudaMalloc(&scratchpads,
 			       NUMBER_OF_KEYS * SCRATCHPAD_SIZE) != cudaSuccess)
 			failwith("Failed to allocate scratchpad area");
@@ -257,8 +251,9 @@ public:
 	 */
 	bool isUsed() const { return is_used; }
 
-	/// deleted constructors/operators. This object may not be copied nor
-	/// moved.
+	/*
+	 * This object may not be copied nor moved.
+	 */
 	MapGPU(const MapGPU &) = delete;
 	MapGPU(MapGPU &&) = delete;
 	MapGPU &operator=(const MapGPU &) = delete;
