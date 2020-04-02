@@ -222,9 +222,9 @@ public:
 	 * How does this work? Remember that A -> B is equivalent to !A || B in
 	 * Boolean logic!
 	 */
-	static_assert(!(is_invocable<func_t, tuple &>::value
-			|| is_invocable<func_t, tuple &, char *, std::size_t::value)
-		      || std::is_same<tuple_t, result_t>,
+	static_assert(!(is_invocable<func_t, tuple_t &>::value
+			|| is_invocable<func_t, tuple_t &, char *, std::size_t>::value)
+		      || std::is_same<tuple_t, result_t>::value,
 		      "WindFlow Error: if instantiating MapGPU with an in-place "
 		      "function, the input type and the output type must match.");
 
