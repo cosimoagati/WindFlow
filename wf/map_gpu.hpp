@@ -54,12 +54,12 @@
 namespace wf
 {
 inline void
-check_constructor_parameters(int pardegree, int max_buffered_tuples,
+check_constructor_parameters(int pardegree, int tuple_buffer_capacity,
 			     int gpu_blocks, int gpu_threads_per_block)
 {
 	if (pardegree <= 0)
 		failwith("MapGPU has non-positive parallelism");
-	if (max_buffered_tuples <= 0)
+	if (tuple_buffer_capacity <= 0)
 		failwith("MapGPU has non-positive maximum buffered tuples");
 	if (gpu_blocks <= 0)
 		failwith("MapGPU has non-positive number of GPU blocks");
@@ -132,7 +132,7 @@ class MapGPU: public ff::ff_farm
 	using node_t = MapGPU_Node<tuple_t, result_t, func_t,
 				   closing_func_t, routing_func_t>;
 
-	static constexpr auto default_max_buffered_tuples = 256;
+	static constexpr auto default_tuple_buffer_capacity = 256;
 	static constexpr auto default_gpu_blocks = 1;
 	static constexpr auto default_gpu_threads_per_block = 256;
 
@@ -162,7 +162,7 @@ public:
 	 *  \param func function to be executed on each input tuple
 	 *  \param pardegree parallelism degree of the MapGPU operator
 	 *  \param name string with the unique name of the MapGPU operator
-	 *  \param max_buffered_tuples numbers of tuples to buffer on the GPU
+	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_blocks the number of blocks to use when calling the GPU kernel
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 *  \param closing_func closing function
@@ -171,19 +171,18 @@ public:
 	template<typename string_t=std::string, typename int_t=int>
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func,
-	       int_t max_buffered_tuples=default_max_buffered_tuples,
+	       int_t tuple_buffer_capacity=default_tuple_buffer_capacity,
 	       int_t gpu_blocks=default_gpu_blocks,
 	       int_t gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {false}
 	{
-		check_constructor_parameters(pardegree, max_buffered_tuples,
+		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_blocks, gpu_threads_per_block);
 		std::vector<ff_node *> workers;
 		for (int_t i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,
 					       RuntimeContext {pardegree, i},
-					       max_buffered_tuples,
-					       gpu_blocks,
+					       tuple_buffer_capacity,
 					       gpu_threads_per_block,
 					       closing_func};
 			workers.push_back(seq);
@@ -204,7 +203,7 @@ public:
 	 *  \param func function to be executed on each input tuple
 	 *  \param pardegree parallelism degree of the MapGPU operator
 	 *  \param name string with the unique name of the MapGPU operator
-	 *  \param max_buffered_tuples numbers of tuples to buffer on the GPU
+	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_blocks the number of blocks to use when calling the GPU kernel
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 *  \param closing_func closing function
@@ -213,12 +212,12 @@ public:
 	template<typename string_t=std::string, typename int_t=int>
 	MapGPU(func_t func, int_t pardegree, string_t name,
 	       closing_func_t closing_func, routing_func_t routing_func,
-	       int_t max_buffered_tuples=default_max_buffered_tuples,
+	       int_t tuple_buffer_capacity=default_tuple_buffer_capacity,
 	       int_t gpu_blocks=default_gpu_blocks,
 	       int_t gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {true}
 	{
-		check_constructor_parameters(pardegree, max_buffered_tuples,
+		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_blocks, gpu_threads_per_block);
 		if (cudaMalloc(&scratchpads,
 			       NUMBER_OF_KEYS * SCRATCHPAD_SIZE) != cudaSuccess)
@@ -227,8 +226,7 @@ public:
 		for (int_t i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,
 					       RuntimeContext {pardegree, i},
-					       max_buffered_tuples,
-					       gpu_blocks,
+					       tuple_buffer_capacity,
 					       gpu_threads_per_block,
 					       scratchpads,
 					       NUMBER_OF_KEYS,

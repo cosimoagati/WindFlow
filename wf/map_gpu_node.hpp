@@ -424,8 +424,8 @@ public:
 	}
 
 	MapGPU_Node(func_t func, std::string name, RuntimeContext context,
-		    int tuple_buffer_capacity, int gpu_blocks,
-		    int gpu_threads_per_block, closing_func_t closing_func)
+		    int tuple_buffer_capacity, int gpu_threads_per_block,
+		    closing_func_t closing_func)
 		: MapGPU_Node {func, name, context, tuple_buffer_capacity,
 			       gpu_threads_per_block, nullptr, 0, 0,
 			       closing_func}
