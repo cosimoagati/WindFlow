@@ -460,11 +460,9 @@ public:
 	 * buffered elements.
 	 */
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, const tuple_t &,
-							result_t &>::value
+		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
 					   || is_invocable<F, const tuple_t &,
-							   result_t &, char *,
-							   std::size_t>::value,
+							   result_t &>::value,
 					   int> = 0>
 	result_t *
 	svc(tuple_t *t)
