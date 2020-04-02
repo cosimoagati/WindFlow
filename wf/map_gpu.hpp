@@ -164,11 +164,10 @@ public:
 	 *  \param closing_func closing function
 	 */
 	// TODO: It would be nice to factor out common constructor behavior...
-	template<typename string_t=std::string, typename int_t=int>
-	MapGPU(func_t func, int_t pardegree, string_t name,
+	MapGPU(func_t func, int pardegree, std::string name,
 	       closing_func_t closing_func,
-	       int_t tuple_buffer_capacity=default_tuple_buffer_capacity,
-	       int_t gpu_threads_per_block=default_gpu_threads_per_block)
+	       int tuple_buffer_capacity=default_tuple_buffer_capacity,
+	       int gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {false}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
@@ -203,11 +202,10 @@ public:
 	 *  \param closing_func closing function
 	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	template<typename string_t=std::string, typename int_t=int>
-	MapGPU(func_t func, int_t pardegree, string_t name,
+	MapGPU(func_t func, int pardegree, std::string name,
 	       closing_func_t closing_func, routing_func_t routing_func,
-	       int_t tuple_buffer_capacity=default_tuple_buffer_capacity,
-	       int_t gpu_threads_per_block=default_gpu_threads_per_block)
+	       int tuple_buffer_capacity=default_tuple_buffer_capacity,
+	       int gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {true}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
