@@ -534,6 +534,15 @@ public:
 		delete logfile;
 #endif
 	}
+
+	/*
+	 * Deleted constructors/assignments. This object may not be copied or
+	 * moved
+	 */
+	MapGPU_Node(const MapGPU_Node &) = delete;
+	MapGPU_Node(MapGPU_Node &&) = delete;
+	MapGPU_Node &operator=(const MapGPU_Node &) = delete;
+	MapGPU_Node &operator=(MapGPU_Node &&) = delete;
 };
 
 } // namespace wf
