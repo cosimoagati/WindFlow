@@ -57,13 +57,16 @@ inline void
 check_constructor_parameters(int pardegree, int tuple_buffer_capacity,
 			     int gpu_threads_per_block)
 {
-	if (pardegree <= 0)
+	if (pardegree <= 0) {
 		failwith("MapGPU has non-positive parallelism");
-	if (tuple_buffer_capacity <= 0)
+	}
+	if (tuple_buffer_capacity <= 0) {
 		failwith("MapGPU has non-positive maximum buffered tuples");
-	if (gpu_threads_per_block <= 0)
+	}
+	if (gpu_threads_per_block <= 0) {
 		failwith("MapGPU has non-positive number of "
 			 "GPU threads per block");
+	}
 }
 
 /**
@@ -213,8 +216,9 @@ public:
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
 		if (cudaMalloc(&scratchpads,
-			       NUMBER_OF_KEYS * SCRATCHPAD_SIZE) != cudaSuccess)
+			       NUMBER_OF_KEYS * SCRATCHPAD_SIZE) != cudaSuccess) {
 			failwith("Failed to allocate scratchpad area");
+		}
 		std::vector<ff_node *> workers;
 		for (int_t i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,

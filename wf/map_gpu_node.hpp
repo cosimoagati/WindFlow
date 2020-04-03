@@ -62,8 +62,9 @@ run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
-	for (auto i = index; i < buffer_capacity; i += stride)
+	for (auto i = index; i < buffer_capacity; i += stride) {
 		map_func(tuple_buffer[i]);
+	}
 }
 
 /**
@@ -81,8 +82,9 @@ run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
 {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
-	for (auto i = index; i < buffer_capacity; i += stride)
+	for (auto i = index; i < buffer_capacity; i += stride) {
 		map_func(tuple_buffer[i], result_buffer[i]);
+	}
 }
 
 /*
@@ -420,12 +422,15 @@ public:
 	{
 		const auto size = sizeof(tuple_t) * tuple_buffer_capacity;
 
-		if (cudaMallocHost(&cpu_tuple_buffer, size) != cudaSuccess)
+		if (cudaMallocHost(&cpu_tuple_buffer, size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU tuple buffer");
-		if (cudaMalloc(&gpu_tuple_buffer, size) != cudaSuccess)
+		}
+		if (cudaMalloc(&gpu_tuple_buffer, size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate GPU tuple buffer");
-		if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
+		}
+		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
+		}
 		setup_result_buffer();
 	}
 
@@ -480,8 +485,9 @@ public:
 		cpu_tuple_buffer[currently_buffered_tuples] = *t;
 		++currently_buffered_tuples;
 		delete t;
-		if (currently_buffered_tuples < tuple_buffer_capacity)
+		if (currently_buffered_tuples < tuple_buffer_capacity) {
 			return this->GO_ON;
+		}
 		if (!was_first_batch_sent) {
 			was_first_batch_sent = true;
 			return this->GO_ON;
@@ -491,8 +497,9 @@ public:
 			   tuple_buffer_capacity * sizeof(result_t),
 			   cudaMemcpyDeviceToHost);
 
-		for (auto i = 0; i < tuple_buffer_capacity; ++i)
+		for (auto i = 0; i < tuple_buffer_capacity; ++i) {
 			this->ff_send_out(new result_t {cpu_result_buffer[i]});
+		}
 		currently_buffered_tuples = 0;
 
 		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
