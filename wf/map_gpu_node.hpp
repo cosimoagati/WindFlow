@@ -36,6 +36,7 @@
 #include <deque>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include <ff/node.hpp>
 #include "basic.hpp"
@@ -172,8 +173,16 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	func_t map_func; // The function to be computed on the tuples. May be in
 			 // place or not.
 	closing_func_t closing_func;
-	std::string name; // string of the unique name of the operator
 	RuntimeContext context; // RuntimeContext
+
+	// This map is used in the keyed version, it stores, for each key, a
+	// queue of tuples with the same key and a pointer to a memory area to
+	// be used as state.
+	// TODO: Why not just a queue?
+	std::unordered_map<int, std::pair<std::deque<tuple_t>,
+					  char *>> tuple_map;
+	std::string name; // string of the unique name of the operator
+
 	int tuple_buffer_capacity;
 	int gpu_threads_per_block;
 	int gpu_blocks;
@@ -459,11 +468,6 @@ public:
 	 * (except for the first time), then start the CUDA kernel on the newly
 	 * buffered elements.
 	 */
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
-					   || is_invocable<F, const tuple_t &,
-							   result_t &>::value,
-					   int> = 0>
 	result_t *
 	svc(tuple_t *t)
 	{
@@ -473,12 +477,11 @@ public:
 			startTD = current_time_nsecs();
 		rcvTuples++;
 #endif
-		if (currently_buffered_tuples < tuple_buffer_capacity) {
-			cpu_tuple_buffer[currently_buffered_tuples] = *t;
-			++currently_buffered_tuples;
-			delete t;
+		cpu_tuple_buffer[currently_buffered_tuples] = *t;
+		++currently_buffered_tuples;
+		delete t;
+		if (currently_buffered_tuples < tuple_buffer_capacity)
 			return this->GO_ON;
-		}
 		if (!was_first_batch_sent) {
 			was_first_batch_sent = true;
 			return this->GO_ON;
@@ -507,6 +510,42 @@ public:
 #endif
 		return this->GO_ON;
 	}
+
+	// Preliminary keyed svc function.  Since functions such as overloads
+	// and destructors cannot be excluded via SFINAE (since there must be
+	// only one) we'll have to use it on another separate, helper function.
+	// TODO: Of course, factor out common behavior, if possible.
+	// result_t *
+	// svc_preliminary_keyed(tuple_t *t)
+	// {
+	// 	if (tuple_map.find(t.key) == tuple_map.end()) {
+	// 		auto &queue = tuple_map[t.key].first;
+	// 		auto &scratchpad_ptr = tuple_map[t.key].second;
+	// 		queue.push_back(t);
+	// 		if (cudaMalloc(&scratchpad_ptr, scratchpad_size) != cudaSuccess)
+	// 			failwith("MapGPU_Node failed to allocate new scratchpad");
+	// 		delete t;
+	// 		return this->GO_ON;
+	// 	}
+
+	// 	if (!was_first_batch_sent) {
+	// 		was_first_batch_sent = true;
+	// 		return this->GO_ON;
+	// 	}
+	// 	cudaStreamSynchronize(cuda_stream);
+	// 	cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
+	// 		   tuple_buffer_capacity * sizeof(result_t),
+	// 		   cudaMemcpyDeviceToHost);
+
+	// 	for (auto i = 0; i < tuple_buffer_capacity; ++i)
+	// 		this->ff_send_out(new result_t {cpu_result_buffer[i]});
+	// 	currently_buffered_tuples = 0;
+
+	// 	cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
+	// 		   tuple_buffer_capacity * sizeof(tuple_t),
+	// 		   cudaMemcpyHostToDevice);
+	// 	run_kernel();
+	// }
 
 	/*
 	 * Acts on receiving the EOS (End Of Stream) signal by the FastFlow
