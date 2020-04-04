@@ -329,7 +329,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	run_kernel()
 	{
 		run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-			(map_func, gpu_tuple_buffer, gpu_scratchpad_buffer
+			(map_func, gpu_tuple_buffer, gpu_scratchpad_buffer,
 			 scratchpad_size, tuple_buffer_capacity);
 	}
 
@@ -441,18 +441,21 @@ public:
 	 * first constructor is used for keyless (stateless) version, the second is
 	 * for the keyed (stateful) version.
 	 */
-	MapGPU_Node(func_t func, std::string name, RuntimeContext context,
+	MapGPU_Node(func_t map_func, std::string name, RuntimeContext context,
 		    int tuple_buffer_capacity, int gpu_threads_per_block,
 		    closing_func_t closing_func)
-		: MapGPU_Node {func, name, context, tuple_buffer_capacity,
+		: MapGPU_Node {map_func, name, context, tuple_buffer_capacity,
 			       gpu_threads_per_block, 0, closing_func}
 	{}
 
-	MapGPU_Node(func_t func, std::string name, RuntimeContext context,
+	MapGPU_Node(func_t map_func, std::string name, RuntimeContext context,
 		    int tuple_buffer_capacity, int gpu_threads_per_block,
 		    int scratchpad_size, closing_func_t closing_func)
-		: MapGPU_Node {func, name, context, tuple_buffer_capacity,
-			       gpu_threads_per_block, closing_func}
+		: map_func {map_func}, name {name}, context {context},
+		  tuple_buffer_capacity {tuple_buffer_capacity},
+		  gpu_threads_per_block {gpu_threads_per_block},
+		  scratchpad_size {scratchpad_size},
+		  closing_func {closing_func}
 	{
 		const auto size = sizeof(tuple_t) * tuple_buffer_capacity;
 
