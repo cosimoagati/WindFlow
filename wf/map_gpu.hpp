@@ -178,7 +178,7 @@ public:
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
 		std::vector<ff_node *> workers;
-		for (int_t i = 0; i < pardegree; i++) {
+		for (auto i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,
 					       RuntimeContext {pardegree, i},
 					       tuple_buffer_capacity,
@@ -220,7 +220,7 @@ public:
 			failwith("Failed to allocate scratchpad area");
 		}
 		std::vector<ff_node *> workers;
-		for (int_t i = 0; i < pardegree; i++) {
+		for (auto i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,
 					       RuntimeContext {pardegree, i},
 					       tuple_buffer_capacity,
