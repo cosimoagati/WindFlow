@@ -200,8 +200,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	char **gpu_scratchpad_buffer;
 	std::size_t scratchpad_size;
 
-	// Used to avoid sending results for the first batch.
-	bool was_first_batch_sent {false};
+	bool was_batch_started {false};
 
 #if defined(TRACE_WINDFLOW)
 	unsigned long rcvTuples {0};
@@ -217,10 +216,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 * compiled.
 	 */
 
-	/*
-	 * If the function is in place, the CPU and GPU tuple buffers are
-	 * effectively the same as the respective result buffer.
-	 */
 	template<typename F=func_t,
 		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
 					   || is_invocable<F, tuple_t &,
@@ -228,16 +223,11 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 							   std::size_t>::value,
 					   int> = 0>
 	void
-	setup_result_buffers()
+	setup_gpu_result_buffer()
 	{
-		cpu_result_buffer = cpu_tuple_buffer;
 		gpu_result_buffer = gpu_tuple_buffer;
 	}
 
-	/*
-	 * If the function is not in place, result buffers are distinct and must
-	 * be allocated.
-	 */
 	template<typename F=func_t,
 		 typename std::enable_if_t<is_invocable<F, const tuple_t &,
 							result_t &>::value
@@ -249,9 +239,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	setup_result_buffers()
 	{
 		const auto size = sizeof(result_t) * tuple_buffer_capacity;
-		if (cudaMallocHost(&cpu_result_buffer, size) != cudaSuccess) {
-			failwith("MapGPU_Node failed to allocate CPU result buffer");
-		}
+
 		if (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate GPU result buffer");
 		}
@@ -287,6 +275,22 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
+	/*
+	 * Send out the last batch of results computed by the GPU and currenty
+	 * residing in its memory.
+	 */
+	void
+	send_last_batch_results()
+	{
+		cudaStreamSynchronize(cuda_stream);
+		cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
+			   tuple_buffer_capacity * sizeof(result_t),
+			   cudaMemcpyDeviceToHost);
+		for (auto i = 0; i < tuple_buffer_capacity; ++i) {
+			this->ff_send_out(new result_t {cpu_result_buffer[i]});
+		}
+	}
+
 
 	/*
 	 * When all tuples have been buffered, it's time to feed them to the
@@ -305,6 +309,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, tuple_buffer_capacity);
 	}
+
 
 	// Non in-place keyless version.
 	template<typename F=func_t,
@@ -454,21 +459,27 @@ public:
 		: map_func {map_func}, name {name}, context {context},
 		  tuple_buffer_capacity {tuple_buffer_capacity},
 		  gpu_threads_per_block {gpu_threads_per_block},
+		  gpu_blocks {std::ceil(tuple_buffer_capacity
+					/ float {gpu_threads_per_block})},
 		  scratchpad_size {scratchpad_size},
 		  closing_func {closing_func}
 	{
-		const auto size = sizeof(tuple_t) * tuple_buffer_capacity;
+		const auto tuple_size = sizeof(tuple_t) * tuple_buffer_capacity;
+		const auto result_size = sizeof(result_t) * tuple_buffer_capacity;
 
-		if (cudaMallocHost(&cpu_tuple_buffer, size) != cudaSuccess) {
+		if (cudaMallocHost(&cpu_tuple_buffer, tuple_size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU tuple buffer");
 		}
-		if (cudaMalloc(&gpu_tuple_buffer, size) != cudaSuccess) {
+		if (cudaMallocHost(&cpu_result_buffer, result_size) != cudaSuccess) {
+			failwith("MapGPU_Node failed to allocate CPU result buffer");
+		}
+		if (cudaMalloc(&gpu_tuple_buffer, tuple_size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate GPU tuple buffer");
 		}
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
-		setup_result_buffers();
+		setup_gpu_result_buffer();
 		setup_scratchpad_buffers();
 	}
 
@@ -518,8 +529,7 @@ public:
 		if (currently_buffered_tuples < tuple_buffer_capacity) {
 			return this->GO_ON;
 		}
-		assert(currently_buffered_tuples == tuple_buffer_capacity);
-		if (was_first_batch_sent) {
+		if (was_batch_started) {
 			cudaStreamSynchronize(cuda_stream);
 			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
 				   tuple_buffer_capacity * sizeof(result_t),
@@ -527,14 +537,16 @@ public:
 			for (auto i = 0; i < tuple_buffer_capacity; ++i) {
 				this->ff_send_out(new result_t {cpu_result_buffer[i]});
 			}
-		} else {
-			was_first_batch_sent = true;
 		}
 		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
 			   tuple_buffer_capacity * sizeof(tuple_t),
 			   cudaMemcpyHostToDevice);
 		currently_buffered_tuples = 0;
 		run_kernel();
+		was_batch_started = true; //TODO: Redundant after the first
+					  //time! Could be made more
+					  //efficient,but uglier... (At least
+					  //it's not a branch).
 #if defined(TRACE_WINDFLOW)
 		endTS = current_time_nsecs();
 		endTD = current_time_nsecs();
@@ -568,17 +580,10 @@ public:
 			return this->GO_ON;
 		}
 		assert(tuple_map.size() >= tuple_buffer_capacity);
-		if (was_first_batch_sent) {
-			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
-				   tuple_buffer_capacity * sizeof(result_t),
-				   cudaMemcpyDeviceToHost);
-
-			for (auto i = 0; i < tuple_buffer_capacity; ++i) {
-				this->ff_send_out(new result_t {cpu_result_buffer[i]});
-			}
+		if (was_batch_started) {
+			send_last_batch_results();
 		} else {
-			was_first_batch_sent = true;
+			was_batch_started = true;
 		}
 		currently_buffered_tuples = 0;
 
@@ -603,12 +608,24 @@ public:
 
 	/*
 	 * Acts on receiving the EOS (End Of Stream) signal by the FastFlow
-	 * runtime.  Based on whether the map function is in place or not, it
-	 * calls a different process_last_tuples method.
+	 * runtime.  It computes the last remaining tuples on the CPU, for
+	 * simplicity, then sends out any remaining results from the last CUDA
+	 * kernel.
 	 */
-	// TODO: Why can't we use std::enable_if directly with this
-	// function?
-	void eosnotify(ssize_t) { process_last_tuples(); }
+	void eosnotify(ssize_t)
+	{
+		if (was_batch_started) {
+			cudaStreamSynchronize(cuda_stream);
+			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
+				   tuple_buffer_capacity * sizeof(result_t),
+				   cudaMemcpyDeviceToHost);
+			for (auto i = 0; i < tuple_buffer_capacity; ++i) {
+				this->ff_send_out(new result_t {cpu_result_buffer[i]});
+			}
+		}
+		std::cout << currently_buffered_tuples << "\n";
+		process_last_tuples();
+	}
 
 	// svc_end method (utilized by the FastFlow runtime)
 	void
