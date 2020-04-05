@@ -185,7 +185,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		std::queue<tuple_t *> queue;
 		char *scratchpad;
 	};
-	std::map<int, KeyControlBlock> tuple_map;
+	std::map<int, KeyControlBlock> key_control_block_map;
 
 	std::string operator_name;
 	int tuple_buffer_capacity;
@@ -202,7 +202,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	// Scratchpad buffers are used to store pointers to individual
 	// scratchpads.  It is passed to the kernel so that it knows where to
 	// find the corresponding scratchpad for each processed tuple.
-	std::map<int, char *> cpu_scratchpad_map;
 	char **cpu_scratchpad_buffer;
 	char **gpu_scratchpad_buffer;
 	std::size_t scratchpad_size;
@@ -462,8 +461,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void
 	deallocate_scratchpad_buffers()
 	{
-		for (auto &scratchpad_entry : cpu_scratchpad_map) {
-			cudaFree(scratchpad_entry.second);
+		for (auto &kcb : key_control_block_map) {
+			cudaFree(kcb.second);
 		}
 		cudaFree(cpu_scratchpad_buffer);
 		cudaFree(gpu_scratchpad_buffer);
@@ -601,22 +600,18 @@ public:
 	{
 		if (currently_buffered_tuples < tuple_buffer_capacity) {
 			const auto &key = t->key;
-			const auto has_new_key_arrived =
-				tuple_map.find(key) == tuple_map.end();
-			if (has_new_key_arrived) {
-				++currently_buffered_tuples;
-			}
-			tuple_map[key].queue.push(t);
-			auto scratchpad_pos = cpu_scratchpad_map.find(key);
-			if (scratchpad_pos == cpu_scratchpad_map.end()) {
+			if (key_control_block_map.find(key)
+			    == key_control_block_map.end()) {
 				char *new_scratchpad;
 				if (cudaMalloc(&new_scratchpad, scratchpad_size) != cudaSuccess) {
 					failwith("MapGPU_Node failed to allocate GPU scratchpad for new key");
 				}
-				cpu_scratchpad_map[key] = new_scratchpad;
-				tuple_map[key].scratchpad = new_scratchpad;
+				key_control_block_map[key].scratchpad = new_scratchpad;
+				++currently_buffered_tuples;
+			}
+			key_control_block_map[key].queue.push(t);
 			} else {
-				tuple_map[key].scratchpad = *scratchpad_pos;
+				key_control_block_map[key].scratchpad = *scratchpad_pos;
 			}
 			return this->GO_ON;
 		}
@@ -629,13 +624,13 @@ public:
 				this->ff_send_out(new result_t {cpu_result_buffer[i]});
 			}
 		}
-		auto current_key_block = tuple_map.begin();
+		auto current_key_block = key_control_block_map.begin();
 		auto i = 0;
 		while (i < tuple_buffer_capacity) {
-			const auto queue = current_key_block.queue;
-			cpu_tuple_buffer[i] = *queue.front();
-			delete queue.front();
-			queue.pop();
+			const auto t = current_key_block.queue.front();
+			cpu_tuple_buffer[i] = *t;
+			delete t;
+			current_key_block.queue.pop();
 			cpu_scratchpad_buffer[i] = current_key_block.scratchpad;
 
 			++current_key_block;
