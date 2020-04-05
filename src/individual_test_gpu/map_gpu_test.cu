@@ -95,6 +95,8 @@ public:
 
 void closing_func(RuntimeContext &) {}
 
+int routing_func()(size_t k, size_t n) { return k % n; }
+
 int main(int argc, char *argv[])
 {
 	auto square = [] __host__ __device__ (tuple_t &x)
@@ -105,7 +107,17 @@ int main(int argc, char *argv[])
 		{
 		 y.value = x.value * x.value;
 		};
-
+	auto verify_order = [] __host__ __device__ (tuple_t &t, char *scratchpad,
+						    std::size_t size)
+		{
+		 // NB: the first tuple must have value 0!
+		 assert(size >= sizeof(int));
+		 const auto prev_val = static_cast<int>(*scratchpad);
+		 if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+			 t.value = -1;
+		 }
+		 *reinterpret_cast<int *>(scratchpad) = t.value;
+		};
 
 	ff_pipeline ip_pipe;
 	ip_pipe.add_stage(::Source<tuple_t> {});
@@ -118,14 +130,13 @@ int main(int argc, char *argv[])
 		error("Error while running pipeline.");
 		return -1;
 	}
-
 	output_stream << "In-pace pipeline finished, now testing non in-place version..."
 		      << endl;
 
 	ff_pipeline nip_pipe;
 	nip_pipe.add_stage(::Source<tuple_t> {});
-	MapGPU<tuple_t, tuple_t, decltype(another_square)> nip_map{another_square,
-								   1, "gino", closing_func};
+	MapGPU<tuple_t, tuple_t, decltype(another_square)> nip_map {another_square,
+								    1, "gino", closing_func};
 	nip_pipe.add_stage(&nip_map);
 	nip_pipe.add_stage(::Sink<tuple_t> {});
 
@@ -133,6 +144,18 @@ int main(int argc, char *argv[])
 		error("Error while running pipeline.");
 		return -1;
 	}
+	// output_stream << "Non in-pace pipeline finished, now testing in-place keyed version..."
+	// 	      << endl;
+	// ff_pipeline ip_keyed_pipe;
+	// ip_keyed_pipe.add_stage(::Source<tuple_t> {});
 
+	// MapGPU<tuple_t, tuple_t, decltype(verify_order)> ip_keyed_map {verify_order,
+	// 		1, "gino", closing_func, sizeof(int)};
+	// ip_keyed_pipe.add_stage(&ip_keyed_map);
+	// ip_keyed_pipe.add_stage(::Sink<tuple_t> {});
+	// if (ip_keyed_pipe.run_and_wait_end() < 0) {
+	// 	error("Error while running pipeline");
+	// 	return -1;
+	// }
 	return 0;
 }

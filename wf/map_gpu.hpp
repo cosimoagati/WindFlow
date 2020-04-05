@@ -137,14 +137,8 @@ class MapGPU: public ff::ff_farm
 
 	static constexpr auto default_tuple_buffer_capacity = 256;
 	static constexpr auto default_gpu_threads_per_block = 256;
+	static constexpr auto default_scratchpad_size = 64;
 
-	// Arbitrary default values for now.
-	static constexpr auto NUMBER_OF_KEYS = 256;
-	static constexpr auto SCRATCHPAD_SIZE = 64; // Size of a single
-						    // scratchpad in chars.
-	char *scratchpads {nullptr}; // Points to the GPU memory area containing
-				     // the scratchpads for stateful keyed
-				     // functions.
 	bool is_keyed; // is the MapGPU is configured with keyBy or not?
 	bool is_used; // is the MapGPU used in a MultiPipe or not?
 
@@ -210,24 +204,19 @@ public:
 	MapGPU(func_t func, int pardegree, std::string name,
 	       closing_func_t closing_func, routing_func_t routing_func,
 	       int tuple_buffer_capacity=default_tuple_buffer_capacity,
-	       int gpu_threads_per_block=default_gpu_threads_per_block)
+	       int gpu_threads_per_block=default_gpu_threads_per_block,
+	       int scratchpad_size=default_scratchpad_size)
 		: is_keyed {true}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
-		if (cudaMalloc(&scratchpads,
-			       NUMBER_OF_KEYS * SCRATCHPAD_SIZE) != cudaSuccess) {
-			failwith("Failed to allocate scratchpad area");
-		}
 		std::vector<ff_node *> workers;
 		for (auto i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,
 					       RuntimeContext {pardegree, i},
 					       tuple_buffer_capacity,
 					       gpu_threads_per_block,
-					       scratchpads,
-					       NUMBER_OF_KEYS,
-					       SCRATCHPAD_SIZE,
+					       scratchpad_size,
 					       closing_func};
 			workers.push_back(seq);
 		}
@@ -240,8 +229,6 @@ public:
 		// emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
-
-	~MapGPU() { cudaFree(scratchpads); }
 
 	/**
 	 *  \brief Check whether the MapGPU has been instantiated with a key-based distribution or not

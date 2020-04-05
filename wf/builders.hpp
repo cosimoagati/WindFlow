@@ -399,7 +399,6 @@ template<typename F_t>
 class MapGPU_Builder
 {
 private:
-	F_t func;
 	// type of the operator to be created by this builder.
 	using mapgpu_t = MapGPU<decltype(get_tuple_t(func)),
 			     decltype(get_result_t(func)), F_t>;
@@ -409,16 +408,15 @@ private:
 	// starting from zero to pardegree-1.
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
+	F_t func;
 	std::uint64_t pardegree {1};
 	std::string name {"anonymous_map"};
-	std::size_t max_buffered_tuples {256};
-	std::size_t gpu_blocks {1};
-	std::size_t gpu_threads_per_block {256};
-	bool is_keyed {false};
-
-	closing_func_t closing_func = [](RuntimeContext &) -> void { return; };
+	closing_func_t closing_func = [](RuntimeContext &) {};
 	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
-
+	std::size_t tuple_buffer_capacity {256};
+	std::size_t gpu_threads_per_block {256};
+	std::size_t scratchpad_size {64};
+	bool is_keyed {false};
 public:
 	/**
 	 *  \brief Constructor
@@ -503,42 +501,43 @@ public:
 		return *this;
 	}
 
-	/**
-	 *  \brief Method to specify how many tuples should be buffered.
-	 *
-	 *  \param max_buffered_tuples the maximum amount of buffered tuples.
-	 *  \return the object itself.
-	 */
 	MapGPU_Builder<F_t> &
-        withMaxBufferedTuples(std::size_t max_buffered_tuples)
+	withRoutingFunction(routing_func_t routing_func)
 	{
-		this->max_buffered_tuples = max_buffered_tuples;
-		return *this;
-	}
-
-	/**
-	 *  \brief Method to specify how many blocks to be used by a single worker.
-	 *
-	 *  \param gpu_blocks the number of blocks used by a single worker.
-	 *  \return the object itself.
-	 */
-	MapGPU_Builder<F_t> &
-	withGPUBlocks(std::size_t gpu_blocks)
-	{
-		this->gpu_blocks = gpu_blocks;
+		this->routing_func = routing_func;
 		return *this;
 	}
 
 	/**
 	 *  \brief Method to specify how many tuples should be buffered.
 	 *
-	 *  \param _max_buffered_tuples the maximum amount of buffered tuples.
+	 *  \param tuple_buffer_capacity the maximum amount of buffered tuples.
+	 *  \return the object itself.
+	 */
+	MapGPU_Builder<F_t> &
+        withTupleBufferCapacity(std::size_t tuple_buffer_capacity)
+	{
+		this->tuple_buffer_capacity = tuple_buffer_capacity;
+		return *this;
+	}
+
+	/**
+	 *  \brief Method to specify how many tuples should be buffered.
+	 *
+	 *  \param _tuple_buffer_capacity the maximum amount of buffered tuples.
 	 *  \return the object itself.
 	 */
 	MapGPU_Builder<F_t> &
 	withGPUThreadsPerBlock(std::size_t gpu_threads_per_block)
 	{
 		this->gpu_threads_per_block = gpu_threads_per_block;
+		return *this;
+	}
+
+	MapGPU_Builder<F_t> &
+	withScratchpadSize(std::size_t scratchpad_size)
+	{
+		this->scratchpad_size = scratchpad_size;
 		return *this;
 	}
 
@@ -552,14 +551,16 @@ public:
 	build()
 	{
 		// Copy elision in C++17
-		if (!is_keyed)
+		if (!is_keyed) {
 			return mapgpu_t {func, pardegree, name, closing_func,
-					 max_buffered_tuples, gpu_blocks,
+					 tuple_buffer_capacity,
 					 gpu_threads_per_block};
-		else
+		} else {
 			return mapgpu_t {func, pardegree, name, closing_func,
-					 routing_func, max_buffered_tuples,
-					 gpu_blocks, gpu_threads_per_block};
+					 routing_func, tuple_buffer_capacity,
+					 gpu_threads_per_block,
+					 scratchpad_size};
+		}
 	}
 #endif
 
@@ -571,14 +572,16 @@ public:
 	mapgpu_t *
 	build_ptr()
 	{
-		if (!is_keyed)
+		if (!is_keyed) {
 			return new mapgpu_t {func, pardegree, name, closing_func,
-					     max_buffered_tuples, gpu_blocks,
+					     tuple_buffer_capacity,
 					     gpu_threads_per_block};
-		else
+		} else {
 			return new mapgpu_t {func, pardegree, name, closing_func,
-					     routing_func, max_buffered_tuples,
-					     gpu_blocks, gpu_threads_per_block};
+					     routing_func, tuple_buffer_capacity,
+					     gpu_threads_per_block,
+					     scratchpad_size};
+		}
 	}
 
 	/**
@@ -589,19 +592,19 @@ public:
 	std::unique_ptr<mapgpu_t>
 	build_unique()
 	{
-		if (!is_keyed)
+		if (!is_keyed) {
 			return std::make_unique<mapgpu_t>(func, pardegree,
 							  name, closing_func,
-							  max_buffered_tuples,
-							  gpu_blocks,
+							  tuple_buffer_capacity,
 							  gpu_threads_per_block);
-		else
+		} else {
 			return std::make_unique<mapgpu_t>(func, pardegree, name,
 							  closing_func,
 							  routing_func,
-							  max_buffered_tuples,
-							  gpu_blocks,
-							  gpu_threads_per_block);
+							  tuple_buffer_capacity,
+							  gpu_threads_per_block,
+							  scratchpad_size);
+		}
 	}
 };
 
