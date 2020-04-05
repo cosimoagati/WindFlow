@@ -602,11 +602,10 @@ public:
 			const auto &key = t->key;
 			if (key_control_block_map.find(key)
 			    == key_control_block_map.end()) {
-				char *new_scratchpad;
+				auto new_scratchpad = key_control_block_map[key].scratchpad;
 				if (cudaMalloc(&new_scratchpad, scratchpad_size) != cudaSuccess) {
 					failwith("MapGPU_Node failed to allocate GPU scratchpad for new key");
 				}
-				key_control_block_map[key].scratchpad = new_scratchpad;
 				++currently_buffered_tuples;
 			}
 			key_control_block_map[key].queue.push(t);
