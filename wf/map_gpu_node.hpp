@@ -259,10 +259,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	/*
-	 * For the keyed version, we also need to allocate the scrachpad
-	 * buffers.
-	 */
 	template<typename F=func_t,
 		 typename std::enable_if_t<is_in_place_keyless<F> || is_not_in_place_keyless<F>,
 					   int> = 0>
@@ -382,10 +378,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	/*
-	 * When all tuples have been buffered, it's time to feed them to the
-	  * CUDA kernel.
-	  */
 	template<typename F=func_t,
 		 typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
 	void
@@ -500,11 +492,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	template<typename F=func_t,
 		 typename std::enable_if_t<is_not_in_place_keyless<F> || is_not_in_place_keyed<F>,
 					   int> = 0>
-	void
-	deallocate_gpu_result_buffer()
-	{
-		cudaFree(gpu_result_buffer);
-	}
+	void deallocate_gpu_result_buffer() { cudaFree(gpu_result_buffer); }
 
 	template<typename F=func_t,
 		 typename std::enable_if_t<is_in_place_keyless<F> || is_not_in_place_keyless<F>,
