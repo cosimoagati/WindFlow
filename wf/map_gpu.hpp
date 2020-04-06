@@ -217,6 +217,9 @@ public:
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
+		if (scratchpad_size <= 0) {
+			failwith("MapGPU has non-positive scratchpad size");
+		}
 		std::vector<ff_node *> workers;
 		for (auto i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,

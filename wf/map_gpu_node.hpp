@@ -151,9 +151,18 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	static constexpr bool is_not_in_place_keyed =
 		is_invocable<F, const tuple_t &, result_t &, char *, std::size_t>::value;
 
-	/*
-	 * Make sure the function to be computed has a valid signature.
-	 */
+	template<typename F>
+	static constexpr bool is_in_place = is_in_place_keyless<F> || is_in_place_keyed<F>;
+
+	template<typename F>
+	static constexpr bool is_keyed = is_in_place_keyed<F> || is_not_in_place_keyed<F>;
+
+	static_assert((!is_in_place<func_t> == (is_not_in_place_keyless<func_t>
+						|| is_not_in_place_keyed<func_t>))
+		      && (!is_keyed<func_t> == (is_in_place_keyless<func_t>
+						|| is_not_in_place_keyless<func_t>)),
+		      "Error: Negating predicates does not work as expected.");
+
 	static_assert((is_in_place_keyless<func_t> && !is_not_in_place_keyless<func_t>
 		       && !is_in_place_keyed<func_t> && !is_not_in_place_keyed<func_t>)
 		      || (!is_in_place_keyless<func_t> && is_not_in_place_keyless<func_t>
@@ -177,15 +186,13 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 * How does this work? Remember that A -> B is equivalent to !A || B in
 	 * Boolean logic!
 	 */
-	static_assert(!(is_in_place_keyless<func_t> || is_in_place_keyed<func_t>)
-		      || std::is_same<tuple_t, result_t>::value,
+	static_assert(!is_in_place<func_t> || std::is_same<tuple_t, result_t>::value,
 		      "WindFlow Error: if instantiating MapGPU with an in-place "
 		      "function, the input type and the output type must match.");
 	/*
 	 * Class memebers
 	 */
-	func_t map_func; // The function to be computed on the tuples. May be in
-			 // place or not.
+	func_t map_func;
 	closing_func_t closing_func;
 	RuntimeContext context;
 
@@ -230,25 +237,15 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	volatile unsigned long startTD, startTS, endTD, endTS;
 	std::ofstream *logfile = nullptr;
 #endif
-	/*
-	 * Through the use of std::enable_if, we define different variants of
-	 * behavior that is different between the in-place and the non-in-place
-	 * versions of the MapGPU operator.  Only the desired version will be
-	 * compiled.
-	 */
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyless<F> || is_in_place_keyed<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
 	void
 	setup_gpu_result_buffer()
 	{
 		gpu_result_buffer = gpu_tuple_buffer;
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_not_in_place_keyless<F> || is_not_in_place_keyed<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
 	void
 	setup_gpu_result_buffer()
 	{
@@ -259,14 +256,10 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyless<F> || is_not_in_place_keyless<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
 	void setup_scratchpad_buffers() {}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyed<F> || is_not_in_place_keyed<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	void
 	setup_scratchpad_buffers()
 	{
@@ -279,9 +272,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyless<F> || is_not_in_place_keyless<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
 	result_t *
 	svc_aux(tuple_t *t)
 	{
@@ -320,9 +311,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyed<F> || is_not_in_place_keyed<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	result_t *
 	svc_aux(tuple_t *t)
 	{
@@ -378,8 +367,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
 	void
 	run_kernel()
 	{
@@ -388,8 +376,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
 	void
 	run_kernel()
 	{
@@ -398,8 +385,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			 tuple_buffer_capacity);
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
 	void
 	run_kernel()
 	{
@@ -408,8 +394,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			 scratchpad_size, tuple_buffer_capacity);
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
 	void
 	run_kernel()
 	{
@@ -426,8 +411,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 * tuples directly on the CPU, for simplicity, since they are likely to
 	 * be a much smaller number than the total stream length.
 	 */
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
 	void
 	process_last_tuples()
 	{
@@ -438,8 +422,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
 	void
 	process_last_tuples()
 	{
@@ -450,8 +433,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
 	void
 	process_last_tuples()
 	{
@@ -466,8 +448,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
 	void
 	process_last_tuples()
 	{
@@ -484,25 +465,16 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyless<F> || is_in_place_keyed<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
 	void deallocate_gpu_result_buffer() {}
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_not_in_place_keyless<F> || is_not_in_place_keyed<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
 	void deallocate_gpu_result_buffer() { cudaFree(gpu_result_buffer); }
 
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyless<F> || is_not_in_place_keyless<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
 	void deallocate_scratchpad_buffers() {}
 
-
-	template<typename F=func_t,
-		 typename std::enable_if_t<is_in_place_keyed<F> || is_not_in_place_keyed<F>,
-					   int> = 0>
+	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	void
 	deallocate_scratchpad_buffers()
 	{

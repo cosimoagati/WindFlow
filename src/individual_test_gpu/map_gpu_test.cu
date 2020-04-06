@@ -95,7 +95,7 @@ public:
 
 void closing_func(RuntimeContext &) {}
 
-int routing_func()(size_t k, size_t n) { return k % n; }
+int routing_func(size_t k, size_t n) { return k % n; }
 
 int main(int argc, char *argv[])
 {
