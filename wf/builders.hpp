@@ -398,7 +398,7 @@ public:
 template<typename F_t>
 class MapGPU_Builder
 {
-private:
+	F_t func;
 	// type of the operator to be created by this builder.
 	using mapgpu_t = MapGPU<decltype(get_tuple_t(func)),
 			     decltype(get_result_t(func)), F_t>;
@@ -408,7 +408,6 @@ private:
 	// starting from zero to pardegree-1.
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
-	F_t func;
 	std::uint64_t pardegree {1};
 	std::string name {"anonymous_map"};
 	closing_func_t closing_func = [](RuntimeContext &) {};

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <functional>
+#include "../../wf/builders.hpp"
 #include "../../wf/windflow_gpu.hpp"
 
 using namespace std;
@@ -22,15 +23,15 @@ struct tuple_t
 		: key {key}, id {id}, ts {ts}, value{value}
 	{}
 
-	tuple_t() : key {0}, id {0}, ts {0}, value {0}
-	{}
+	tuple_t() : key {0}, id {0}, ts {0}, value {0} {}
 
 	tuple<size_t, uint64_t, uint64_t> getControlFields() const
 	{
 		return tuple<size_t, uint64_t, uint64_t>(key, id, ts);
 	}
 
-	void setControlFields(size_t _key, uint64_t _id, uint64_t _ts)
+	void
+	setControlFields(size_t _key, uint64_t _id, uint64_t _ts)
 	{
 		key = _key;
 		id = _id;
@@ -54,18 +55,16 @@ public:
 	tuple_t *
 	svc(tuple_t *)
 	{
-		if (counter > LIMIT)
+		if (counter > LIMIT) {
 			return this->EOS;
-		const auto t = new tuple_t {counter, counter, counter, counter};
+		}
+		// Generate them all with key 0 for simplicity.
+		const auto t = new tuple_t {0, counter, counter, counter};
 		++counter;
 		return t;
 	}
 
-	void
-	svc_end()
-	{
-		cout << "Source closing..." << endl;
-	}
+	void svc_end() { cout << "Source closing..." << endl; }
 };
 
 template<typename tuple_t>
@@ -97,7 +96,8 @@ void closing_func(RuntimeContext &) {}
 
 int routing_func(size_t k, size_t n) { return k % n; }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
 	auto square = [] __host__ __device__ (tuple_t &x)
 		{
@@ -112,50 +112,73 @@ int main(int argc, char *argv[])
 		{
 		 // NB: the first tuple must have value 0!
 		 assert(size >= sizeof(int));
+		 assert(scratchpad != nullptr);
+		 char x = scratchpad[0];
 		 const auto prev_val = static_cast<int>(*scratchpad);
 		 if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
 			 t.value = -1;
 		 }
 		 *reinterpret_cast<int *>(scratchpad) = t.value;
 		};
+	auto verify_order_nip = [] __host__ __device__ (const tuple_t &t,
+							tuple_t &r,
+							char *scratchpad,
+							std::size_t size)
+		{
+		 // NB: the first tuple must have value 0!
+		 assert(size >= sizeof(int));
+		 assert(scratchpad != nullptr);
+		 const auto prev_val = static_cast<int>(*scratchpad);
+		 if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+			 r.value = -1;
+		 }
+		 *reinterpret_cast<int *>(scratchpad) = r.value;
+		};
 
 	ff_pipeline ip_pipe;
 	ip_pipe.add_stage(::Source<tuple_t> {});
-	MapGPU<tuple_t, tuple_t, decltype(square)> ip_map {square, 4, "gino",
-			                                   closing_func};
-	ip_pipe.add_stage(&ip_map);
+	auto ip_map = MapGPU_Builder<decltype(square)> {square}.withParallelism(1).build_ptr();
+	ip_pipe.add_stage(ip_map);
 	ip_pipe.add_stage(::Sink<tuple_t> {});
 
 	if (ip_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline.");
 		return -1;
 	}
+	delete ip_map; // Sadly needed since copy elision for builders only
+		       // works from C++17 onwards.
+
 	output_stream << "In-pace pipeline finished, now testing non in-place version..."
 		      << endl;
-
 	ff_pipeline nip_pipe;
 	nip_pipe.add_stage(::Source<tuple_t> {});
-	MapGPU<tuple_t, tuple_t, decltype(another_square)> nip_map {another_square,
-								    1, "gino", closing_func};
-	nip_pipe.add_stage(&nip_map);
+	auto nip_map = MapGPU_Builder<decltype(another_square)> {another_square}.withParallelism(1)
+											 .build_ptr();
+	nip_pipe.add_stage(nip_map);
 	nip_pipe.add_stage(::Sink<tuple_t> {});
 
 	if (nip_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline.");
 		return -1;
 	}
-	// output_stream << "Non in-pace pipeline finished, now testing in-place keyed version..."
-	// 	      << endl;
-	// ff_pipeline ip_keyed_pipe;
-	// ip_keyed_pipe.add_stage(::Source<tuple_t> {});
+	delete nip_map; // Same notce above.
 
-	// MapGPU<tuple_t, tuple_t, decltype(verify_order)> ip_keyed_map {verify_order,
-	// 		1, "gino", closing_func, sizeof(int)};
-	// ip_keyed_pipe.add_stage(&ip_keyed_map);
-	// ip_keyed_pipe.add_stage(::Sink<tuple_t> {});
-	// if (ip_keyed_pipe.run_and_wait_end() < 0) {
-	// 	error("Error while running pipeline");
-	// 	return -1;
-	// }
+	output_stream << "Non in-pace pipeline finished, now testing in-place keyed version..."
+		      << endl;
+	ff_pipeline ip_keyed_pipe;
+	ip_keyed_pipe.add_stage(::Source<tuple_t> {});
+
+	// TODO: Builder still needs a correct get_tuple_t meta_utils function!
+	// auto ip_keyed_map = MapGPU_Builder<decltype(verify_order)> {verify_order}.withParallelism(1)
+	// 										  .enable_KeyBy()
+	// 										  .build_ptr();
+	MapGPU<tuple_t, tuple_t, decltype(verify_order)> ip_keyed_map {verify_order,
+			1, "gino", closing_func, routing_func, 256, 256, sizeof(int)};
+	ip_keyed_pipe.add_stage(&ip_keyed_map);
+	ip_keyed_pipe.add_stage(::Sink<tuple_t> {});
+	if (ip_keyed_pipe.run_and_wait_end() < 0) {
+		error("Error while running pipeline");
+		return -1;
+	}
 	return 0;
 }

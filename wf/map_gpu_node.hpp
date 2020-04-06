@@ -36,7 +36,7 @@
 #include <queue>
 #include <string>
 #include <unordered_map>
-#include <utility>
+
 
 #include <ff/node.hpp>
 #include "basic.hpp"
@@ -318,10 +318,13 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		if (currently_buffered_tuples < tuple_buffer_capacity) {
 			const auto &key = t->key;
 			if (key_control_block_map.find(key) == key_control_block_map.end()) {
-				auto new_scratchpad = key_control_block_map[key].scratchpad;
+				char *new_scratchpad;
 				if (cudaMalloc(&new_scratchpad, scratchpad_size) != cudaSuccess) {
-					failwith("MapGPU_Node failed to allocate GPU scratchpad for new key");
+					failwith("MapGPU_Node failed to allocate GPU scratchpad for key "
+						 + std::to_string(key));
 				}
+				std::cout << static_cast<void *>(new_scratchpad) << "\n";
+				key_control_block_map[key].scratchpad = new_scratchpad;
 				++currently_buffered_tuples;
 			}
 			key_control_block_map[key].queue.push(t);
@@ -439,12 +442,16 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		for (auto &kv : key_control_block_map) {
 			auto &queue = kv.second.queue;
-			auto &scratchpad = kv.second.scratchpad;
-			auto t = queue.front();
+			auto &gpu_scratchpad = kv.second.scratchpad;
+			std::vector<char> cpu_scratchpad(scratchpad_size);
 
-			map_func(*t, scratchpad, scratchpad_size);
-			this->ff_send_out(t); // Can re-send the same tuple.
-			queue.pop(); // Probably redundant...
+			cudaMemcpy(cpu_scratchpad.data(), gpu_scratchpad,
+				   cpu_scratchpad.size(), cudaMemcpyDeviceToHost);
+			for (; !queue.empty(); queue.pop()) {
+				auto t = queue.front();
+				map_func(*t, cpu_scratchpad.data(), scratchpad_size);
+				this->ff_send_out(t); // Can re-send the same tuple.
+			}
 		}
 	}
 
@@ -454,14 +461,19 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		for (auto &kv : key_control_block_map) {
 			auto &queue = kv.second.queue;
-			auto &scratchpad = kv.second.scratchpad;
-			auto t = queue.front();
-			auto res = new result_t {};
+			auto &gpu_scratchpad = kv.second.scratchpad;
+			std::vector<char> cpu_scratchpad(scratchpad_size);
 
-			map_func(*t, *res, scratchpad, scratchpad_size);
-			delete t;
-			this->ff_send_out(res);
-			queue.pop(); // Probably redundant...
+			cudaMemcpy(cpu_scratchpad.data(), gpu_scratchpad,
+				   cpu_scratchpad.size(), cudaMemcpyDeviceToHost);
+			for (; !queue.empty(); queue.pop()) {
+				auto t = queue.front();
+				auto res = new result_t {};
+
+				map_func(*t, *res, cpu_scratchpad.data(), scratchpad_size);
+				delete t;
+				this->ff_send_out(res);
+			}
 		}
 	}
 
