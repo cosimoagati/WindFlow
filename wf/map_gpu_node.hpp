@@ -33,9 +33,9 @@
 
 #include <cmath>
 #include <cstdlib>
-#include <map>
 #include <queue>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 #include <ff/node.hpp>
@@ -129,31 +129,45 @@ template<typename tuple_t, typename result_t, typename func_t,
 class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 {
 	/*
+	 * Name function properties, used to verify compile-time invariants and
+	 * only compile the required member functions.  These predicates cannot
+	 * be declared as auto, since they would be treated as redeclarations
+	 * otherwise (without an explicit type, they would be considered
+	 * incompatible with any previous instantiation, that's why using them
+	 * just once with auto works, but not if used more than once).
+	 */
+	template<typename F>
+	static constexpr bool is_in_place_keyless = is_invocable<F, tuple_t &>::value;
+
+	template<typename F>
+	static constexpr bool is_not_in_place_keyless =
+		is_invocable<F, const tuple_t &, tuple_t &>::value;
+
+	template<typename F>
+	static constexpr bool is_in_place_keyed =
+		is_invocable<F, tuple_t &, char *, std::size_t>::value;
+
+	template<typename F>
+	static constexpr bool is_not_in_place_keyed =
+		is_invocable<F, const tuple_t &, result_t &, char *, std::size_t>::value;
+
+	/*
 	 * Make sure the function to be computed has a valid signature.
 	 */
-	static_assert((is_invocable<func_t, tuple_t &>::value
-		       && !is_invocable<func_t, const tuple_t &, result_t &>::value
-		       && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
-		       && !is_invocable<func_t, const tuple_t &, char *, std::size_t>::value)
-		      || (!is_invocable<func_t, tuple_t &>::value
-			  && is_invocable<func_t, const tuple_t &, result_t &>::value
-			  && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
-			  && !is_invocable<func_t, const tuple_t &, char *, std::size_t>::value)
-		      || (!is_invocable<func_t, tuple_t &>::value
-			  && !is_invocable<func_t, const tuple_t &, result_t &>::value
-			  && is_invocable<func_t, tuple_t &, char *, std::size_t>::value
-			  && !is_invocable<func_t, const tuple_t &, char *, std::size_t>::value)
-		      || (!is_invocable<func_t, tuple_t &>::value
-			  && !is_invocable<func_t, const tuple_t &, result_t &>::value
-			  && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
-			  && is_invocable<func_t, const tuple_t &, char *, std::size_t>::value),
+	static_assert((is_in_place_keyless<func_t> && !is_not_in_place_keyless<func_t>
+		       && !is_in_place_keyed<func_t> && !is_not_in_place_keyed<func_t>)
+		      || (!is_in_place_keyless<func_t> && is_not_in_place_keyless<func_t>
+			  && !is_in_place_keyed<func_t> && !is_not_in_place_keyed<func_t>)
+		      || (!is_in_place_keyless<func_t> && !is_not_in_place_keyless<func_t>
+			  && is_in_place_keyed<func_t> && !is_not_in_place_keyed<func_t>)
+		      || (!is_in_place_keyless<func_t> && !is_not_in_place_keyless<func_t>
+			  && !is_in_place_keyed<func_t> && is_not_in_place_keyed<func_t>),
 		      "WindFlow Error: MapGPU function parameter does not have "
 		      "a valid signature. It must be EXACTLY one of:\n"
 		      "void(tuple_t &) (In-place, keyless)\n"
 		      "void(const tuple_t, result_t &) (Non in-place, keyless)\n"
 		      "void(tuple_t &, char *, std::size_t) (In-place, keyed)\n"
 		      "void(const tuple_t &, result_t &, char *, std::size_t) (Non in-place, keyed)");
-
 	/*
 	 * If the function to be computed is in-place, check if the input
 	 * type (tuple_t) is the same as the output type (result_t).  This
@@ -163,12 +177,13 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 * How does this work? Remember that A -> B is equivalent to !A || B in
 	 * Boolean logic!
 	 */
-	static_assert(!(is_invocable<func_t, tuple_t &>::value
-			|| is_invocable<func_t, tuple_t &, char *, std::size_t>::value)
+	static_assert(!(is_in_place_keyless<func_t> || is_in_place_keyed<func_t>)
 		      || std::is_same<tuple_t, result_t>::value,
 		      "WindFlow Error: if instantiating MapGPU with an in-place "
 		      "function, the input type and the output type must match.");
-
+	/*
+	 * Class memebers
+	 */
 	func_t map_func; // The function to be computed on the tuples. May be in
 			 // place or not.
 	closing_func_t closing_func;
@@ -184,7 +199,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		std::queue<tuple_t *> queue;
 		char *scratchpad;
 	};
-	std::map<int, KeyControlBlock> key_control_block_map;
+	std::unordered_map<int, KeyControlBlock> key_control_block_map;
 
 	std::string operator_name;
 	int tuple_buffer_capacity;
@@ -206,7 +221,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	char **cpu_scratchpad_buffer;
 	char **gpu_scratchpad_buffer;
 	std::size_t scratchpad_size;
-
 	bool was_batch_started {false};
 
 #if defined(TRACE_WINDFLOW)
@@ -224,10 +238,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 */
 
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
-					   || is_invocable<F, tuple_t &,
-							   char *,
-							   std::size_t>::value,
+		 typename std::enable_if_t<is_in_place_keyless<F> || is_in_place_keyed<F>,
 					   int> = 0>
 	void
 	setup_gpu_result_buffer()
@@ -236,11 +247,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, const tuple_t &,
-							result_t &>::value
-					   || is_invocable<F, const tuple_t &,
-							   result_t &, char *,
-							   std::size_t>::value,
+		 typename std::enable_if_t<is_not_in_place_keyless<F> || is_not_in_place_keyed<F>,
 					   int> = 0>
 	void
 	setup_gpu_result_buffer()
@@ -257,18 +264,12 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 * buffers.
 	 */
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
-					   || is_invocable<F, const tuple_t &,
-							   result_t &>::value,
+		 typename std::enable_if_t<is_in_place_keyless<F> || is_not_in_place_keyless<F>,
 					   int> = 0>
 	void setup_scratchpad_buffers() {}
 
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &, char *,
-							std::size_t>::value
-					   || is_invocable<F, const tuple_t &,
-							   result_t &, char *,
-							   std::size_t>::value,
+		 typename std::enable_if_t<is_in_place_keyed<F> || is_not_in_place_keyed<F>,
 					   int> = 0>
 	void
 	setup_scratchpad_buffers()
@@ -282,11 +283,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	// Keyless version (both in-place and not in-place).
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
-					   || is_invocable<F, const tuple_t &,
-							   result_t &>::value,
+		 typename std::enable_if_t<is_in_place_keyless<F> || is_not_in_place_keyless<F>,
 					   int> = 0>
 	result_t *
 	svc_aux(tuple_t *t)
@@ -303,15 +301,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		if (currently_buffered_tuples < tuple_buffer_capacity) {
 			return this->GO_ON;
 		}
-		if (was_batch_started) {
-			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
-				   tuple_buffer_capacity * sizeof(result_t),
-				   cudaMemcpyDeviceToHost);
-			for (auto i = 0; i < tuple_buffer_capacity; ++i) {
-				this->ff_send_out(new result_t {cpu_result_buffer[i]});
-			}
-		}
+		send_last_batch_if_any();
 		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
 			   tuple_buffer_capacity * sizeof(tuple_t),
 			   cudaMemcpyHostToDevice);
@@ -334,21 +324,15 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 
 	}
 
-	// Keyed version (both in-place and not in-place).
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &, char *,
-							std::size_t>::value
-					   || is_invocable<F, const tuple_t &,
-							   result_t &, char *,
-							   std::size_t>::value,
+		 typename std::enable_if_t<is_in_place_keyed<F> || is_not_in_place_keyed<F>,
 					   int> = 0>
 	result_t *
 	svc_aux(tuple_t *t)
 	{
 		if (currently_buffered_tuples < tuple_buffer_capacity) {
 			const auto &key = t->key;
-			if (key_control_block_map.find(key)
-			    == key_control_block_map.end()) {
+			if (key_control_block_map.find(key) == key_control_block_map.end()) {
 				auto new_scratchpad = key_control_block_map[key].scratchpad;
 				if (cudaMalloc(&new_scratchpad, scratchpad_size) != cudaSuccess) {
 					failwith("MapGPU_Node failed to allocate GPU scratchpad for new key");
@@ -358,35 +342,24 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			key_control_block_map[key].queue.push(t);
 			return this->GO_ON;
 		}
-		if (was_batch_started) {
-			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
-				   tuple_buffer_capacity * sizeof(result_t),
-				   cudaMemcpyDeviceToHost);
-			for (auto i = 0; i < tuple_buffer_capacity; ++i) {
-				this->ff_send_out(new result_t {cpu_result_buffer[i]});
+		send_last_batch_if_any();
+
+		auto key_block_pair = key_control_block_map.begin();
+		for (auto i = 0; i < tuple_buffer_capacity; ++i) {
+			while(key_block_pair->second.queue.empty()) {
+				++key_block_pair;
 			}
-		}
-		auto current_key_block = key_control_block_map.begin();
-		auto i = 0;
-		while (i < tuple_buffer_capacity) {
-			auto &queue = current_key_block->second.queue;
-			const auto t = queue.front();
+			const auto t = key_block_pair->second.queue.front();
 			cpu_tuple_buffer[i] = *t;
 			delete t;
-			queue.pop();
-
-			auto &scratchpad = current_key_block->second.scratchpad;
-			cpu_scratchpad_buffer[i] = scratchpad;
-
-			++current_key_block;
-			++i;
+			key_block_pair->second.queue.pop();
+			cpu_scratchpad_buffer[i] = key_block_pair->second.scratchpad;
 		}
-		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
-			   tuple_buffer_capacity * sizeof(tuple_t),
-			   cudaMemcpyHostToDevice);
 		cudaMemcpy(gpu_scratchpad_buffer, cpu_scratchpad_buffer,
 			   tuple_buffer_capacity * sizeof(char *),
+			   cudaMemcpyHostToDevice);
+		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
+			   tuple_buffer_capacity * sizeof(tuple_t),
 			   cudaMemcpyHostToDevice);
 		currently_buffered_tuples = 0;
 		run_kernel();
@@ -394,32 +367,37 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		return this->GO_ON;
 	}
 
+	void
+	send_last_batch_if_any()
+	{
+		if (!was_batch_started) {
+			return;
+		}
+		cudaStreamSynchronize(cuda_stream);
+		cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
+			   tuple_buffer_capacity * sizeof(result_t),
+			   cudaMemcpyDeviceToHost);
+		for (auto i = 0; i < tuple_buffer_capacity; ++i) {
+			this->ff_send_out(new result_t {cpu_result_buffer[i]});
+		}
+	}
 
 	/*
 	 * When all tuples have been buffered, it's time to feed them to the
 	  * CUDA kernel.
 	  */
-	// In-place keyless version.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value,
-					   int> = 0>
+		 typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
 	void
 	run_kernel()
 	{
-		// TODO: the only reason these functions are used is to call a
-		// different kernel!  Can we do some template magic with the
-		// kernels themselves in to remove these functions?
 		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, tuple_buffer_capacity);
 	}
 
 
-	// Non in-place keyless version.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F,
-							const tuple_t &,
-							result_t &>::value,
-					   int> = 0>
+		 typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
 	void
 	run_kernel()
 	{
@@ -428,11 +406,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			 tuple_buffer_capacity);
 	}
 
-	// In-place keyed version.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &,
-							char *, std::size_t>::value,
-					   int> = 0>
+		 typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
 	void
 	run_kernel()
 	{
@@ -441,11 +416,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			 scratchpad_size, tuple_buffer_capacity);
 	}
 
-	// Non in-place keyed version.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, const tuple_t &, result_t &,
-							char *, std::size_t>::value,
-					   int> = 0>
+		 typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
 	void
 	run_kernel()
 	{
@@ -462,9 +434,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 * tuples directly on the CPU, for simplicity, since they are likely to
 	 * be a much smaller number than the total stream length.
 	 */
-	// In-place keyless version.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value, int> = 0>
+		 typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
 	void
 	process_last_tuples()
 	{
@@ -475,11 +446,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	// Non in-place keyless version.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, const tuple_t &,
-							result_t &>::value,
-					   int> = 0>
+		 typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
 	void
 	process_last_tuples()
 	{
@@ -490,11 +458,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	// In-place keyed version.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &,
-							char *, std::size_t>::value,
-					   int> = 0>
+		 typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
 	void
 	process_last_tuples()
 	{
@@ -509,11 +474,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	// Non in-place keyed version.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, const tuple_t &, result_t &,
-							char *, std::size_t>::value,
-					   int> = 0>
+		 typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
 	void
 	process_last_tuples()
 	{
@@ -530,21 +492,13 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		}
 	}
 
-	// Do nothing if the function is in place, nothing to deallocate.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
-					   || is_invocable<F, tuple_t &, char *,
-							   std::size_t>::value,
+		 typename std::enable_if_t<is_in_place_keyless<F> || is_in_place_keyed<F>,
 					   int> = 0>
 	void deallocate_gpu_result_buffer() {}
 
-	// Non in-place version.
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, const tuple_t &,
-							result_t &>::value
-					   || is_invocable<F, const tuple_t &,
-							   result_t &, char *,
-							   std::size_t>::value,
+		 typename std::enable_if_t<is_not_in_place_keyless<F> || is_not_in_place_keyed<F>,
 					   int> = 0>
 	void
 	deallocate_gpu_result_buffer()
@@ -553,19 +507,13 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &>::value
-					   || is_invocable<F, const tuple_t &,
-							   result_t &>::value,
+		 typename std::enable_if_t<is_in_place_keyless<F> || is_not_in_place_keyless<F>,
 					   int> = 0>
 	void deallocate_scratchpad_buffers() {}
 
 
 	template<typename F=func_t,
-		 typename std::enable_if_t<is_invocable<F, tuple_t &, char *,
-							std::size_t>::value
-					   || is_invocable<F, const tuple_t &,
-							   result_t &, char *,
-							   std::size_t>::value,
+		 typename std::enable_if_t<is_in_place_keyed<F> || is_not_in_place_keyed<F>,
 					   int> = 0>
 	void
 	deallocate_scratchpad_buffers()
@@ -665,15 +613,7 @@ public:
 	void
 	eosnotify(ssize_t)
 	{
-		if (was_batch_started) {
-			cudaStreamSynchronize(cuda_stream);
-			cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
-				   tuple_buffer_capacity * sizeof(result_t),
-				   cudaMemcpyDeviceToHost);
-			for (auto i = 0; i < tuple_buffer_capacity; ++i) {
-				this->ff_send_out(new result_t {cpu_result_buffer[i]});
-			}
-		}
+		send_last_batch_if_any();
 		process_last_tuples();
 	}
 

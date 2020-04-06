@@ -84,32 +84,45 @@ template<typename tuple_t, typename result_t, typename func_t>
 class MapGPU: public ff::ff_farm
 {
 	/*
-	 * Performs a compile-time check in order to make sure the function to
-	 * be computed by the MapGPU operator has a valid signature.
+	 * Name function properties, used to verify compile-time invariants and
+	 * only compile the required member functions.  These predicates cannot
+	 * be declared as auto, since they would be treated as redeclarations
+	 * otherwise (without an explicit type, they would be considered
+	 * incompatible with any previous instantiation, that's why using them
+	 * just once with auto works, but not if used more than once).
 	 */
-	static_assert((is_invocable<func_t, tuple_t &>::value
-		       && !is_invocable<func_t, const tuple_t &, result_t &>::value
-		       && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
-		       && !is_invocable<func_t, const tuple_t &, char *, std::size_t>::value)
-		      || (!is_invocable<func_t, tuple_t &>::value
-			  && is_invocable<func_t, const tuple_t &, result_t &>::value
-			  && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
-			  && !is_invocable<func_t, const tuple_t &, char *, std::size_t>::value)
-		      || (!is_invocable<func_t, tuple_t &>::value
-			  && !is_invocable<func_t, const tuple_t &, result_t &>::value
-			  && is_invocable<func_t, tuple_t &, char *, std::size_t>::value
-			  && !is_invocable<func_t, const tuple_t &, char *, std::size_t>::value)
-		      || (!is_invocable<func_t, tuple_t &>::value
-			  && !is_invocable<func_t, const tuple_t &, result_t &>::value
-			  && !is_invocable<func_t, tuple_t &, char *, std::size_t>::value
-			  && is_invocable<func_t, const tuple_t &, char *, std::size_t>::value),
+	template<typename F>
+	static constexpr bool is_in_place_keyless = is_invocable<F, tuple_t &>::value;
+
+	template<typename F>
+	static constexpr bool is_not_in_place_keyless =
+		is_invocable<F, const tuple_t &, tuple_t &>::value;
+
+	template<typename F>
+	static constexpr bool is_in_place_keyed =
+		is_invocable<F, tuple_t &, char *, std::size_t>::value;
+
+	template<typename F>
+	static constexpr bool is_not_in_place_keyed =
+		is_invocable<F, const tuple_t &, result_t &, char *, std::size_t>::value;
+
+	/*
+	 * Make sure the function to be computed has a valid signature.
+	 */
+	static_assert((is_in_place_keyless<func_t> && !is_not_in_place_keyless<func_t>
+		       && !is_in_place_keyed<func_t> && !is_not_in_place_keyed<func_t>)
+		      || (!is_in_place_keyless<func_t> && is_not_in_place_keyless<func_t>
+			  && !is_in_place_keyed<func_t> && !is_not_in_place_keyed<func_t>)
+		      || (!is_in_place_keyless<func_t> && !is_not_in_place_keyless<func_t>
+			  && is_in_place_keyed<func_t> && !is_not_in_place_keyed<func_t>)
+		      || (!is_in_place_keyless<func_t> && !is_not_in_place_keyless<func_t>
+			  && !is_in_place_keyed<func_t> && is_not_in_place_keyed<func_t>),
 		      "WindFlow Error: MapGPU function parameter does not have "
 		      "a valid signature. It must be EXACTLY one of:\n"
 		      "void(tuple_t &) (In-place, keyless)\n"
 		      "void(const tuple_t, result_t &) (Non in-place, keyless)\n"
 		      "void(tuple_t &, char *, std::size_t) (In-place, keyed)\n"
 		      "void(const tuple_t &, result_t &, char *, std::size_t) (Non in-place, keyed)");
-
 	/*
 	 * If the function to be computed is in-place, check if the input
 	 * type (tuple_t) is the same as the output type (result_t).  This
@@ -119,12 +132,14 @@ class MapGPU: public ff::ff_farm
 	 * How does this work? Remember that A -> B is equivalent to !A || B in
 	 * Boolean logic!
 	 */
-	static_assert(!(is_invocable<func_t, tuple_t &>::value
-			|| is_invocable<func_t, tuple_t &, char *, std::size_t>::value)
+	static_assert(!(is_in_place_keyless<func_t> || is_in_place_keyed<func_t>)
 		      || std::is_same<tuple_t, result_t>::value,
 		      "WindFlow Error: if instantiating MapGPU with an in-place "
 		      "function, the input type and the output type must match.");
 
+	/*
+	 * Type aliases.
+	 */
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	/// type of the function to map the key hashcode onto an identifier
 	/// starting from zero to pardegree-1
@@ -142,16 +157,8 @@ class MapGPU: public ff::ff_farm
 	bool is_keyed; // is the MapGPU is configured with keyBy or not?
 	bool is_used; // is the MapGPU used in a MultiPipe or not?
 
-	// friendships with other classes in the library
 	friend class MultiPipe;
 public:
-	/*
-	 * Both constructors set the appropriate values, initialize the workers
-	 * and start their internal farm.  The only difference they have is that
-	 * one of them takes an additional parameter, the routing funciton.
-	 * This is used in the keyed version.
-	 */
-	
 	/**
 	 *  \brief Constructor I
 	 *
