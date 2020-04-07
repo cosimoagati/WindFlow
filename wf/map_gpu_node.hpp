@@ -322,7 +322,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 					failwith("MapGPU_Node failed to allocate GPU scratchpad for key "
 						 + std::to_string(key));
 				}
-				std::cout << static_cast<void *>(new_scratchpad) << "\n";
 				key_control_block_map[key].scratchpad = new_scratchpad;
 				++currently_buffered_tuples;
 			}
