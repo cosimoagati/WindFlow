@@ -439,16 +439,16 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void
 	process_last_tuples()
 	{
+		std::vector<char> cpu_scratchpad(scratchpad_size);
 		for (auto &kv : key_control_block_map) {
 			auto &queue = kv.second.queue;
 			auto &gpu_scratchpad = kv.second.scratchpad;
-			std::vector<char> cpu_scratchpad(scratchpad_size);
 
 			cudaMemcpy(cpu_scratchpad.data(), gpu_scratchpad,
 				   cpu_scratchpad.size(), cudaMemcpyDeviceToHost);
 			for (; !queue.empty(); queue.pop()) {
 				auto t = queue.front();
-				map_func(*t, cpu_scratchpad.data(), scratchpad_size);
+				map_func(*t, cpu_scratchpad.data(), cpu_scratchpad.size());
 				this->ff_send_out(t); // Can re-send the same tuple.
 			}
 		}
@@ -458,10 +458,11 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void
 	process_last_tuples()
 	{
+		std::vector<char> cpu_scratchpad(scratchpad_size);
+
 		for (auto &kv : key_control_block_map) {
 			auto &queue = kv.second.queue;
 			auto &gpu_scratchpad = kv.second.scratchpad;
-			std::vector<char> cpu_scratchpad(scratchpad_size);
 
 			cudaMemcpy(cpu_scratchpad.data(), gpu_scratchpad,
 				   cpu_scratchpad.size(), cudaMemcpyDeviceToHost);
@@ -469,7 +470,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 				auto t = queue.front();
 				auto res = new result_t {};
 
-				map_func(*t, *res, cpu_scratchpad.data(), scratchpad_size);
+				map_func(*t, *res, cpu_scratchpad.data(), cpu_scratchpad.size());
 				delete t;
 				this->ff_send_out(res);
 			}
