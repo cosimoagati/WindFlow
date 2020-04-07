@@ -153,8 +153,8 @@ class MapGPU: public ff::ff_farm
 	static constexpr auto default_gpu_threads_per_block = 256;
 	static constexpr auto default_scratchpad_size = 64;
 
+	bool is_used {false}; // is the MapGPU used in a MultiPipe or not?
 	bool is_keyed; // is the MapGPU is configured with keyBy or not?
-	bool is_used; // is the MapGPU used in a MultiPipe or not?
 
 	friend class MultiPipe;
 public:
