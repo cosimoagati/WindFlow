@@ -41,8 +41,7 @@
 
 namespace wf
 {
-template<typename tuple_t, typename func_t, typename closing_func_t,
-	 typename fil>
+template<typename tuple_t, typename func_t, typename closing_func_t>
 class FilterGPU_Node: public ff::ff_node_t<tuple_t>
 {
 	static constexpr auto tuple_buffer_capacity = 256;
@@ -161,7 +160,16 @@ public:
 		cudaFree(cpu_tuple_buffer);
 		cudaFree(cpu_tuple_mask);
 	}
+
+		/*
+	 * This object may not be copied nor moved.
+	 */
+	FilterGPU_Node(const FilterGPU_Node &) = delete;
+	FilterGPU_Node(FilterGPU_Node &&) = delete;
+	FilterGPU_Node &operator=(const FilterGPU_Node &) = delete;
+	FilterGPU_Node &operator=(FilterGPU_Node &&) = delete;
 };
-}
+
+} // namespace wf
 
 #endif

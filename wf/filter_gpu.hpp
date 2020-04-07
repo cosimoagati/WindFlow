@@ -66,14 +66,14 @@ class FilterGPU: public ff::ff_farm
 	using filter_func_t = std::function<bool(tuple_t &)>;
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	using routing_func_t = std::function<size_t(size_t, size_t)>;
-	using node_t = FilterGPU_Node<tuple_t>;
+	using node_t = FilterGPU_Node<tuple_t, func_t, closing_func_t>;
 
 	friend class MultiPipe;
 
 	static constexpr auto default_tuple_buffer_capacity = 256;
 	static constexpr auto default_gpu_threads_per_block = 256;
 	static constexpr auto default_scratchpad_size = 64;
-	bool is_used; // Is this FilterGPU used in a MultiPipe?
+	bool is_used {false}; // Is this FilterGPU used in a MultiPipe?
 	bool is_keyed; // Is this FilterGPU keyed?
 
 public:
@@ -85,14 +85,11 @@ public:
 	 *  \param _name string with the unique name of the FilterGPU operator
 	 *  \param _closing_func closing function
 	 */
-	FilterGPU(filter_func_t _func,
-		  size_t _pardegree,
-		  std::string _name,
-		  closing_func_t _closing_func):
-		keyed(false), used(false)
+	FilterGPU(filter_func_t func, int pardegree,
+		  std::string name, closing_func_t closing_func)
+		: is_keyed {false}
 	{
-		// check the validity of the parallelism degree
-		if (_pardegree == 0) {
+		if (pardegree == 0) {
 			std::cerr << RED
 				  << "WindFlow Error: FilterGPU has parallelism zero"
 				  << DEFAULT_COLOR << std::endl;
@@ -100,15 +97,12 @@ public:
 		}
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> workers;
-		for (size_t i=0; i<_pardegree; i++) {
-			auto *seq = new FilterGPU_Node(_func, _name,
-						       RuntimeContext(
-							       _pardegree, i),
-						       _closing_func);
+		for (auto i = 0; i < pardegree; ++i) {
+			auto *seq = new node_t {func, name, closing_func);
 			workers.push_back(seq);
 		}
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_pardegree));
+		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t> {pardegree});
 		// add workers
 		ff::ff_farm::add_workers(workers);
 		// add default collector
@@ -126,15 +120,12 @@ public:
 	 *  \param _closing_func closing function
 	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	FilterGPU(filter_func_t _func,
-		  size_t _pardegree,
-		  std::string _name,
-		  closing_func_t _closing_func,
-		  routing_func_t _routing_func):
-		keyed(true), used(false)
+	FilterGPU(func_t func, int pardegree, std::string name,
+		  closing_func_t closing_func, routing_func_t routing_func)
+		: keyed(true)
 	{
 		// check the validity of the parallelism degree
-		if (_pardegree == 0) {
+		if (pardegree == 0) {
 			std::cerr << RED
 				  << "WindFlow Error: FilterGPU has parallelism zero"
 				  << DEFAULT_COLOR << std::endl;
@@ -142,12 +133,12 @@ public:
 		}
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> workers;
-		for (size_t i=0; i<_pardegree; i++) {
-			auto *seq = new FilterGPU_Node(_func, _name, RuntimeContext(_pardegree, i), _closing_func);
+		for (size_t i = 0; i < pardegree; i++) {
+			auto *seq = new node_t {func, name, closing_func};
 			workers.push_back(seq);
 		}
 		// add emitter
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>(_routing_func, _pardegree));
+		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t> {routing_func, pardegree});
 		// add workers
 		ff::ff_farm::add_workers(workers);
 		// add default collector
