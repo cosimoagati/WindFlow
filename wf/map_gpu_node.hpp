@@ -238,18 +238,13 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 #endif
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
-	void
-	setup_gpu_result_buffer()
-	{
-		gpu_result_buffer = gpu_tuple_buffer;
-	}
+	void setup_gpu_result_buffer() { gpu_result_buffer = gpu_tuple_buffer; }
 
 	template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
 	void
 	setup_gpu_result_buffer()
 	{
-		const auto size = sizeof(result_t) * tuple_buffer_capacity;
-
+		const auto size = tuple_buffer_capacity * sizeof(result_t);
 		if (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate GPU result buffer");
 		}
@@ -288,8 +283,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			return this->GO_ON;
 		}
 		send_last_batch_if_any();
-		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
-			   tuple_buffer_capacity * sizeof(tuple_t),
+		const auto size = tuple_buffer_capacity * sizeof(tuple_t);
+		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer, size,
 			   cudaMemcpyHostToDevice);
 		currently_buffered_tuples = 0;
 		run_kernel();
@@ -317,12 +312,11 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		if (currently_buffered_tuples < tuple_buffer_capacity) {
 			const auto &key = t->key;
 			if (key_control_block_map.find(key) == key_control_block_map.end()) {
-				char *new_scratchpad;
-				if (cudaMalloc(&new_scratchpad, scratchpad_size) != cudaSuccess) {
+				auto &scratchpad = key_control_block_map[key].scratchpad;
+				if (cudaMalloc(&scratchpad, scratchpad_size) != cudaSuccess) {
 					failwith("MapGPU_Node failed to allocate GPU scratchpad for key "
 						 + std::to_string(key));
 				}
-				key_control_block_map[key].scratchpad = new_scratchpad;
 				++currently_buffered_tuples;
 			}
 			key_control_block_map[key].queue.push(t);
@@ -332,7 +326,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 
 		auto key_block_pair = key_control_block_map.begin();
 		for (auto i = 0; i < tuple_buffer_capacity; ++i) {
-			while(key_block_pair->second.queue.empty()) {
+			while (key_block_pair->second.queue.empty()) {
 				++key_block_pair;
 			}
 			const auto t = key_block_pair->second.queue.front();
@@ -341,11 +335,10 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			key_block_pair->second.queue.pop();
 			cpu_scratchpad_buffer[i] = key_block_pair->second.scratchpad;
 		}
-		cudaMemcpy(gpu_scratchpad_buffer, cpu_scratchpad_buffer,
-			   tuple_buffer_capacity * sizeof(char *),
+		const auto size = tuple_buffer_capacity * sizeof(char *);
+		cudaMemcpy(gpu_scratchpad_buffer, cpu_scratchpad_buffer, size,
 			   cudaMemcpyHostToDevice);
-		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
-			   tuple_buffer_capacity * sizeof(tuple_t),
+		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer, size,
 			   cudaMemcpyHostToDevice);
 		currently_buffered_tuples = 0;
 		run_kernel();
@@ -360,8 +353,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			return;
 		}
 		cudaStreamSynchronize(cuda_stream);
-		cudaMemcpy(cpu_result_buffer, gpu_result_buffer,
-			   tuple_buffer_capacity * sizeof(result_t),
+		const auto size = tuple_buffer_capacity * sizeof(result_t);
+		cudaMemcpy(cpu_result_buffer, gpu_result_buffer, size,
 			   cudaMemcpyDeviceToHost);
 		for (auto i = 0; i < tuple_buffer_capacity; ++i) {
 			this->ff_send_out(new result_t {cpu_result_buffer[i]});
@@ -492,7 +485,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		for (auto &kcb : key_control_block_map) {
 			cudaFree(kcb.second.scratchpad);
 		}
-		cudaFree(cpu_scratchpad_buffer);
+		cudaFreeHost(cpu_scratchpad_buffer);
 		cudaFree(gpu_scratchpad_buffer);
 	}
 
