@@ -310,17 +310,17 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	result_t *
 	svc_aux(tuple_t *t)
 	{
-		if (current_buffer_capacity < total_buffer_capacity) {
-			const auto &key = t->key;
-			if (key_control_block_map.find(key) == key_control_block_map.end()) {
-				auto &scratchpad = key_control_block_map[key].scratchpad;
-				if (cudaMalloc(&scratchpad, scratchpad_size) != cudaSuccess) {
-					failwith("MapGPU_Node failed to allocate GPU scratchpad for key "
-						 + std::to_string(key));
-				}
-				++current_buffer_capacity;
+		const auto &key = t->key;
+		if (key_control_block_map.find(key) == key_control_block_map.end()) {
+			auto &scratchpad = key_control_block_map[key].scratchpad;
+			if (cudaMalloc(&scratchpad, scratchpad_size) != cudaSuccess) {
+				failwith("MapGPU_Node failed to allocate GPU scratchpad for key "
+					 + std::to_string(key));
 			}
-			key_control_block_map[key].queue.push(t);
+			++current_buffer_capacity;
+		}
+		key_control_block_map[key].queue.push(t);
+		if (current_buffer_capacity < total_buffer_capacity) {
 			return this->GO_ON;
 		}
 		send_last_batch_if_any();
