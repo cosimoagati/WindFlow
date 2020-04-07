@@ -550,16 +550,14 @@ public:
 	build()
 	{
 		// Copy elision in C++17
-		if (!is_keyed) {
-			return mapgpu_t {func, pardegree, name, closing_func,
-					 tuple_buffer_capacity,
-					 gpu_threads_per_block};
-		} else {
-			return mapgpu_t {func, pardegree, name, closing_func,
-					 routing_func, tuple_buffer_capacity,
-					 gpu_threads_per_block,
-					 scratchpad_size};
-		}
+		return !is_keyed ?
+			mapgpu_t {func, pardegree, name, closing_func,
+				  tuple_buffer_capacity,
+				  gpu_threads_per_block}
+			: mapgpu_t {func, pardegree, name, closing_func,
+				    routing_func, tuple_buffer_capacity,
+				    gpu_threads_per_block,
+				    scratchpad_size};
 	}
 #endif
 
@@ -571,16 +569,13 @@ public:
 	mapgpu_t *
 	build_ptr()
 	{
-		if (!is_keyed) {
-			return new mapgpu_t {func, pardegree, name, closing_func,
-					     tuple_buffer_capacity,
-					     gpu_threads_per_block};
-		} else {
-			return new mapgpu_t {func, pardegree, name, closing_func,
-					     routing_func, tuple_buffer_capacity,
-					     gpu_threads_per_block,
-					     scratchpad_size};
-		}
+		return !is_keyed ?
+			new mapgpu_t {func, pardegree, name, closing_func,
+				      tuple_buffer_capacity,
+				      gpu_threads_per_block}
+			: new mapgpu_t {func, pardegree, name, closing_func,
+					routing_func, tuple_buffer_capacity,
+					gpu_threads_per_block, scratchpad_size};
 	}
 
 	/**
@@ -591,19 +586,15 @@ public:
 	std::unique_ptr<mapgpu_t>
 	build_unique()
 	{
-		if (!is_keyed) {
-			return std::make_unique<mapgpu_t>(func, pardegree,
-							  name, closing_func,
-							  tuple_buffer_capacity,
-							  gpu_threads_per_block);
-		} else {
-			return std::make_unique<mapgpu_t>(func, pardegree, name,
-							  closing_func,
-							  routing_func,
-							  tuple_buffer_capacity,
-							  gpu_threads_per_block,
-							  scratchpad_size);
-		}
+		return !is_keyed ?
+			std::make_unique<mapgpu_t>(func, pardegree, name,
+						   closing_func,
+						   tuple_buffer_capacity,
+						   gpu_threads_per_block)
+			: std::make_unique<mapgpu_t>(func, pardegree, name, closing_func,
+						     routing_func, tuple_buffer_capacity,
+						     gpu_threads_per_block,
+						     scratchpad_size);
 	}
 };
 
