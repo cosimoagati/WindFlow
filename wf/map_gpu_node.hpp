@@ -124,8 +124,7 @@ run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
 	}
 }
 
-template<typename tuple_t, typename result_t, typename func_t,
-	 typename closing_func_t, typename routing_func_t>
+template<typename tuple_t, typename result_t, typename func_t, typename closing_func_t>
 class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 {
 	/*

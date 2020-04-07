@@ -147,8 +147,7 @@ class MapGPU: public ff::ff_farm
 							 std::size_t)>;
 
 	// The type of objects used as internal farm nodes.
-	using node_t = MapGPU_Node<tuple_t, result_t, func_t,
-				   closing_func_t, routing_func_t>;
+	using node_t = MapGPU_Node<tuple_t, result_t, func_t, closing_func_t>;
 
 	static constexpr auto default_tuple_buffer_capacity = 256;
 	static constexpr auto default_gpu_threads_per_block = 256;
