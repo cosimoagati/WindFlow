@@ -208,10 +208,11 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	std::unordered_map<int, KeyControlBlock> key_control_block_map;
 
 	std::string operator_name;
-	int tuple_buffer_capacity;
+	int total_buffer_capacity;
 	int gpu_threads_per_block;
 	int gpu_blocks;
-	int currently_buffered_tuples {0};
+
+	int current_buffer_capacity {0};
 
 	cudaStream_t cuda_stream;
 	tuple_t *cpu_tuple_buffer;
@@ -244,7 +245,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void
 	setup_gpu_result_buffer()
 	{
-		const auto size = tuple_buffer_capacity * sizeof(result_t);
+		const auto size = total_buffer_capacity * sizeof(result_t);
 		if (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate GPU result buffer");
 		}
@@ -257,7 +258,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void
 	setup_scratchpad_buffers()
 	{
-		const auto size = tuple_buffer_capacity * sizeof(char *);
+		const auto size = total_buffer_capacity * sizeof(char *);
 		if (cudaMallocHost(&cpu_scratchpad_buffer, size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU scratchpad buffer");
 		}
@@ -276,17 +277,17 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			startTD = current_time_nsecs();
 		rcvTuples++;
 #endif
-		cpu_tuple_buffer[currently_buffered_tuples] = *t;
-		++currently_buffered_tuples;
+		cpu_tuple_buffer[current_buffer_capacity] = *t;
+		++current_buffer_capacity;
 		delete t;
-		if (currently_buffered_tuples < tuple_buffer_capacity) {
+		if (current_buffer_capacity < total_buffer_capacity) {
 			return this->GO_ON;
 		}
 		send_last_batch_if_any();
-		const auto size = tuple_buffer_capacity * sizeof(tuple_t);
+		const auto size = total_buffer_capacity * sizeof(tuple_t);
 		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer, size,
 			   cudaMemcpyHostToDevice);
-		currently_buffered_tuples = 0;
+		current_buffer_capacity = 0;
 		run_kernel();
 		was_batch_started = true; //TODO: Redundant after the first
 					  //time! Could be made more
@@ -309,7 +310,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	result_t *
 	svc_aux(tuple_t *t)
 	{
-		if (currently_buffered_tuples < tuple_buffer_capacity) {
+		if (current_buffer_capacity < total_buffer_capacity) {
 			const auto &key = t->key;
 			if (key_control_block_map.find(key) == key_control_block_map.end()) {
 				auto &scratchpad = key_control_block_map[key].scratchpad;
@@ -317,30 +318,33 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 					failwith("MapGPU_Node failed to allocate GPU scratchpad for key "
 						 + std::to_string(key));
 				}
-				++currently_buffered_tuples;
+				++current_buffer_capacity;
 			}
 			key_control_block_map[key].queue.push(t);
 			return this->GO_ON;
 		}
 		send_last_batch_if_any();
 
-		auto key_block_pair = key_control_block_map.begin();
-		for (auto i = 0; i < tuple_buffer_capacity; ++i) {
-			while (key_block_pair->second.queue.empty()) {
-				++key_block_pair;
+		auto kcb_iter = key_control_block_map.begin();
+		for (auto i = 0; i < total_buffer_capacity; ++i) {
+			while (kcb_iter->second.queue.empty()) {
+				++kcb_iter;
 			}
-			const auto t = key_block_pair->second.queue.front();
+			const auto t = kcb_iter->second.queue.front();
 			cpu_tuple_buffer[i] = *t;
 			delete t;
-			key_block_pair->second.queue.pop();
-			cpu_scratchpad_buffer[i] = key_block_pair->second.scratchpad;
+			kcb_iter->second.queue.pop();
+			cpu_scratchpad_buffer[i] = kcb_iter->second.scratchpad;
+			if (kcb_iter->second.queue.empty()) {
+				--current_buffer_capacity;
+			}
+			++kcb_iter;
 		}
-		const auto size = tuple_buffer_capacity * sizeof(char *);
+		const auto size = total_buffer_capacity * sizeof(char *);
 		cudaMemcpy(gpu_scratchpad_buffer, cpu_scratchpad_buffer, size,
 			   cudaMemcpyHostToDevice);
 		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer, size,
 			   cudaMemcpyHostToDevice);
-		currently_buffered_tuples = 0;
 		run_kernel();
 		was_batch_started = true;
 		return this->GO_ON;
@@ -353,10 +357,10 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 			return;
 		}
 		cudaStreamSynchronize(cuda_stream);
-		const auto size = tuple_buffer_capacity * sizeof(result_t);
+		const auto size = total_buffer_capacity * sizeof(result_t);
 		cudaMemcpy(cpu_result_buffer, gpu_result_buffer, size,
 			   cudaMemcpyDeviceToHost);
-		for (auto i = 0; i < tuple_buffer_capacity; ++i) {
+		for (auto i = 0; i < total_buffer_capacity; ++i) {
 			this->ff_send_out(new result_t {cpu_result_buffer[i]});
 		}
 	}
@@ -366,7 +370,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	run_kernel()
 	{
 		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-			(map_func, gpu_tuple_buffer, tuple_buffer_capacity);
+			(map_func, gpu_tuple_buffer, total_buffer_capacity);
 	}
 
 
@@ -376,7 +380,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, gpu_result_buffer,
-			 tuple_buffer_capacity);
+			 total_buffer_capacity);
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
@@ -385,7 +389,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, gpu_scratchpad_buffer,
-			 scratchpad_size, tuple_buffer_capacity);
+			 scratchpad_size, total_buffer_capacity);
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
@@ -394,7 +398,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	{
 		run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, gpu_result_buffer,
-			 gpu_scratchpad_buffer, scratchpad_size, tuple_buffer_capacity);
+			 gpu_scratchpad_buffer, scratchpad_size, total_buffer_capacity);
 	}
 
 	/*
@@ -409,7 +413,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void
 	process_last_tuples()
 	{
-		for (auto i = 0; i < currently_buffered_tuples; ++i) {
+		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto &t = cpu_tuple_buffer[i];
 			map_func(t);
 			this->ff_send_out(new tuple_t {t});
@@ -420,7 +424,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void
 	process_last_tuples()
 	{
-		for (auto i = 0; i < currently_buffered_tuples; ++i) {
+		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto res = new result_t {};
 			map_func(cpu_tuple_buffer[i], *res);
 			this->ff_send_out(res);
@@ -498,25 +502,25 @@ public:
 	 * for the keyed (stateful) version.
 	 */
 	MapGPU_Node(func_t map_func, std::string name, RuntimeContext context,
-		    int tuple_buffer_capacity, int gpu_threads_per_block,
+		    int total_buffer_capacity, int gpu_threads_per_block,
 		    closing_func_t closing_func)
-		: MapGPU_Node {map_func, name, context, tuple_buffer_capacity,
+		: MapGPU_Node {map_func, name, context, total_buffer_capacity,
 			       gpu_threads_per_block, 0, closing_func}
 	{}
 
 	MapGPU_Node(func_t map_func, std::string name, RuntimeContext context,
-		    int tuple_buffer_capacity, int gpu_threads_per_block,
+		    int total_buffer_capacity, int gpu_threads_per_block,
 		    int scratchpad_size, closing_func_t closing_func)
 		: map_func {map_func}, operator_name {name}, context {context},
-		  tuple_buffer_capacity {tuple_buffer_capacity},
+		  total_buffer_capacity {total_buffer_capacity},
 		  gpu_threads_per_block {gpu_threads_per_block},
-		  gpu_blocks {std::ceil(tuple_buffer_capacity
+		  gpu_blocks {std::ceil(total_buffer_capacity
 					/ float {gpu_threads_per_block})},
 		  scratchpad_size {scratchpad_size},
 		  closing_func {closing_func}
 	{
-		const auto tuple_size = sizeof(tuple_t) * tuple_buffer_capacity;
-		const auto result_size = sizeof(result_t) * tuple_buffer_capacity;
+		const auto tuple_size = sizeof(tuple_t) * total_buffer_capacity;
+		const auto result_size = sizeof(result_t) * total_buffer_capacity;
 
 		if (cudaMallocHost(&cpu_tuple_buffer, tuple_size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU tuple buffer");
