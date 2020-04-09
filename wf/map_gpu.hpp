@@ -147,7 +147,7 @@ class MapGPU: public ff::ff_farm
 							 std::size_t)>;
 
 	// The type of objects used as internal farm nodes.
-	using node_t = MapGPU_Node<tuple_t, result_t, func_t, closing_func_t>;
+	using node_t = MapGPU_Node<tuple_t, result_t, func_t>;
 
 	static constexpr auto default_tuple_buffer_capacity = 256;
 	static constexpr auto default_gpu_threads_per_block = 256;
@@ -180,10 +180,8 @@ public:
 		std::vector<ff_node *> workers;
 		for (auto i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,
-					       RuntimeContext {pardegree, i},
 					       tuple_buffer_capacity,
-					       gpu_threads_per_block,
-					       closing_func};
+					       gpu_threads_per_block};
 			workers.push_back(seq);
 		}
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
@@ -222,11 +220,9 @@ public:
 		std::vector<ff_node *> workers;
 		for (auto i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,
-					       RuntimeContext {pardegree, i},
 					       tuple_buffer_capacity,
 					       gpu_threads_per_block,
-					       scratchpad_size,
-					       closing_func};
+					       scratchpad_size};
 			workers.push_back(seq);
 		}
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>

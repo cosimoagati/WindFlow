@@ -130,57 +130,57 @@ run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
  * This class represents a structure used to hold relevent information for
  * individual keys.
  */
-#include <utility>
-template<typename tuple_t, typename Key=int>
-class KeyControlMap
-{
-	std::unordered_map<Key, std::pair<std::queue<tuple_t *>, char *> map;
-public:
-	std::queue<tuple_t *> &queue_at(const Key &k) { return map[k].first;  }
-	const std::queue<tuple_t *> &queue_at(const Key &k) const { return map[k].first;  }
+// #include <utility>
+// template<typename tuple_t, typename Key=int>
+// class KeyControlMap
+// {
+// 	std::unordered_map<Key, std::pair<std::queue<tuple_t *>, char *> map;
+// public:
+// 	std::queue<tuple_t *> &queue_at(const Key &k) { return map[k].first;  }
+// 	const std::queue<tuple_t *> &queue_at(const Key &k) const { return map[k].first;  }
 
-	char *&scratchpad_at(const Key &k) { return map[k].second; }
-	const char *&scratchpad_at(const Key &k) const { return map[k].second; }
-};
+// 	char *&scratchpad_at(const Key &k) { return map[k].second; }
+// 	const char *&scratchpad_at(const Key &k) const { return map[k].second; }
+// };
 
-template<typename tuple_t>
-class CudaGPUBuffer
-{
-	int buffer_size;
-	tuple_t *buffer;
-public:
-	CudaGPUBuffer(int size) : buffer_size {size * sizeof(tuple_t)}
+// template<typename tuple_t>
+// class CudaGPUBuffer
+// {
+// 	int buffer_size;
+// 	tuple_t *buffer;
+// public:
+// 	CudaGPUBuffer(int size) : buffer_size {size * sizeof(tuple_t)}
 
-	{
-		//TODO: throw an exception?
-		if (cudaMalloc(&buffer, size) != cudaSuccess) {
-			failwith("Failed to allocate GPU buffer");
-		}
-	}
-	~CudaGPUBuffer() { cudaFree(buffer); }
-	int size() { return buffer_size; }
-	tuple_t *data() { return buffer; }
-};
+// 	{
+// 		//TODO: throw an exception?
+// 		if (cudaMalloc(&buffer, size) != cudaSuccess) {
+// 			failwith("Failed to allocate GPU buffer");
+// 		}
+// 	}
+// 	~CudaGPUBuffer() { cudaFree(buffer); }
+// 	int size() { return buffer_size; }
+// 	tuple_t *data() { return buffer; }
+// };
 
-template<typename tuple_t>
-class CudaCPUBuffer
-{
-	int buffer_size;
-	tuple_t *buffer;
-public:
-	CudaCPUBuffer(int size) : buffer_size {size * sizeof(tuple_t)}
-	{
-		if (cudaMallocHost(&buffer, size) != cudaSuccess) {
-			failwith("Failed to allocate CPU buffer");
-		}
-	}
-	~CudaCPUBuffer() { cudaFree(buffer); }
-	int size() { return buffer_size; }
-	tuple_t *data() { return buffer; }
-};
+// template<typename tuple_t>
+// class CudaCPUBuffer
+// {
+// 	int buffer_size;
+// 	tuple_t *buffer;
+// public:
+// 	CudaCPUBuffer(int size) : buffer_size {size * sizeof(tuple_t)}
+// 	{
+// 		if (cudaMallocHost(&buffer, size) != cudaSuccess) {
+// 			failwith("Failed to allocate CPU buffer");
+// 		}
+// 	}
+// 	~CudaCPUBuffer() { cudaFree(buffer); }
+// 	int size() { return buffer_size; }
+// 	tuple_t *data() { return buffer; }
+// };
 
 
-template<typename tuple_t, typename result_t, typename func_t, typename closing_func_t>
+template<typename tuple_t, typename result_t, typename func_t>
 class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 {
 	/*
@@ -248,8 +248,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 * Class memebers
 	 */
 	func_t map_func;
-	closing_func_t closing_func;
-	RuntimeContext context;
 
 	/*
 	 * This struct, one per individual key, contains a queue of tuples with
@@ -557,23 +555,21 @@ public:
 	 * first constructor is used for keyless (stateless) version, the second is
 	 * for the keyed (stateful) version.
 	 */
-	MapGPU_Node(func_t map_func, std::string name, RuntimeContext context,
-		    int total_buffer_capacity, int gpu_threads_per_block,
-		    closing_func_t closing_func)
-		: MapGPU_Node {map_func, name, context, total_buffer_capacity,
-			       gpu_threads_per_block, 0, closing_func}
+	MapGPU_Node(func_t map_func, std::string name,
+		    int total_buffer_capacity, int gpu_threads_per_block)
+		: MapGPU_Node {map_func, name, total_buffer_capacity,
+			       gpu_threads_per_block, 0}
 	{}
 
-	MapGPU_Node(func_t map_func, std::string name, RuntimeContext context,
+	MapGPU_Node(func_t map_func, std::string name,
 		    int total_buffer_capacity, int gpu_threads_per_block,
-		    int scratchpad_size, closing_func_t closing_func)
-		: map_func {map_func}, operator_name {name}, context {context},
+		    int scratchpad_size)
+		: map_func {map_func}, operator_name {name},
 		  total_buffer_capacity {total_buffer_capacity},
 		  gpu_threads_per_block {gpu_threads_per_block},
 		  gpu_blocks {std::ceil(total_buffer_capacity
 					/ float {gpu_threads_per_block})},
-		  scratchpad_size {scratchpad_size},
-		  closing_func {closing_func}
+		  scratchpad_size {scratchpad_size}
 	{
 		const auto tuple_size = sizeof(tuple_t) * total_buffer_capacity;
 		const auto result_size = sizeof(result_t) * total_buffer_capacity;
@@ -645,7 +641,6 @@ public:
 	void
 	svc_end()
 	{
-		closing_func(context);
 #if defined (TRACE_WINDFLOW)
 		std::ostringstream stream;
 		stream << "************************************LOG************************************\n";
