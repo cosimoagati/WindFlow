@@ -124,6 +124,62 @@ run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
 	}
 }
 
+
+//TODO: These utility classes deserve their own header!
+/*
+ * This class represents a structure used to hold relevent information for
+ * individual keys.
+ */
+#include <utility>
+template<typename tuple_t, typename Key=int>
+class KeyControlMap
+{
+	std::unordered_map<Key, std::pair<std::queue<tuple_t *>, char *> map;
+public:
+	std::queue<tuple_t *> &queue_at(const Key &k) { return map[k].first;  }
+	const std::queue<tuple_t *> &queue_at(const Key &k) const { return map[k].first;  }
+
+	char *&scratchpad_at(const Key &k) { return map[k].second; }
+	const char *&scratchpad_at(const Key &k) const { return map[k].second; }
+};
+
+template<typename tuple_t>
+class CudaGPUBuffer
+{
+	int buffer_size;
+	tuple_t *buffer;
+public:
+	CudaGPUBuffer(int size) : buffer_size {size * sizeof(tuple_t)}
+
+	{
+		//TODO: throw an exception?
+		if (cudaMalloc(&buffer, size) != cudaSuccess) {
+			failwith("Failed to allocate GPU buffer");
+		}
+	}
+	~CudaGPUBuffer() { cudaFree(buffer); }
+	int size() { return buffer_size; }
+	tuple_t *data() { return buffer; }
+};
+
+template<typename tuple_t>
+class CudaCPUBuffer
+{
+	int buffer_size;
+	tuple_t *buffer;
+public:
+	CudaCPUBuffer(int size) : buffer_size {size * sizeof(tuple_t)}
+	{
+		if (cudaMallocHost(&buffer, size) != cudaSuccess) {
+			failwith("Failed to allocate CPU buffer");
+		}
+	}
+	~CudaCPUBuffer() { cudaFree(buffer); }
+	int size() { return buffer_size; }
+	tuple_t *data() { return buffer; }
+};
+
+
 template<typename tuple_t, typename result_t, typename func_t, typename closing_func_t>
 class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 {
