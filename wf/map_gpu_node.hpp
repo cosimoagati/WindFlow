@@ -132,8 +132,8 @@ run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
 template<typename T>
 class CudaGPUBuffer
 {
-	int buffer_size;
-	T *buffer;
+	int buffer_size {0};
+	T *buffer {nullptr};
 public:
 	CudaGPUBuffer(int size) : buffer_size {size}
 	{
@@ -141,7 +141,7 @@ public:
 			failwith("Failed to allocate GPU buffer");
 		}
 	}
-	~CudaGPUBuffer() { cudaFree(buffer); }
+	~CudaGPUBuffer() { if(buffer) { cudaFree(buffer); }}
 	int size() { return buffer_size; }
 	int raw_size() { return buffer_size * sizeof(T); }
 	T *data() { return buffer; }
@@ -155,8 +155,8 @@ public:
 template<typename T>
 class CudaCPUBuffer
 {
-	int buffer_size;
-	T *buffer;
+	int buffer_size {0};
+	T *buffer {nullptr};
 public:
 	CudaCPUBuffer(int size) : buffer_size {size}
 	{
@@ -164,7 +164,7 @@ public:
 			failwith("Failed to allocate CPU buffer");
 		}
 	}
-	~CudaCPUBuffer() { cudaFreeHost(buffer); }
+	~CudaCPUBuffer() { if (buffer) { cudaFreeHost(buffer); }}
 	int size() { return buffer_size; }
 	int raw_size() { return buffer_size * sizeof(T); }
 	T *data() { return buffer; }
