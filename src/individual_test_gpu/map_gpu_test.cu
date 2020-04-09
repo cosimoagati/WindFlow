@@ -173,7 +173,7 @@ main(int argc, char *argv[])
 	// 										  .enable_KeyBy()
 	// 										  .build_ptr();
 	MapGPU<tuple_t, tuple_t, decltype(verify_order)> ip_keyed_map {verify_order,
-			1, "gino", closing_func, routing_func, 256, 256, sizeof(int)};
+			1, "gino", routing_func, 256, 256, sizeof(int)};
 	ip_keyed_pipe.add_stage(&ip_keyed_map);
 	ip_keyed_pipe.add_stage(::Sink<tuple_t> {});
 	if (ip_keyed_pipe.run_and_wait_end() < 0) {

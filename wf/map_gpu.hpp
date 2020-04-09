@@ -140,7 +140,6 @@ class MapGPU: public ff::ff_farm
 	/*
 	 * Type aliases.
 	 */
-	using closing_func_t = std::function<void(RuntimeContext &)>;
 	/// type of the function to map the key hashcode onto an identifier
 	/// starting from zero to pardegree-1
 	using routing_func_t = std::function<std::size_t(std::size_t,
@@ -166,11 +165,9 @@ public:
 	 *  \param name string with the unique name of the MapGPU operator
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_threads_per_block number of GPU threads per block
-	 *  \param closing_func closing function
 	 */
 	// TODO: It would be nice to factor out common constructor behavior...
 	MapGPU(func_t func, int pardegree, std::string name,
-	       closing_func_t closing_func,
 	       int tuple_buffer_capacity=default_tuple_buffer_capacity,
 	       int gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {false}
@@ -202,11 +199,10 @@ public:
 	 *  \param name string with the unique name of the MapGPU operator
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_threads_per_block number of GPU threads per block
-	 *  \param closing_func closing function
 	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	MapGPU(func_t func, int pardegree, std::string name,
-	       closing_func_t closing_func, routing_func_t routing_func,
+	       routing_func_t routing_func,
 	       int tuple_buffer_capacity=default_tuple_buffer_capacity,
 	       int gpu_threads_per_block=default_gpu_threads_per_block,
 	       int scratchpad_size=default_scratchpad_size)

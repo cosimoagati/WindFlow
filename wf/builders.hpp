@@ -402,15 +402,12 @@ class MapGPU_Builder
 	// type of the operator to be created by this builder.
 	using mapgpu_t = MapGPU<decltype(get_tuple_t(func)),
 			     decltype(get_result_t(func)), F_t>;
-	// type of the closing function.
-	using closing_func_t = std::function<void(RuntimeContext&)>;
 	// type of the function to map the key hashcode onto an identifier
 	// starting from zero to pardegree-1.
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
 	std::uint64_t pardegree {1};
 	std::string name {"anonymous_map"};
-	closing_func_t closing_func = [](RuntimeContext &) {};
 	routing_func_t routing_func = [](std::size_t k, std::size_t n) { return k%n; };
 	std::size_t tuple_buffer_capacity {256};
 	std::size_t gpu_threads_per_block {256};
@@ -487,19 +484,6 @@ public:
 		return *this;
 	}
 
-	/**
-	 *  \brief Method to specify the closing function used by the operator.
-	 *
-	 *  \param closing_func closing function to be used by the operator.
-	 *  \return the object itself.
-	 */
-	MapGPU_Builder<F_t> &
-	withClosingFunction(closing_func_t closing_func)
-	{
-		this->closing_func = closing_func;
-		return *this;
-	}
-
 	MapGPU_Builder<F_t> &
 	withRoutingFunction(routing_func_t routing_func)
 	{
@@ -551,11 +535,10 @@ public:
 	{
 		// Copy elision in C++17
 		return !is_keyed ?
-			mapgpu_t {func, pardegree, name, closing_func,
-				  tuple_buffer_capacity,
+			mapgpu_t {func, pardegree, name, tuple_buffer_capacity,
 				  gpu_threads_per_block}
-			: mapgpu_t {func, pardegree, name, closing_func,
-				    routing_func, tuple_buffer_capacity,
+			: mapgpu_t {func, pardegree, name, routing_func,
+				    tuple_buffer_capacity,
 				    gpu_threads_per_block,
 				    scratchpad_size};
 	}
@@ -570,10 +553,10 @@ public:
 	build_ptr()
 	{
 		return !is_keyed ?
-			new mapgpu_t {func, pardegree, name, closing_func,
+			new mapgpu_t {func, pardegree, name,
 				      tuple_buffer_capacity,
 				      gpu_threads_per_block}
-			: new mapgpu_t {func, pardegree, name, closing_func,
+			: new mapgpu_t {func, pardegree, name,
 					routing_func, tuple_buffer_capacity,
 					gpu_threads_per_block, scratchpad_size};
 	}
@@ -588,10 +571,9 @@ public:
 	{
 		return !is_keyed ?
 			std::make_unique<mapgpu_t>(func, pardegree, name,
-						   closing_func,
 						   tuple_buffer_capacity,
 						   gpu_threads_per_block)
-			: std::make_unique<mapgpu_t>(func, pardegree, name, closing_func,
+			: std::make_unique<mapgpu_t>(func, pardegree, name,
 						     routing_func, tuple_buffer_capacity,
 						     gpu_threads_per_block,
 						     scratchpad_size);
