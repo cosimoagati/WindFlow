@@ -125,41 +125,69 @@ run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
 }
 
 //TODO: These utility classes deserve their own header!
-// template<typename tuple_t>
-// class CudaGPUBuffer
-// {
-// 	int buffer_size;
-// 	tuple_t *buffer;
-// public:
-// 	CudaGPUBuffer(int size) : buffer_size {size * sizeof(tuple_t)}
 
-// 	{
-// 		//TODO: throw an exception?
-// 		if (cudaMalloc(&buffer, size) != cudaSuccess) {
-// 			failwith("Failed to allocate GPU buffer");
-// 		}
-// 	}
-// 	~CudaGPUBuffer() { cudaFree(buffer); }
-// 	int size() { return buffer_size; }
-// 	tuple_t *data() { return buffer; }
-// };
+/*
+ * Lightweght abstraction layer over CUDA.
+ */
+template<typename T>
+class CudaGPUBuffer
+{
+	int buffer_size;
+	T *buffer;
+public:
+	CudaGPUBuffer(int size) : buffer_size {size}
+	{
+		if (cudaMalloc(&buffer, size * sizeof(T)) != cudaSuccess) {
+			failwith("Failed to allocate GPU buffer");
+		}
+	}
+	~CudaGPUBuffer() { cudaFree(buffer); }
+	int size() { return buffer_size; }
+	int raw_size() { return buffer_size * sizeof(T); }
+	T *data() { return buffer; }
 
-// template<typename tuple_t>
-// class CudaCPUBuffer
-// {
-// 	int buffer_size;
-// 	tuple_t *buffer;
-// public:
-// 	CudaCPUBuffer(int size) : buffer_size {size * sizeof(tuple_t)}
-// 	{
-// 		if (cudaMallocHost(&buffer, size) != cudaSuccess) {
-// 			failwith("Failed to allocate CPU buffer");
-// 		}
-// 	}
-// 	~CudaCPUBuffer() { cudaFree(buffer); }
-// 	int size() { return buffer_size; }
-// 	tuple_t *data() { return buffer; }
-// };
+	CudaGPUBuffer(const CudaGPUBuffer &other) = delete;
+	CudaGPUBuffer(CudaGPUBuffer &&other) = delete;
+	CudaGPUBuffer &operator=(const CudaGPUBuffer &other) = delete;
+	CudaGPUBuffer &operator=(CudaGPUBuffer &&other) = delete;
+};
+
+template<typename T>
+class CudaCPUBuffer
+{
+	int buffer_size;
+	T *buffer;
+public:
+	CudaCPUBuffer(int size) : buffer_size {size}
+	{
+		if (cudaMallocHost(&buffer, size * sizeof(T)) != cudaSuccess) {
+			failwith("Failed to allocate CPU buffer");
+		}
+	}
+	~CudaCPUBuffer() { cudaFreeHost(buffer); }
+	int size() { return buffer_size; }
+	int raw_size() { return buffer_size * sizeof(T); }
+	T *data() { return buffer; }
+
+	CudaCPUBuffer(const CudaCPUBuffer &other) = delete;
+	CudaCPUBuffer(CudaCPUBuffer &&other) = delete;
+	CudaCPUBuffer &operator=(const CudaCPUBuffer &other) = delete;
+	CudaCPUBuffer &operator=(CudaCPUBuffer &&other) = delete;
+};
+
+template<typename T>
+inline void
+copy_cuda_buffer(CudaGPUBuffer<T> &to, const CudaCPUBuffer<T> &from)
+{
+	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyHostToDevice);
+}
+
+template<typename T>
+inline void
+copy_cuda_buffer(CudaCPUBuffer<T> &to, const CudaGPUBuffer<T> &from)
+{
+	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyDeviceToHost);
+}
 
 
 template<typename tuple_t, typename result_t, typename func_t>
