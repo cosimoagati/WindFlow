@@ -142,6 +142,9 @@ public:
 		}
 	}
 	~CudaGPUBuffer() { if(buffer) { cudaFree(buffer); }}
+
+	const T &operator[](int i) const { return buffer [i]; }
+	T &operator[](int i) { return buffer [i]; }
 	int size() { return buffer_size; }
 	int raw_size() { return buffer_size * sizeof(T); }
 	T *data() { return buffer; }
@@ -165,6 +168,9 @@ public:
 		}
 	}
 	~CudaCPUBuffer() { if (buffer) { cudaFreeHost(buffer); }}
+
+	const T &operator[](int i) const { return buffer [i]; }
+	T &operator[](int i) { return buffer [i]; }
 	int size() { return buffer_size; }
 	int raw_size() { return buffer_size * sizeof(T); }
 	T *data() { return buffer; }
@@ -177,14 +183,15 @@ public:
 
 template<typename T>
 inline void
-copy_cuda_buffer(CudaGPUBuffer<T> &to, const CudaCPUBuffer<T> &from)
+copy_cuda_buffer(CudaGPUBuffer<T> &to, CudaCPUBuffer<T> &from)
 {
+	// CUDA is stupid and doesn't allow "from" to be const.
 	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyHostToDevice);
 }
 
 template<typename T>
 inline void
-copy_cuda_buffer(CudaCPUBuffer<T> &to, const CudaGPUBuffer<T> &from)
+copy_cuda_buffer(CudaCPUBuffer<T> &to, CudaGPUBuffer<T> &from)
 {
 	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyDeviceToHost);
 }
