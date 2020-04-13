@@ -125,7 +125,6 @@ run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
 }
 
 //TODO: These utility classes deserve their own header!
-
 /*
  * Lightweght abstraction layer over CUDA.
  */
