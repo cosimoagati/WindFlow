@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cstdint>
 #include <iostream>
 #include <fstream>
@@ -5,7 +6,10 @@
 #include "../../wf/builders.hpp"
 #include "../../wf/windflow_gpu.hpp"
 
+#define TRIVIAL_TEST
+
 using namespace std;
+using namespace std::chrono;
 using namespace ff;
 using namespace wf;
 
@@ -44,6 +48,10 @@ class Source : public ff_node_t<tuple_t, tuple_t>
 {
 	static constexpr auto LIMIT = 1000;
 	long counter {0};
+#ifndef TRIVIAL_TEST
+	time_point<steady_clock> start_time {steady_clock::now()};
+	time_point<steady_clock> end_time = start_time + seconds {60}
+#endif
 public:
 	int
 	svc_init()
@@ -55,9 +63,16 @@ public:
 	tuple_t *
 	svc(tuple_t *)
 	{
+#ifdef TRIVIAL_TEST
 		if (counter > LIMIT) {
 			return this->EOS;
 		}
+#else
+		const auto current_time = steady_clock::now();
+		if (current_time >= end_time) {
+			return this->EOS;
+		}
+#endif
 		// Generate them all with key 0 for simplicity.
 		const auto t = new tuple_t {0, counter, counter, counter};
 		++counter;
@@ -86,10 +101,7 @@ public:
 		return this->GO_ON;
 	}
 
-	void svc_end()
-	{
-		cout << "Sink closing..." << endl;
-	}
+	void svc_end() { cout << "Sink closing..." << endl; }
 };
 
 void closing_func(RuntimeContext &) {}
