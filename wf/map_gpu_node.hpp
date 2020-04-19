@@ -43,8 +43,7 @@
 #include "standard_nodes.hpp"
 #include "map_gpu_utils.hpp"
 
-namespace wf
-{
+namespace wf {
 // N.B.: CUDA __global__ kernels must not be member functions.
 // TODO: can we make the distinction simpler, with less repetition?
 /**
@@ -58,8 +57,7 @@ namespace wf
 template<typename tuple_t, typename func_t>
 __global__ void
 run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
-		  const std::size_t buffer_capacity)
-{
+		  const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride) {
@@ -78,8 +76,7 @@ run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
 template<typename tuple_t, typename result_t, typename func_t>
 __global__ void
 run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
-		   result_t *result_buffer, const std::size_t buffer_capacity)
-{
+		   result_t *result_buffer, const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride) {
@@ -100,8 +97,7 @@ template<typename tuple_t, typename func_t>
 __global__ void
 run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
 			char **scratchpads, const std::size_t scratchpad_size,
-			const std::size_t buffer_capacity)
-{
+			const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride) {
@@ -114,8 +110,7 @@ __global__ void
 run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
 			 result_t *result_buffer, char **scratchpads,
 			 const std::size_t scratchpad_size,
-			 const std::size_t buffer_capacity)
-{
+			 const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride) {
@@ -129,8 +124,7 @@ run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
  * Lightweght abstraction layer over CUDA.
  */
 template<typename T>
-class CudaGPUBuffer
-{
+class CudaGPUBuffer {
 	int buffer_size {0};
 	T *buffer {nullptr};
 public:
@@ -155,8 +149,7 @@ public:
 };
 
 template<typename T>
-class CudaCPUBuffer
-{
+class CudaCPUBuffer {
 	int buffer_size {0};
 	T *buffer {nullptr};
 public:
@@ -181,24 +174,19 @@ public:
 };
 
 template<typename T>
-inline void
-copy_cuda_buffer(CudaGPUBuffer<T> &to, CudaCPUBuffer<T> &from)
-{
+inline void copy_cuda_buffer(CudaGPUBuffer<T> &to, CudaCPUBuffer<T> &from) {
 	// CUDA is stupid and doesn't allow "from" to be const.
 	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyHostToDevice);
 }
 
 template<typename T>
-inline void
-copy_cuda_buffer(CudaCPUBuffer<T> &to, CudaGPUBuffer<T> &from)
-{
+inline void copy_cuda_buffer(CudaCPUBuffer<T> &to, CudaGPUBuffer<T> &from) {
 	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyDeviceToHost);
 }
 
 
 template<typename tuple_t, typename result_t, typename func_t>
-class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
-{
+class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 	/*
 	 * Name function properties, used to verify compile-time invariants and
 	 * only compile the required member functions.  These predicates cannot
@@ -270,8 +258,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 * the same key and a pointer to the respective memory area to be
 	 * used as scratchpad, to save state.
 	 */
-	struct KeyControlBlock
-	{
+	struct KeyControlBlock {
 		std::queue<tuple_t *> queue;
 		char *scratchpad;
 	};
@@ -312,9 +299,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void setup_gpu_result_buffer() { gpu_result_buffer = gpu_tuple_buffer; }
 
 	template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
-	void
-	setup_gpu_result_buffer()
-	{
+	void setup_gpu_result_buffer() {
 		const auto size = total_buffer_capacity * sizeof(result_t);
 		if (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate GPU result buffer");
@@ -325,9 +310,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void setup_scratchpad_buffers() {}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
-	void
-	setup_scratchpad_buffers()
-	{
+	void setup_scratchpad_buffers() {
 		const auto size = total_buffer_capacity * sizeof(char *);
 		if (cudaMallocHost(&cpu_scratchpad_buffer, size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU scratchpad buffer");
@@ -338,9 +321,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
-	result_t *
-	svc_aux(tuple_t *t)
-	{
+	result_t *svc_aux(tuple_t *t) {
 #if defined (TRACE_WINDFLOW)
 		startTS = current_time_nsecs();
 		if (rcvTuples == 0)
@@ -377,9 +358,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
-	result_t *
-	svc_aux(tuple_t *t)
-	{
+	result_t *svc_aux(tuple_t *t) {
 		const auto &key = t->key;
 		if (key_control_block_map.find(key) == key_control_block_map.end()) {
 			auto &scratchpad = key_control_block_map[key].scratchpad;
@@ -420,9 +399,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 		return this->GO_ON;
 	}
 
-	void
-	send_last_batch_if_any()
-	{
+	void send_last_batch_if_any() {
 		if (!was_batch_started) {
 			return;
 		}
@@ -436,36 +413,28 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
-	void
-	run_kernel()
-	{
+	void run_kernel() {
 		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, total_buffer_capacity);
 	}
 
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
-	void
-	run_kernel()
-	{
+	void run_kernel() {
 		run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, gpu_result_buffer,
 			 total_buffer_capacity);
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
-	void
-	run_kernel()
-	{
+	void run_kernel() {
 		run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, gpu_scratchpad_buffer,
 			 scratchpad_size, total_buffer_capacity);
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
-	void
-	run_kernel()
-	{
+	void run_kernel() {
 		run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, gpu_result_buffer,
 			 gpu_scratchpad_buffer, scratchpad_size, total_buffer_capacity);
@@ -480,9 +449,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	 * be a much smaller number than the total stream length.
 	 */
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
-	void
-	process_last_tuples()
-	{
+	void process_last_tuples() {
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto &t = cpu_tuple_buffer[i];
 			map_func(t);
@@ -491,9 +458,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
-	void
-	process_last_tuples()
-	{
+	void process_last_tuples() {
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto res = new result_t {};
 			map_func(cpu_tuple_buffer[i], *res);
@@ -502,9 +467,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
-	void
-	process_last_tuples()
-	{
+	void process_last_tuples() {
 		std::vector<char> cpu_scratchpad(scratchpad_size);
 		for (auto &kv : key_control_block_map) {
 			auto &queue = kv.second.queue;
@@ -521,11 +484,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
-	void
-	process_last_tuples()
-	{
+	void process_last_tuples() {
 		std::vector<char> cpu_scratchpad(scratchpad_size);
-
 		for (auto &kv : key_control_block_map) {
 			auto &queue = kv.second.queue;
 			auto &gpu_scratchpad = kv.second.scratchpad;
@@ -536,7 +496,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 				auto t = queue.front();
 				auto res = new result_t {};
 
-				map_func(*t, *res, cpu_scratchpad.data(), cpu_scratchpad.size());
+				map_func(*t, *res, cpu_scratchpad.data(),
+					 cpu_scratchpad.size());
 				delete t;
 				this->ff_send_out(res);
 			}
@@ -553,16 +514,13 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t>
 	void deallocate_scratchpad_buffers() {}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
-	void
-	deallocate_scratchpad_buffers()
-	{
+	void deallocate_scratchpad_buffers() {
 		for (auto &kcb : key_control_block_map) {
 			cudaFree(kcb.second.scratchpad);
 		}
 		cudaFreeHost(cpu_scratchpad_buffer);
 		cudaFree(gpu_scratchpad_buffer);
 	}
-
 public:
 	/*
 	 * A single worker allocates both CPU and GPU buffers to store tuples.
@@ -606,8 +564,7 @@ public:
 		setup_scratchpad_buffers();
 	}
 
-	~MapGPU_Node()
-	{
+	~MapGPU_Node() {
 		cudaFreeHost(cpu_tuple_buffer);
 		cudaFreeHost(cpu_result_buffer);
 		cudaFree(gpu_tuple_buffer);
@@ -617,9 +574,7 @@ public:
 	}
 
 	// svc_init method (utilized by the FastFlow runtime)
-	int
-	svc_init()
-	{
+	int svc_init() {
 #if defined(TRACE_WINDFLOW)
 		logfile = new std::ofstream();
 		name += "_node_" + std::to_string(ff::ff_node_t<tuple_t,
@@ -646,17 +601,13 @@ public:
 	 * simplicity, then sends out any remaining results from the last CUDA
 	 * kernel.
 	 */
-	void
-	eosnotify(ssize_t)
-	{
+	void eosnotify(ssize_t) {
 		send_last_batch_if_any();
 		process_last_tuples();
 	}
 
 	// svc_end method (utilized by the FastFlow runtime)
-	void
-	svc_end()
-	{
+	void svc_end() {
 #if defined (TRACE_WINDFLOW)
 		std::ostringstream stream;
 		stream << "************************************LOG************************************\n";

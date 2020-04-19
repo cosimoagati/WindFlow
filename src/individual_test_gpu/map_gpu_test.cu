@@ -16,8 +16,7 @@ using namespace wf;
 // Global is ugly, but simple
 ofstream output_stream {"output.txt"};
 
-struct tuple_t
-{
+struct tuple_t {
 	size_t key;
 	uint64_t id;
 	uint64_t ts;
@@ -29,14 +28,11 @@ struct tuple_t
 
 	tuple_t() : key {0}, id {0}, ts {0}, value {0} {}
 
-	tuple<size_t, uint64_t, uint64_t> getControlFields() const
-	{
+	tuple<size_t, uint64_t, uint64_t> getControlFields() const {
 		return tuple<size_t, uint64_t, uint64_t>(key, id, ts);
 	}
 
-	void
-	setControlFields(size_t _key, uint64_t _id, uint64_t _ts)
-	{
+	void setControlFields(size_t _key, uint64_t _id, uint64_t _ts) {
 		key = _key;
 		id = _id;
 		ts = _ts;
@@ -44,8 +40,7 @@ struct tuple_t
 };
 
 template<typename tuple_t>
-class Source : public ff_node_t<tuple_t, tuple_t>
-{
+class Source : public ff_node_t<tuple_t, tuple_t> {
 	static constexpr auto LIMIT = 1000;
 	long counter {0};
 #ifndef TRIVIAL_TEST
@@ -53,16 +48,12 @@ class Source : public ff_node_t<tuple_t, tuple_t>
 	time_point<steady_clock> end_time = start_time + seconds {60}
 #endif
 public:
-	int
-	svc_init()
-	{
+	int svc_init() {
 		cout << "Initializing source..." << endl;
 		return 0;
 	}
 
-	tuple_t *
-	svc(tuple_t *)
-	{
+	tuple_t *svc(tuple_t *) {
 #ifdef TRIVIAL_TEST
 		if (counter > LIMIT) {
 			return this->EOS;
@@ -83,19 +74,14 @@ public:
 };
 
 template<typename tuple_t>
-class Sink : public ff_node_t<tuple_t, tuple_t>
-{
+class Sink : public ff_node_t<tuple_t, tuple_t> {
 public:
-	int
-	svc_init()
-	{
+	int svc_init() {
 		cout << "Initializing sink..." << endl;
 		return 0;
 	}
 
-	tuple_t *
-	svc(tuple_t *t)
-	{
+	tuple_t *svc(tuple_t *t) {
 		output_stream << t->value << '\n';
 		delete t;
 		return this->GO_ON;
@@ -108,9 +94,7 @@ void closing_func(RuntimeContext &) {}
 
 int routing_func(size_t k, size_t n) { return k % n; }
 
-int
-main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	auto square = [] __host__ __device__ (tuple_t &x)
 		{
 		 x.value = x.value * x.value;

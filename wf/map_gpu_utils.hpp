@@ -34,17 +34,14 @@
 
 #include "basic.hpp"
 
-namespace wf
-{
+namespace wf {
 template<typename F, typename... Args>
 struct is_invocable :
 		std::is_constructible<std::function<void(Args ...)>,
 				      std::reference_wrapper<typename std::remove_reference<F>::type>>
 {};
 
-inline void
-failwith(const std::string &err)
-{
+inline void failwith(const std::string &err) {
 	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
 		  << std::endl;
 	std::exit(EXIT_FAILURE);

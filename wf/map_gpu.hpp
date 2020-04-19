@@ -51,8 +51,7 @@
 #include "map_gpu_node.hpp"
 #include "map_gpu_utils.hpp"
 
-namespace wf
-{
+namespace wf {
 inline void
 check_constructor_parameters(int pardegree, int tuple_buffer_capacity,
 			     int gpu_threads_per_block)
@@ -81,8 +80,7 @@ check_constructor_parameters(int pardegree, int tuple_buffer_capacity,
 // TODO: Can we put set the result_t parameter to be the same as tuple_t
 // if not specified?
 template<typename tuple_t, typename result_t, typename func_t>
-class MapGPU: public ff::ff_farm
-{
+class MapGPU: public ff::ff_farm {
 	/*
 	 * Name function properties, used to verify compile-time invariants and
 	 * only compile the required member functions.  These predicates cannot
