@@ -359,7 +359,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	result_t *svc_aux(tuple_t *t) {
-		const auto &key = t->key;
+		const auto &key = std::get<0>(t->getControlFields());
 		if (key_control_block_map.find(key) == key_control_block_map.end()) {
 			auto &scratchpad = key_control_block_map[key].scratchpad;
 			if (cudaMalloc(&scratchpad, scratchpad_size) != cudaSuccess) {
