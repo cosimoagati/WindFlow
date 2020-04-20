@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <functional>
+#include <tuple>
+
 #include "../../wf/builders.hpp"
 #include "../../wf/windflow_gpu.hpp"
 
