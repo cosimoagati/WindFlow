@@ -565,8 +565,10 @@ public:
 		operator_name += "_node_" + std::to_string(ff::ff_node_t<tuple_t,
 							   result_t>::get_my_id())
 			+ ".log";
-		std::string filename = std::string(STRINGIFY(TRACE_WINDFLOW))
-			+ "/" + operator_name;
+		const auto filename =
+			std::string {STRINGIFY(TRACE_WINDFLOW)}+ "/" + operator_name;
+		std::cout << filename << '\n';
+
 		logfile->open(filename);
 		if (logfile->fail()) {
 			failwith("Error opening MapGPU_Node log file.");
