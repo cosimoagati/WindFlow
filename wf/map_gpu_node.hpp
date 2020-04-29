@@ -568,6 +568,9 @@ public:
 		std::string filename = std::string(STRINGIFY(TRACE_WINDFLOW))
 			+ "/" + operator_name;
 		logfile->open(filename);
+		if (logfile->fail()) {
+			failwith("Error opening MapGPU_Node log file.");
+		}
 #endif
 		return 0;
 	}
