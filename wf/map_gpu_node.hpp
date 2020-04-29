@@ -578,12 +578,11 @@ public:
 	int svc_init() {
 #if defined(TRACE_WINDFLOW)
 		logfile = new std::ofstream();
-		name += "_node_" + std::to_string(ff::ff_node_t<tuple_t,
-						  result_t>::get_my_id())
+		operator_name += "_node_" + std::to_string(ff::ff_node_t<tuple_t,
+							   result_t>::get_my_id())
 			+ ".log";
-		std::string filename =
-			std::string(STRINGIFY(TRACE_WINDFLOW)) + "/"
-			+ name;
+		std::string filename = std::string(STRINGIFY(TRACE_WINDFLOW))
+			+ "/" + operator_name;
 		logfile->open(filename);
 #endif
 		return 0;

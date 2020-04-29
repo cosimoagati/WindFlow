@@ -5,6 +5,7 @@
 #include <functional>
 #include <tuple>
 
+#define TRACE_WINDFLOW
 #include "../../wf/builders.hpp"
 #include "../../wf/windflow_gpu.hpp"
 
