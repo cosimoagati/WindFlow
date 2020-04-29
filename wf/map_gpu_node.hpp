@@ -324,8 +324,9 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 	result_t *svc_aux(tuple_t *t) {
 #if defined (TRACE_WINDFLOW)
 		startTS = current_time_nsecs();
-		if (rcvTuples == 0)
+		if (rcvTuples == 0) {
 			startTD = current_time_nsecs();
+		}
 		rcvTuples++;
 #endif
 		cpu_tuple_buffer[current_buffer_capacity] = *t;
