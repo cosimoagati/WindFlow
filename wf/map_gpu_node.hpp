@@ -123,66 +123,66 @@ run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
 /*
  * Lightweght abstraction layer over CUDA.
  */
-template<typename T>
-class CudaGPUBuffer {
-	int buffer_size {0};
-	T *buffer {nullptr};
-public:
-	CudaGPUBuffer(int size) : buffer_size {size}
-	{
-		if (cudaMalloc(&buffer, size * sizeof(T)) != cudaSuccess) {
-			failwith("Failed to allocate GPU buffer");
-		}
-	}
-	~CudaGPUBuffer() { if(buffer) { cudaFree(buffer); }}
+// template<typename T>
+// class CudaGPUBuffer {
+// 	int buffer_size {0};
+// 	T *buffer {nullptr};
+// public:
+// 	CudaGPUBuffer(int size) : buffer_size {size}
+// 	{
+// 		if (cudaMalloc(&buffer, size * sizeof(T)) != cudaSuccess) {
+// 			failwith("Failed to allocate GPU buffer");
+// 		}
+// 	}
+// 	~CudaGPUBuffer() { if(buffer) { cudaFree(buffer); }}
 
-	const T &operator[](int i) const { return buffer [i]; }
-	T &operator[](int i) { return buffer [i]; }
-	int size() { return buffer_size; }
-	int raw_size() { return buffer_size * sizeof(T); }
-	T *data() { return buffer; }
+// 	const T &operator[](int i) const { return buffer [i]; }
+// 	T &operator[](int i) { return buffer [i]; }
+// 	int size() { return buffer_size; }
+// 	int raw_size() { return buffer_size * sizeof(T); }
+// 	T *data() { return buffer; }
 
-	CudaGPUBuffer(const CudaGPUBuffer &other) = delete;
-	CudaGPUBuffer(CudaGPUBuffer &&other) = delete;
-	CudaGPUBuffer &operator=(const CudaGPUBuffer &other) = delete;
-	CudaGPUBuffer &operator=(CudaGPUBuffer &&other) = delete;
-};
+// 	CudaGPUBuffer(const CudaGPUBuffer &other) = delete;
+// 	CudaGPUBuffer(CudaGPUBuffer &&other) = delete;
+// 	CudaGPUBuffer &operator=(const CudaGPUBuffer &other) = delete;
+// 	CudaGPUBuffer &operator=(CudaGPUBuffer &&other) = delete;
+// };
 
-template<typename T>
-class CudaCPUBuffer {
-	int buffer_size {0};
-	T *buffer {nullptr};
-public:
-	CudaCPUBuffer(int size) : buffer_size {size}
-	{
-		if (cudaMallocHost(&buffer, size * sizeof(T)) != cudaSuccess) {
-			failwith("Failed to allocate CPU buffer");
-		}
-	}
-	~CudaCPUBuffer() { if (buffer) { cudaFreeHost(buffer); }}
+// template<typename T>
+// class CudaCPUBuffer {
+// 	int buffer_size {0};
+// 	T *buffer {nullptr};
+// public:
+// 	CudaCPUBuffer(int size) : buffer_size {size}
+// 	{
+// 		if (cudaMallocHost(&buffer, size * sizeof(T)) != cudaSuccess) {
+// 			failwith("Failed to allocate CPU buffer");
+// 		}
+// 	}
+// 	~CudaCPUBuffer() { if (buffer) { cudaFreeHost(buffer); }}
 
-	const T &operator[](int i) const { return buffer [i]; }
-	T &operator[](int i) { return buffer [i]; }
-	int size() { return buffer_size; }
-	int raw_size() { return buffer_size * sizeof(T); }
-	T *data() { return buffer; }
+// 	const T &operator[](int i) const { return buffer [i]; }
+// 	T &operator[](int i) { return buffer [i]; }
+// 	int size() { return buffer_size; }
+// 	int raw_size() { return buffer_size * sizeof(T); }
+// 	T *data() { return buffer; }
 
-	CudaCPUBuffer(const CudaCPUBuffer &other) = delete;
-	CudaCPUBuffer(CudaCPUBuffer &&other) = delete;
-	CudaCPUBuffer &operator=(const CudaCPUBuffer &other) = delete;
-	CudaCPUBuffer &operator=(CudaCPUBuffer &&other) = delete;
-};
+// 	CudaCPUBuffer(const CudaCPUBuffer &other) = delete;
+// 	CudaCPUBuffer(CudaCPUBuffer &&other) = delete;
+// 	CudaCPUBuffer &operator=(const CudaCPUBuffer &other) = delete;
+// 	CudaCPUBuffer &operator=(CudaCPUBuffer &&other) = delete;
+// };
 
-template<typename T>
-inline void copy_cuda_buffer(CudaGPUBuffer<T> &to, CudaCPUBuffer<T> &from) {
-	// CUDA is stupid and doesn't allow "from" to be const.
-	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyHostToDevice);
-}
+// template<typename T>
+// inline void copy_cuda_buffer(CudaGPUBuffer<T> &to, CudaCPUBuffer<T> &from) {
+// 	// CUDA is stupid and doesn't allow "from" to be const.
+// 	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyHostToDevice);
+// }
 
-template<typename T>
-inline void copy_cuda_buffer(CudaCPUBuffer<T> &to, CudaGPUBuffer<T> &from) {
-	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyDeviceToHost);
-}
+// template<typename T>
+// inline void copy_cuda_buffer(CudaCPUBuffer<T> &to, CudaGPUBuffer<T> &from) {
+// 	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyDeviceToHost);
+// }
 
 
 template<typename tuple_t, typename result_t, typename func_t>
@@ -322,13 +322,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
 	result_t *svc_aux(tuple_t *t) {
-#if defined (TRACE_WINDFLOW)
-		startTS = current_time_nsecs();
-		if (rcvTuples == 0) {
-			startTD = current_time_nsecs();
-		}
-		rcvTuples++;
-#endif
 		cpu_tuple_buffer[current_buffer_capacity] = *t;
 		++current_buffer_capacity;
 		delete t;
@@ -345,15 +338,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 					  //time! Could be made more
 					  //efficient,but uglier... (At least
 					  //it's not a branch).
-#if defined(TRACE_WINDFLOW)
-		endTS = current_time_nsecs();
-		endTD = current_time_nsecs();
-		double elapsedTS_us = ((double) (endTS - startTS)) / 1000;
-		avg_ts_us += (1.0 / rcvTuples) * (elapsedTS_us - avg_ts_us);
-		double elapsedTD_us = ((double) (endTD - startTD)) / 1000;
-		avg_td_us += (1.0 / rcvTuples) * (elapsedTD_us - avg_td_us);
-		startTD = current_time_nsecs();
-#endif
 		return this->GO_ON;
 
 	}
@@ -593,7 +577,26 @@ public:
 	 * auxiliary function based on whether the function is stateless or not
 	 * (keyed).
 	 */
-	result_t *svc(tuple_t *t) { return svc_aux(t); }
+	result_t *svc(tuple_t *t) {
+#if defined (TRACE_WINDFLOW)
+		startTS = current_time_nsecs();
+		if (rcvTuples == 0) {
+			startTD = current_time_nsecs();
+		}
+		rcvTuples++;
+#endif
+		const auto result = svc_aux(t);
+#if defined(TRACE_WINDFLOW)
+		endTS = current_time_nsecs();
+		endTD = current_time_nsecs();
+		double elapsedTS_us = ((double) (endTS - startTS)) / 1000;
+		avg_ts_us += (1.0 / rcvTuples) * (elapsedTS_us - avg_ts_us);
+		double elapsedTD_us = ((double) (endTD - startTD)) / 1000;
+		avg_td_us += (1.0 / rcvTuples) * (elapsedTD_us - avg_td_us);
+		startTD = current_time_nsecs();
+#endif
+		return result;
+	}
 
 	/*
 	 * Acts on receiving the EOS (End Of Stream) signal by the FastFlow
