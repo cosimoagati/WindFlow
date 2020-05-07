@@ -8,6 +8,7 @@
 #define TRACE_WINDFLOW log
 #include "../../wf/builders.hpp"
 #include "../../wf/windflow_gpu.hpp"
+#include "../../wf/windflow.hpp"
 
 #define TRIVIAL_TEST
 
@@ -179,5 +180,37 @@ int main(int argc, char *argv[]) {
 		error("Error while running pipeline");
 		return -1;
 	}
+
+	// Testing "default", CPU Map...
+
+	auto cpu_square = [] (tuple_t &x) { x.value = x.value * x.value; };
+	auto cpu_another_square = [] (const tuple_t &x, tuple_t &y) { y.value = x.value * x.value; };
+	auto cpu_verify_order = [] (tuple_t &t, char *scratchpad, std::size_t size)
+		{
+		 // NB: the first tuple must have value 0!
+		 assert(size >= sizeof(int));
+		 assert(scratchpad != nullptr);
+		 char x = scratchpad[0];
+		 const auto prev_val = static_cast<int>(*scratchpad);
+		 if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+			 t.value = -1;
+		 }
+		 *reinterpret_cast<int *>(scratchpad) = t.value;
+		};
+	auto cpu_verify_order_nip = [] (const tuple_t &t, tuple_t &r, char *scratchpad,
+					std::size_t size)
+		{
+		 // NB: the first tuple must have value 0!
+		 assert(size >= sizeof(int));
+		 assert(scratchpad != nullptr);
+		 const auto prev_val = static_cast<int>(*scratchpad);
+		 if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+			 r.value = -1;
+		 }
+		 *reinterpret_cast<int *>(scratchpad) = r.value;
+		};
+
+	ff_pipeline cpu_ip_pipe;
+	cpu_ip_pipe.add_stage(::Source<tuple_t> {});
 	return 0;
 }
