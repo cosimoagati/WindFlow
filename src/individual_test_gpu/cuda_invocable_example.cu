@@ -25,10 +25,7 @@ template<typename tuple_t, typename result_t, typename func_t>
 class Example {
 	func_t f;
 public:
-	Example (func_t f)
-	: f {f}
-
-	{
+	Example (func_t f) : f {f} {
 		cout << is_invocable<func_t, int&>::value << endl;
 		cout << is_invocable<func_t, int&, string&>::value << endl;
 	}
