@@ -209,8 +209,17 @@ int main(int argc, char *argv[]) {
 		 }
 		 *reinterpret_cast<int *>(scratchpad) = r.value;
 		};
-
 	ff_pipeline cpu_ip_pipe;
 	cpu_ip_pipe.add_stage(::Source<tuple_t> {});
+	auto cpu_ip_map = Map_Builder<decltype(square)> {square}.withParallelism(1).build_ptr();
+	cpu_ip_pipe.add_stage(cpu_ip_map);
+	cpu_ip_pipe.add_stage(::Sink<tuple_t> {});
+
+	if (ip_pipe.run_and_wait_end() < 0) {
+		error("Error while running pipeline.");
+		return -1;
+	}
+	delete cpu_ip_map; // Sadly needed since copy elision for builders only
+			   // works from C++17 onwards.
 	return 0;
 }
