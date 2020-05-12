@@ -29,13 +29,11 @@ struct tuple_t {
 	tuple_t(size_t key, uint64_t id, uint64_t ts, int64_t value)
 		: key {key}, id {id}, ts {ts}, value{value}
 	{}
-
 	tuple_t() : key {0}, id {0}, ts {0}, value {0} {}
 
 	tuple<size_t, uint64_t, uint64_t> getControlFields() const {
 		return tuple<size_t, uint64_t, uint64_t>(key, id, ts);
 	}
-
 	void setControlFields(size_t _key, uint64_t _id, uint64_t _ts) {
 		key = _key;
 		id = _id;
@@ -56,7 +54,6 @@ public:
 		cout << "Initializing source..." << endl;
 		return 0;
 	}
-
 	tuple_t *svc(tuple_t *) {
 #ifdef TRIVIAL_TEST
 		if (counter > LIMIT) {
@@ -73,7 +70,6 @@ public:
 		++counter;
 		return t;
 	}
-
 	void svc_end() { cout << "Source closing..." << endl; }
 };
 
@@ -84,13 +80,11 @@ public:
 		cout << "Initializing sink..." << endl;
 		return 0;
 	}
-
 	tuple_t *svc(tuple_t *t) {
 		output_stream << t->value << '\n';
 		delete t;
 		return this->GO_ON;
 	}
-
 	void svc_end() { cout << "Sink closing..." << endl; }
 };
 
@@ -99,42 +93,37 @@ void closing_func(RuntimeContext &) {}
 int routing_func(size_t k, size_t n) { return k % n; }
 
 int main(int argc, char *argv[]) {
-	auto square = [] __host__ __device__ (tuple_t &x)
-		{
-		 x.value = x.value * x.value;
-		};
-	auto another_square = [] __host__ __device__ (const tuple_t &x, tuple_t &y)
-		{
-		 y.value = x.value * x.value;
-		};
+	auto square = [] __host__ __device__ (tuple_t &x) {
+		x.value = x.value * x.value;
+	};
+	auto another_square = [] __host__ __device__ (const tuple_t &x, tuple_t &y) {
+		y.value = x.value * x.value;
+	};
 	auto verify_order = [] __host__ __device__ (tuple_t &t, char *scratchpad,
-						    std::size_t size)
-		{
-		 // NB: the first tuple must have value 0!
-		 assert(size >= sizeof(int));
-		 assert(scratchpad != nullptr);
-		 char x = scratchpad[0];
-		 const auto prev_val = static_cast<int>(*scratchpad);
-		 if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
-			 t.value = -1;
-		 }
-		 *reinterpret_cast<int *>(scratchpad) = t.value;
-		};
+						    std::size_t size) {
+		// NB: the first tuple must have value 0!
+		assert(size >= sizeof(int));
+		assert(scratchpad != nullptr);
+		char x = scratchpad[0];
+		const auto prev_val = static_cast<int>(*scratchpad);
+		if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+			t.value = -1;
+		}
+		*reinterpret_cast<int *>(scratchpad) = t.value;
+	};
 	auto verify_order_nip = [] __host__ __device__ (const tuple_t &t,
 							tuple_t &r,
 							char *scratchpad,
-							std::size_t size)
-		{
-		 // NB: the first tuple must have value 0!
-		 assert(size >= sizeof(int));
-		 assert(scratchpad != nullptr);
-		 const auto prev_val = static_cast<int>(*scratchpad);
-		 if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
-			 r.value = -1;
-		 }
-		 *reinterpret_cast<int *>(scratchpad) = r.value;
-		};
-
+							std::size_t size) {
+		// NB: the first tuple must have value 0!
+		assert(size >= sizeof(int));
+		assert(scratchpad != nullptr);
+		const auto prev_val = static_cast<int>(*scratchpad);
+		if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+			r.value = -1;
+		}
+		*reinterpret_cast<int *>(scratchpad) = r.value;
+	};
 	ff_pipeline ip_pipe;
 	ip_pipe.add_stage(::Source<tuple_t> {});
 	auto ip_map = MapGPU_Builder<decltype(square)> {square}.withParallelism(1).build_ptr();
@@ -185,30 +174,28 @@ int main(int argc, char *argv[]) {
 
 	auto cpu_square = [] (tuple_t &x) { x.value = x.value * x.value; };
 	auto cpu_another_square = [] (const tuple_t &x, tuple_t &y) { y.value = x.value * x.value; };
-	auto cpu_verify_order = [] (tuple_t &t, char *scratchpad, std::size_t size)
-		{
-		 // NB: the first tuple must have value 0!
-		 assert(size >= sizeof(int));
-		 assert(scratchpad != nullptr);
-		 char x = scratchpad[0];
-		 const auto prev_val = static_cast<int>(*scratchpad);
-		 if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
-			 t.value = -1;
-		 }
-		 *reinterpret_cast<int *>(scratchpad) = t.value;
-		};
+	auto cpu_verify_order = [] (tuple_t &t, char *scratchpad, std::size_t size) {
+		// NB: the first tuple must have value 0!
+		assert(size >= sizeof(int));
+		assert(scratchpad != nullptr);
+		char x = scratchpad[0];
+		const auto prev_val = static_cast<int>(*scratchpad);
+		if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+			t.value = -1;
+		}
+		*reinterpret_cast<int *>(scratchpad) = t.value;
+	};
 	auto cpu_verify_order_nip = [] (const tuple_t &t, tuple_t &r, char *scratchpad,
-					std::size_t size)
-		{
-		 // NB: the first tuple must have value 0!
-		 assert(size >= sizeof(int));
-		 assert(scratchpad != nullptr);
-		 const auto prev_val = static_cast<int>(*scratchpad);
-		 if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
-			 r.value = -1;
-		 }
-		 *reinterpret_cast<int *>(scratchpad) = r.value;
-		};
+					std::size_t size) {
+		// NB: the first tuple must have value 0!
+		assert(size >= sizeof(int));
+		assert(scratchpad != nullptr);
+		const auto prev_val = static_cast<int>(*scratchpad);
+		if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+			r.value = -1;
+		}
+		*reinterpret_cast<int *>(scratchpad) = r.value;
+	};
 	ff_pipeline cpu_ip_pipe;
 	cpu_ip_pipe.add_stage(::Source<tuple_t> {});
 	auto cpu_ip_map = Map_Builder<decltype(square)> {square}.withParallelism(1).build_ptr();
