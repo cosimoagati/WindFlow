@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	// Testing "default", CPU Map...
+	output_stream << "Testing \"default\", CPU Map..." << endl;
 
 	auto cpu_square = [] (tuple_t &x) { x.value = x.value * x.value; };
 	auto cpu_another_square = [] (const tuple_t &x, tuple_t &y) { y.value = x.value * x.value; };
@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
 	cpu_ip_pipe.add_stage(cpu_ip_map);
 	cpu_ip_pipe.add_stage(::Sink<tuple_t> {});
 
-	if (ip_pipe.run_and_wait_end() < 0) {
+	if (cpu_ip_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline.");
 		return -1;
 	}
