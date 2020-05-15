@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <functional>
@@ -47,7 +48,7 @@ class Source : public ff_node_t<tuple_t, tuple_t> {
 	long counter {0};
 #ifndef TRIVIAL_TEST
 	time_point<steady_clock> start_time {steady_clock::now()};
-	time_point<steady_clock> end_time = start_time + seconds {60}
+	time_point<steady_clock> end_time = start_time + seconds {60};
 #endif
 public:
 	int svc_init() {
@@ -92,7 +93,7 @@ void closing_func(RuntimeContext &) {}
 
 int routing_func(size_t k, size_t n) { return k % n; }
 
-int main(int argc, char *argv[]) {
+int test_gpu() {
 	auto square = [] __host__ __device__ (tuple_t &x) {
 		x.value = x.value * x.value;
 	};
@@ -132,7 +133,7 @@ int main(int argc, char *argv[]) {
 
 	if (ip_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline.");
-		return -1;
+		std::exit(EXIT_FAILURE);
 	}
 	delete ip_map; // Sadly needed since copy elision for builders only
 		       // works from C++17 onwards.
@@ -148,7 +149,7 @@ int main(int argc, char *argv[]) {
 
 	if (nip_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline.");
-		return -1;
+		std::exit(EXIT_FAILURE);
 	}
 	delete nip_map; // Same notce above.
 
@@ -167,15 +168,17 @@ int main(int argc, char *argv[]) {
 	ip_keyed_pipe.add_stage(::Sink<tuple_t> {});
 	if (ip_keyed_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline");
-		return -1;
+		std::exit(EXIT_FAILURE);
 	}
+}
 
+int test_cpu() {
 	output_stream << "Testing \"default\", CPU Map..." << endl;
 
-	auto cpu_square = [] (tuple_t &x) { x.value = x.value * x.value; };
-	auto cpu_another_square = [] (const tuple_t &x, tuple_t &y) { y.value = x.value * x.value; };
+	const auto square = [] (tuple_t &x) { x.value = x.value * x.value; };
+	const auto another_square = [] (const tuple_t &x, tuple_t &y) { y.value = x.value * x.value; };
 
-	auto cpu_verify_order = [] (tuple_t &t, char *scratchpad, std::size_t size) {
+	const auto verify_order = [] (tuple_t &t, char *scratchpad, std::size_t size) {
 		// NB: the first tuple must have value 0!
 		assert(size >= sizeof(int));
 		assert(scratchpad != nullptr);
@@ -186,7 +189,7 @@ int main(int argc, char *argv[]) {
 		}
 		*reinterpret_cast<int *>(scratchpad) = t.value;
 	};
-	auto cpu_verify_order_nip = [] (const tuple_t &t, tuple_t &r, char *scratchpad,
+	auto verify_order_nip = [] (const tuple_t &t, tuple_t &r, char *scratchpad,
 					std::size_t size) {
 		// NB: the first tuple must have value 0!
 		assert(size >= sizeof(int));
@@ -197,17 +200,22 @@ int main(int argc, char *argv[]) {
 		}
 		*reinterpret_cast<int *>(scratchpad) = r.value;
 	};
-	ff_pipeline cpu_ip_pipe;
-	cpu_ip_pipe.add_stage(::Source<tuple_t> {});
-	auto cpu_ip_map = Map_Builder<decltype(square)> {square}.withParallelism(1).build_ptr();
-	cpu_ip_pipe.add_stage(cpu_ip_map);
-	cpu_ip_pipe.add_stage(::Sink<tuple_t> {});
+	ff_pipeline ip_pipe;
+	ip_pipe.add_stage(::Source<tuple_t> {});
+	auto ip_map = Map_Builder<decltype(square)> {square}.withParallelism(1).build_ptr();
+	ip_pipe.add_stage(ip_map);
+	ip_pipe.add_stage(::Sink<tuple_t> {});
 
-	if (cpu_ip_pipe.run_and_wait_end() < 0) {
+	if (ip_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline.");
-		return -1;
+		std::exit(EXIT_FAILURE);
 	}
-	delete cpu_ip_map; // Sadly needed since copy elision for builders only
+	delete ip_map; // Sadly needed since copy elision for builders only
 			   // works from C++17 onwards.
+}
+
+int main(int argc, char *argv[]) {
+	test_gpu();
+	test_cpu();
 	return 0;
 }
