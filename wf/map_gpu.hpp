@@ -54,8 +54,7 @@
 namespace wf {
 inline void
 check_constructor_parameters(int pardegree, int tuple_buffer_capacity,
-			     int gpu_threads_per_block)
-{
+			     int gpu_threads_per_block) {
 	if (pardegree <= 0) {
 		failwith("MapGPU has non-positive parallelism");
 	}

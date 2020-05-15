@@ -174,6 +174,7 @@ int main(int argc, char *argv[]) {
 
 	auto cpu_square = [] (tuple_t &x) { x.value = x.value * x.value; };
 	auto cpu_another_square = [] (const tuple_t &x, tuple_t &y) { y.value = x.value * x.value; };
+
 	auto cpu_verify_order = [] (tuple_t &t, char *scratchpad, std::size_t size) {
 		// NB: the first tuple must have value 0!
 		assert(size >= sizeof(int));

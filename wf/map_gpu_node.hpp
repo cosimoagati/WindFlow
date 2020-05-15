@@ -567,7 +567,6 @@ public:
 			+ ".log";
 		const auto filename =
 			std::string {STRINGIFY(TRACE_WINDFLOW)}+ "/" + operator_name;
-		std::cout << filename << '\n';
 
 		logfile->open(filename);
 		if (logfile->fail()) {
