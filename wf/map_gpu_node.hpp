@@ -55,9 +55,8 @@ namespace wf {
  * \param buffer_capacity How many tuples the buffer contains.
  */
 template<typename tuple_t, typename func_t>
-__global__ void
-run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
-		  const std::size_t buffer_capacity) {
+__global__ void run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
+				  const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride) {
@@ -74,9 +73,9 @@ run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
  * \param buffer_capacity How many tuples the buffer contains.
  */
 template<typename tuple_t, typename result_t, typename func_t>
-__global__ void
-run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
-		   result_t *result_buffer, const std::size_t buffer_capacity) {
+__global__ void run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
+				   result_t *result_buffer,
+				   const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride) {
@@ -94,10 +93,10 @@ run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
  * own key.
  */
 template<typename tuple_t, typename func_t>
-__global__ void
-run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
-			char **scratchpads, const std::size_t scratchpad_size,
-			const std::size_t buffer_capacity) {
+__global__ void run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
+					char **scratchpads,
+					const std::size_t scratchpad_size,
+					const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride) {
@@ -106,11 +105,11 @@ run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
 }
 
 template<typename tuple_t, typename result_t, typename func_t>
-__global__ void
-run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
-			 result_t *result_buffer, char **scratchpads,
-			 const std::size_t scratchpad_size,
-			 const std::size_t buffer_capacity) {
+__global__ void run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
+					 result_t *result_buffer,
+					 char **scratchpads,
+					 const std::size_t scratchpad_size,
+					 const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	for (auto i = index; i < buffer_capacity; i += stride) {
@@ -118,72 +117,6 @@ run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
 			 scratchpad_size);
 	}
 }
-
-//TODO: These utility classes deserve their own header!
-/*
- * Lightweght abstraction layer over CUDA.
- */
-// template<typename T>
-// class CudaGPUBuffer {
-// 	int buffer_size {0};
-// 	T *buffer {nullptr};
-// public:
-// 	CudaGPUBuffer(int size) : buffer_size {size}
-// 	{
-// 		if (cudaMalloc(&buffer, size * sizeof(T)) != cudaSuccess) {
-// 			failwith("Failed to allocate GPU buffer");
-// 		}
-// 	}
-// 	~CudaGPUBuffer() { if(buffer) { cudaFree(buffer); }}
-
-// 	const T &operator[](int i) const { return buffer [i]; }
-// 	T &operator[](int i) { return buffer [i]; }
-// 	int size() { return buffer_size; }
-// 	int raw_size() { return buffer_size * sizeof(T); }
-// 	T *data() { return buffer; }
-
-// 	CudaGPUBuffer(const CudaGPUBuffer &other) = delete;
-// 	CudaGPUBuffer(CudaGPUBuffer &&other) = delete;
-// 	CudaGPUBuffer &operator=(const CudaGPUBuffer &other) = delete;
-// 	CudaGPUBuffer &operator=(CudaGPUBuffer &&other) = delete;
-// };
-
-// template<typename T>
-// class CudaCPUBuffer {
-// 	int buffer_size {0};
-// 	T *buffer {nullptr};
-// public:
-// 	CudaCPUBuffer(int size) : buffer_size {size}
-// 	{
-// 		if (cudaMallocHost(&buffer, size * sizeof(T)) != cudaSuccess) {
-// 			failwith("Failed to allocate CPU buffer");
-// 		}
-// 	}
-// 	~CudaCPUBuffer() { if (buffer) { cudaFreeHost(buffer); }}
-
-// 	const T &operator[](int i) const { return buffer [i]; }
-// 	T &operator[](int i) { return buffer [i]; }
-// 	int size() { return buffer_size; }
-// 	int raw_size() { return buffer_size * sizeof(T); }
-// 	T *data() { return buffer; }
-
-// 	CudaCPUBuffer(const CudaCPUBuffer &other) = delete;
-// 	CudaCPUBuffer(CudaCPUBuffer &&other) = delete;
-// 	CudaCPUBuffer &operator=(const CudaCPUBuffer &other) = delete;
-// 	CudaCPUBuffer &operator=(CudaCPUBuffer &&other) = delete;
-// };
-
-// template<typename T>
-// inline void copy_cuda_buffer(CudaGPUBuffer<T> &to, CudaCPUBuffer<T> &from) {
-// 	// CUDA is stupid and doesn't allow "from" to be const.
-// 	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyHostToDevice);
-// }
-
-// template<typename T>
-// inline void copy_cuda_buffer(CudaCPUBuffer<T> &to, CudaGPUBuffer<T> &from) {
-// 	cudaMemcpy(to.data(), from.data(), to.raw_size(), cudaMemcpyDeviceToHost);
-// }
-
 
 template<typename tuple_t, typename result_t, typename func_t>
 class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {

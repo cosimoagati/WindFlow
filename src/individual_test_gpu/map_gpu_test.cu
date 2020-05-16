@@ -211,7 +211,7 @@ int test_cpu() {
 		std::exit(EXIT_FAILURE);
 	}
 	delete ip_map; // Sadly needed since copy elision for builders only
-			   // works from C++17 onwards.
+		       // works from C++17 onwards.
 }
 
 int main(int argc, char *argv[]) {
