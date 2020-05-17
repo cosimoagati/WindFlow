@@ -55,7 +55,7 @@ namespace wf {
  * \param buffer_capacity How many tuples the buffer contains.
  */
 template<typename tuple_t, typename func_t>
-__global__ void run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
+__global__ void run_map_kernel_ip(func_t map_func, tuple_t *const tuple_buffer,
 				  const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
@@ -73,8 +73,8 @@ __global__ void run_map_kernel_ip(func_t map_func, tuple_t *tuple_buffer,
  * \param buffer_capacity How many tuples the buffer contains.
  */
 template<typename tuple_t, typename result_t, typename func_t>
-__global__ void run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
-				   result_t *result_buffer,
+__global__ void run_map_kernel_nip(func_t map_func, tuple_t *const tuple_buffer,
+				   result_t *const result_buffer,
 				   const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
@@ -93,8 +93,8 @@ __global__ void run_map_kernel_nip(func_t map_func, tuple_t *tuple_buffer,
  * own key.
  */
 template<typename tuple_t, typename func_t>
-__global__ void run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
-					char **scratchpads,
+__global__ void run_map_kernel_keyed_ip(func_t map_func, tuple_t *const tuple_buffer,
+					char **const scratchpads,
 					const std::size_t scratchpad_size,
 					const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -105,9 +105,9 @@ __global__ void run_map_kernel_keyed_ip(func_t map_func, tuple_t *tuple_buffer,
 }
 
 template<typename tuple_t, typename result_t, typename func_t>
-__global__ void run_map_kernel_keyed_nip(func_t map_func, tuple_t *tuple_buffer,
-					 result_t *result_buffer,
-					 char **scratchpads,
+__global__ void run_map_kernel_keyed_nip(func_t map_func, tuple_t *const tuple_buffer,
+					 result_t *const result_buffer,
+					 char **const scratchpads,
 					 const std::size_t scratchpad_size,
 					 const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -254,7 +254,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
-	result_t *svc_aux(tuple_t *t) {
+	result_t *svc_aux(tuple_t *const t) {
 		cpu_tuple_buffer[current_buffer_capacity] = *t;
 		++current_buffer_capacity;
 		delete t;
@@ -276,7 +276,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
-	result_t *svc_aux(tuple_t *t) {
+	result_t *svc_aux(tuple_t *const t) {
 		const auto &key = std::get<0>(t->getControlFields());
 		if (key_control_block_map.find(key) == key_control_block_map.end()) {
 			auto &scratchpad = key_control_block_map[key].scratchpad;
@@ -447,15 +447,17 @@ public:
 	 * first constructor is used for keyless (stateless) version, the second is
 	 * for the keyed (stateful) version.
 	 */
-	MapGPU_Node(func_t map_func, std::string name,
-		    int total_buffer_capacity, int gpu_threads_per_block)
+	MapGPU_Node(func_t map_func, const std::string name,
+		    const int total_buffer_capacity,
+		    const int gpu_threads_per_block)
 		: MapGPU_Node {map_func, name, total_buffer_capacity,
 			       gpu_threads_per_block, 0}
 	{}
 
-	MapGPU_Node(func_t map_func, std::string name,
-		    int total_buffer_capacity, int gpu_threads_per_block,
-		    int scratchpad_size)
+	MapGPU_Node(func_t map_func, const std::string name,
+		    const int total_buffer_capacity,
+		    const int gpu_threads_per_block,
+		    const int scratchpad_size)
 		: map_func {map_func}, operator_name {name},
 		  total_buffer_capacity {total_buffer_capacity},
 		  gpu_threads_per_block {gpu_threads_per_block},
@@ -514,7 +516,7 @@ public:
 	 * auxiliary function based on whether the function is stateless or not
 	 * (keyed).
 	 */
-	result_t *svc(tuple_t *t) {
+	result_t *svc(tuple_t *const t) {
 #if defined (TRACE_WINDFLOW)
 		startTS = current_time_nsecs();
 		if (rcvTuples == 0) {

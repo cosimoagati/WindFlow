@@ -164,9 +164,9 @@ public:
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 */
 	// TODO: It would be nice to factor out common constructor behavior...
-	MapGPU(func_t func, int pardegree, std::string name,
-	       int tuple_buffer_capacity=default_tuple_buffer_capacity,
-	       int gpu_threads_per_block=default_gpu_threads_per_block)
+	MapGPU(func_t func, const int pardegree, const std::string name,
+	       const int tuple_buffer_capacity=default_tuple_buffer_capacity,
+	       const int gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {false}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
@@ -198,11 +198,11 @@ public:
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
-	MapGPU(func_t func, int pardegree, std::string name,
+	MapGPU(func_t func, const int pardegree, const std::string name,
 	       routing_func_t routing_func,
-	       int tuple_buffer_capacity=default_tuple_buffer_capacity,
-	       int gpu_threads_per_block=default_gpu_threads_per_block,
-	       int scratchpad_size=default_scratchpad_size)
+	       const int tuple_buffer_capacity=default_tuple_buffer_capacity,
+	       const int gpu_threads_per_block=default_gpu_threads_per_block,
+	       const int scratchpad_size=default_scratchpad_size)
 		: is_keyed {true}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
