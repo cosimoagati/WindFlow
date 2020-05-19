@@ -11,7 +11,7 @@
 #include "../../wf/windflow_gpu.hpp"
 #include "../../wf/windflow.hpp"
 
-#define TRIVIAL_TEST
+// #define TRIVIAL_TEST
 
 using namespace std;
 using namespace std::chrono;
@@ -35,10 +35,10 @@ struct tuple_t {
 	tuple<size_t, uint64_t, uint64_t> getControlFields() const {
 		return tuple<size_t, uint64_t, uint64_t>(key, id, ts);
 	}
-	void setControlFields(size_t _key, uint64_t _id, uint64_t _ts) {
-		key = _key;
-		id = _id;
-		ts = _ts;
+	void setControlFields(size_t key, uint64_t id, uint64_t ts) {
+		this->key = key;
+		this->id = id;
+		this->ts = ts;
 	}
 };
 
@@ -81,7 +81,7 @@ public:
 		cout << "Initializing sink..." << endl;
 		return 0;
 	}
-	tuple_t *svc(tuple_t *t) {
+	tuple_t *svc(tuple_t *const t) {
 		output_stream << t->value << '\n';
 		delete t;
 		return this->GO_ON;
@@ -91,7 +91,7 @@ public:
 
 void closing_func(RuntimeContext &) {}
 
-int routing_func(size_t k, size_t n) { return k % n; }
+int routing_func(const size_t k, const size_t n) { return k % n; }
 
 int test_gpu() {
 	auto square = [] __host__ __device__ (tuple_t &x) {

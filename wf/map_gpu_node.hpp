@@ -378,7 +378,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
 	void process_last_tuples() {
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
-			auto res = new result_t {};
+			auto res = new result_t;
 			map_func(cpu_tuple_buffer[i], *res);
 			this->ff_send_out(res);
 		}
@@ -412,7 +412,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 				   scratchpad_size, cudaMemcpyDeviceToHost);
 			for (; !queue.empty(); queue.pop()) {
 				auto t = queue.front();
-				auto res = new result_t {};
+				auto res = new result_t;
 
 				map_func(*t, *res, cpu_scratchpad.data(),
 					 scratchpad_size);
