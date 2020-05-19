@@ -35,15 +35,19 @@
 
 #include <ff/node.hpp>
 
+#include <cmath>
+#include <queue>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+
 #include "basic.hpp"
 #include "context.hpp"
 #include "standard_nodes.hpp" // Probably not required...
 
-namespace wf
-{
-template<typename tuple_t, typename func_t, typename closing_func_t>
-class FilterGPU_Node: public ff::ff_node_t<tuple_t>
-{
+namespace wf {
+template<typename tuple_t, typename func_t>
+class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 	static constexpr auto tuple_buffer_capacity = 256;
 
 	tuple_t *cpu_tuple_buffer;
@@ -52,9 +56,30 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t>
 	bool *gpu_tuple_mask;
 
 	func_t filter_func; // filter function (predicate)
-	closing_func_t closing_func; // closing function
-	std::string name; // string of the unique name of the operator
-	RuntimeContext context;
+
+	/*
+	 * This struct, one per individual key, contains a queue of tuples with
+	 * the same key and a pointer to the respective memory area to be
+	 * used as scratchpad, to save state.
+	 */
+	struct KeyControlBlock {
+		std::queue<tuple_t *> queue;
+		char *scratchpad;
+	};
+	std::unordered_map<int, KeyControlBlock> key_control_block_map;
+	std::string name;
+	int total_buffer_capacity;
+	int gpu_threads_per_block;
+	int gpu_blocks;
+
+	int current_buffer_capacity {0};
+
+	cudaStream_t cuda_stream;
+	// tuple_t *cpu_tuple_buffer;
+	// tuple_t *gpu_tuple_buffer;
+	// result_t *cpu_result_buffer;
+	// result_t *gpu_result_buffer;
+
 	std::size_t buf_index {0};
 
 #if defined(TRACE_WINDFLOW)
@@ -66,16 +91,12 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t>
 #endif
 public:
 	// Constructor I
-	FilterGPU_Node(func_t _filter_func, std::string _name,
-		       RuntimeContext _context, closing_func_t _closing_func):
-		filter_func(_filter_func), name(_name),
-		context(_context), closing_func(_closing_func)
+	FilterGPU_Node(func_t filter_func, std::string name)
+		: filter_func {filter_func}, name {name}
 	{}
 
 	// svc_init method (utilized by the FastFlow runtime)
-	int
-	svc_init()
-	{
+	int svc_init() {
 #if defined(TRACE_WINDFLOW)
 		logfile = new std::ofstream();
 		name += "_" + std::to_string(this->get_my_id()) + "_"
@@ -101,31 +122,29 @@ public:
 		logfile->open(filename);
 
 #endif
-		cudaMallocManaged(tuple_buffer,
-				  max_buffered_tuples * sizeof(tuple_t));
-		cudaMallocManaged(&tuple_mask_array,
-				  max_buffered_tuples * sizeof(bool));
+		// cudaMallocManaged(tuple_buffer,
+		// 		  total_buffer_capacity * sizeof(tuple_t));
+		// cudaMallocManaged(&tuple_mask_array,
+		// 		  total_buffer_capacity * sizeof(bool));
 		return 0;
 	}
 
 	// svc method (utilized by the FastFlow runtime)
-	tuple_t *
-	svc(tuple_t *t)
-	{
+	tuple_t *svc(tuple_t *const t) {
 #if defined(TRACE_WINDFLOW)
 		startTS = current_time_nsecs();
 		if (rcvTuples == 0)
 			startTD = current_time_nsecs();
 		rcvTuples++;
 #endif
-		if (buf_index < max_buffered_tuples) {
+		if (buf_index < total_buffer_capacity) {
 			fill_tuple_buffers(t);
-			return GO_ON;
+			return this->GO_ON;
 		}
 		// evaluate the predicate on buffered items
 		filter_kernel<tuple_t, filter_func_t>
 			<<<1, 32>>>(gpu_tuple_buffer, tuple_mask_array,
-				    max_buffered_tuples, filter_func);
+				    total_buffer_capacity, filter_func);
 		cudaDeviceSynchronize();
 #if defined(TRACE_WINDFLOW)
 		endTS = current_time_nsecs();
@@ -137,15 +156,11 @@ public:
 		startTD = current_time_nsecs();
 #endif
 		send_filtered_tuples();
-		return GO_ON;
+		return this->GO_ON;
 	}
 
 	// svc_end method (utilized by the FastFlow runtime)
-	void
-	svc_end()
-	{
-		// call the closing function
-		closing_func(context);
+	void svc_end() {
 #if defined(TRACE_WINDFLOW)
 		std::ostringstream stream;
 		stream << "************************************LOG************************************\n";
@@ -161,7 +176,7 @@ public:
 		cudaFree(cpu_tuple_mask);
 	}
 
-		/*
+	/*
 	 * This object may not be copied nor moved.
 	 */
 	FilterGPU_Node(const FilterGPU_Node &) = delete;

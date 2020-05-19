@@ -61,8 +61,7 @@ namespace wf {
  *  items and dropping out all of them for which the predicate evaluates to false.
  */
 template<typename tuple_t, typename func_t>
-class FilterGPU: public ff::ff_farm
-{
+class FilterGPU: public ff::ff_farm {
 	using filter_func_t = std::function<bool(tuple_t &)>;
 	using closing_func_t = std::function<void(RuntimeContext &)>;
 	using routing_func_t = std::function<size_t(size_t, size_t)>;
