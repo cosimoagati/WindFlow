@@ -48,7 +48,7 @@ class Source : public ff_node_t<tuple_t, tuple_t> {
 	long counter {0};
 #ifndef TRIVIAL_TEST
 	time_point<steady_clock> start_time {steady_clock::now()};
-	time_point<steady_clock> end_time = start_time + seconds {60};
+	time_point<steady_clock> end_time = start_time + seconds {10};
 #endif
 public:
 	int svc_init() {
@@ -98,8 +98,8 @@ int test_gpu() {
 		// Deliberately long-to-compute function.  Cheap functions that
 		// cost less than buffering are not representative.
 		auto divide = false;
-		for (auto i = 0; i < 1000000; ++i) {
-			if (divide) {
+		for (auto i = 0; i < 1000; ++i) {
+			if (divide && x.value != 0) {
 				x.value /= x.value;
 			} else {
 				x.value *= x.value;
@@ -195,8 +195,8 @@ int test_cpu() {
 		// Deliberately long-to-compute function.  Cheap functions that
 		// cost less than buffering are not representative.
 		auto divide = false;
-		for (auto i = 0; i < 1000000; ++i) {
-			if (divide) {
+		for (auto i = 0; i < 1000; ++i) {
+			if (divide && x.value != 0) {
 				x.value /= x.value;
 			} else {
 				x.value *= x.value;
