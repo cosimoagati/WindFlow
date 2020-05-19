@@ -100,8 +100,9 @@ int test_gpu() {
 	auto another_square = [] __host__ __device__ (const tuple_t &x, tuple_t &y) {
 		y.value = x.value * x.value;
 	};
-	auto verify_order = [] __host__ __device__ (tuple_t &t, char *scratchpad,
-						    std::size_t size) {
+	auto verify_order = [] __host__ __device__ (tuple_t &t,
+						    char *const scratchpad,
+						    const std::size_t size) {
 		// NB: the first tuple must have value 0!
 		assert(size >= sizeof(int));
 		assert(scratchpad != nullptr);
@@ -114,8 +115,8 @@ int test_gpu() {
 	};
 	auto verify_order_nip = [] __host__ __device__ (const tuple_t &t,
 							tuple_t &r,
-							char *scratchpad,
-							std::size_t size) {
+							char *const scratchpad,
+							const std::size_t size) {
 		// NB: the first tuple must have value 0!
 		assert(size >= sizeof(int));
 		assert(scratchpad != nullptr);
@@ -127,7 +128,10 @@ int test_gpu() {
 	};
 	ff_pipeline ip_pipe;
 	ip_pipe.add_stage(::Source<tuple_t> {});
-	auto ip_map = MapGPU_Builder<decltype(square)> {square}.withParallelism(1).build_ptr();
+	auto ip_map = MapGPU_Builder<decltype(square)> {square}
+		.withName("gpu_ip_map")
+		.withParallelism(1)
+		.build_ptr();
 	ip_pipe.add_stage(ip_map);
 	ip_pipe.add_stage(::Sink<tuple_t> {});
 
@@ -142,8 +146,10 @@ int test_gpu() {
 		      << endl;
 	ff_pipeline nip_pipe;
 	nip_pipe.add_stage(::Source<tuple_t> {});
-	auto nip_map = MapGPU_Builder<decltype(another_square)> {another_square}.withParallelism(1)
-											 .build_ptr();
+	auto nip_map = MapGPU_Builder<decltype(another_square)> {another_square}
+		.withName("gpu_nip_map")
+		.withParallelism(1)
+		.build_ptr();
 	nip_pipe.add_stage(nip_map);
 	nip_pipe.add_stage(::Sink<tuple_t> {});
 
@@ -163,7 +169,7 @@ int test_gpu() {
 	// 										  .enable_KeyBy()
 	// 										  .build_ptr();
 	MapGPU<tuple_t, tuple_t, decltype(verify_order)> ip_keyed_map {verify_order,
-			1, "gino", routing_func, 256, 256, sizeof(int)};
+			1, "gpu_ip_keyed_map", routing_func, 256, 256, sizeof(int)};
 	ip_keyed_pipe.add_stage(&ip_keyed_map);
 	ip_keyed_pipe.add_stage(::Sink<tuple_t> {});
 	if (ip_keyed_pipe.run_and_wait_end() < 0) {
@@ -202,7 +208,10 @@ int test_cpu() {
 	};
 	ff_pipeline ip_pipe;
 	ip_pipe.add_stage(::Source<tuple_t> {});
-	auto ip_map = Map_Builder<decltype(square)> {square}.withParallelism(1).build_ptr();
+	auto ip_map = Map_Builder<decltype(square)> {square}
+		.withName("cpu_ip_map")
+		.withParallelism(1)
+		.build_ptr();
 	ip_pipe.add_stage(ip_map);
 	ip_pipe.add_stage(::Sink<tuple_t> {});
 
