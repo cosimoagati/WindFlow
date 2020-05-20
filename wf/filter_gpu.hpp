@@ -49,7 +49,7 @@
 #include "context.hpp"
 #include "standard_nodes.hpp"
 
-#include "filter_gpu_node.hpp" // TODO
+#include "filter_gpu_node.hpp"
 
 namespace wf {
 /**
@@ -62,10 +62,9 @@ namespace wf {
  */
 template<typename tuple_t, typename func_t>
 class FilterGPU: public ff::ff_farm {
-	using filter_func_t = std::function<bool(tuple_t &)>;
-	using closing_func_t = std::function<void(RuntimeContext &)>;
-	using routing_func_t = std::function<size_t(size_t, size_t)>;
-	using node_t = FilterGPU_Node<tuple_t, func_t, closing_func_t>;
+	using routing_func_t = std::function<std::size_t(std::size_t,
+							 std::size_t)>;
+	using node_t = FilterGPU_Node<tuple_t, func_t>;
 
 	friend class MultiPipe;
 
@@ -84,8 +83,9 @@ public:
 	 *  \param _name string with the unique name of the FilterGPU operator
 	 *  \param _closing_func closing function
 	 */
-	FilterGPU(filter_func_t func, int pardegree,
-		  std::string name, closing_func_t closing_func)
+	FilterGPU(func_t func, const int pardegree, const std::string name,
+		  const int tuple_buffer_capacity=default_tuple_buffer_capacity,
+		  const int gpu_threads_per_block=default_gpu_threads_per_block)
 		: is_keyed {false}
 	{
 		if (pardegree == 0) {
@@ -97,7 +97,9 @@ public:
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> workers;
 		for (auto i = 0; i < pardegree; ++i) {
-			auto *seq = new node_t {func, name, closing_func);
+			auto seq = new node_t {func, name,
+					       tuple_buffer_capacity,
+					       gpu_threads_per_block);
 			workers.push_back(seq);
 		}
 		// add emitter
@@ -113,14 +115,16 @@ public:
 	/**
 	 *  \brief Constructor II
 	 *
-	 *  \param _func filter function (boolean predicate)
-	 *  \param _pardegree parallelism degree of the FilterGPU operator
-	 *  \param _name string with the unique name of the FilterGPU operator
-	 *  \param _closing_func closing function
-	 *  \param _routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
+	 *  \param func filter function (boolean predicate)
+	 *  \param pardegree parallelism degree of the FilterGPU operator
+	 *  \param name string with the unique name of the FilterGPU operator
+	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	FilterGPU(func_t func, int pardegree, std::string name,
-		  closing_func_t closing_func, routing_func_t routing_func)
+		  routing_func_t routing_func,
+		  const int tuple_buffer_capacity=default_tuple_buffer_capacity,
+		  const int gpu_threads_per_block=default_gpu_threads_per_block,
+		  const int scratchpad_size=default_scratchpad_size)
 		: keyed(true)
 	{
 		// check the validity of the parallelism degree
@@ -133,7 +137,7 @@ public:
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> workers;
 		for (size_t i = 0; i < pardegree; i++) {
-			auto *seq = new node_t {func, name, closing_func};
+			auto seq = new node_t {func, name, closing_func};
 			workers.push_back(seq);
 		}
 		// add emitter
@@ -147,14 +151,16 @@ public:
 	}
 
 	/**
-	 *  \brief Check whether the FilterGPU has been instantiated with a key-based distribution or not
-	 *  \return true if the FilterGPU is configured with keyBy
+	 *  \brief Check whether the FilterGPU has been instantiated with a
+	 *  key-based distribution or not
+	 * \return true if the FilterGPU is configured with keyBy
 	 */
 	bool isKeyed() const { return is_keyed; }
 
 	/**
 	 *  \brief Check whether the Filter has been used in a MultiPipe
-	 *  \return true if the Filter has been added/chained to an existing MultiPipe
+	 *  \return true if the Filter has been added/chained to an existing
+	 *  MultiPipe
 	 */
 	bool isUsed() const { return is_used; }
 
