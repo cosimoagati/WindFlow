@@ -39,5 +39,6 @@
 #include "win_mapreduce_gpu.hpp"
 
 #include "map_gpu.hpp"
+#include "filter_gpu.hpp"
 
 #endif
