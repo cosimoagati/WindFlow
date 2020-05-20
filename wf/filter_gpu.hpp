@@ -78,10 +78,11 @@ public:
 	/**
 	 *  \brief Constructor I
 	 *
-	 *  \param _func filter function (boolean predicate)
-	 *  \param _pardegree parallelism degree of the FilterGPU operator
-	 *  \param _name string with the unique name of the FilterGPU operator
-	 *  \param _closing_func closing function
+	 *  \param func filter function (boolean predicate)
+	 *  \param pardegree parallelism degree of the FilterGPU operator
+	 *  \param name string with the unique name of the FilterGPU operator
+	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
+	 *  \param gpu_threads_per_block number of GPU threads per block
 	 */
 	FilterGPU(func_t func, const int pardegree, const std::string name,
 		  const int tuple_buffer_capacity=default_tuple_buffer_capacity,
@@ -119,6 +120,8 @@ public:
 	 *  \param pardegree parallelism degree of the FilterGPU operator
 	 *  \param name string with the unique name of the FilterGPU operator
 	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
+	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
+	 *  \param gpu_threads_per_block number of GPU threads per block
 	 */
 	FilterGPU(func_t func, int pardegree, std::string name,
 		  routing_func_t routing_func,
