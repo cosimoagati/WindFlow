@@ -35,7 +35,6 @@
 #ifndef FILTER_GPU_H
 #define FILTER_GPU_H
 
-/// includes
 #include <array>
 #include <cstdlib>
 #include <iostream>
@@ -48,7 +47,6 @@
 #include "basic.hpp"
 #include "context.hpp"
 #include "standard_nodes.hpp"
-
 #include "filter_gpu_node.hpp"
 
 namespace wf {
