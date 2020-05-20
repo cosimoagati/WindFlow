@@ -48,7 +48,7 @@
 namespace wf {
 // TODO: Can we use a bit vector instead of a bool array?
 template<typename tuple_t, typename result_t, typename func_t>
-__global__ void run_filter_kernel(func_t filter_func,
+__global__ void run_filter_kernel(const func_t filter_func,
 				  tuple_t *const tuple_buffer,
 				  bool *const tuple_mask,
 				  const std::size_t buffer_capacity) {
@@ -60,7 +60,7 @@ __global__ void run_filter_kernel(func_t filter_func,
 }
 
 template<typename tuple_t, typename result_t, typename func_t>
-__global__ void run_filter_kernel_keyed(func_t filter_func,
+__global__ void run_filter_kernel_keyed(const func_t filter_func,
 					tuple_t *const tuple_buffer,
 					bool *const tuple_mask,
 					char **const scratchpads,
@@ -308,14 +308,14 @@ public:
 	 * first constructor is used for keyless (stateless) version, the second is
 	 * for the keyed (stateful) version.
 	 */
-	FilterGPU_Node(func_t filter_func, const std::string &name,
+	FilterGPU_Node(const func_t filter_func, const std::string &name,
 		       const int total_buffer_capacity,
 		       const int gpu_threads_per_block)
 		: FilterGPU_Node {filter_func, name, total_buffer_capacity,
 				  gpu_threads_per_block, 0}
 	{}
 
-	FilterGPU_Node(func_t filter_func, const std::string &name,
+	FilterGPU_Node(const func_t filter_func, const std::string &name,
 		       const int total_buffer_capacity,
 		       const int gpu_threads_per_block,
 		       const std::size_t scratchpad_size)

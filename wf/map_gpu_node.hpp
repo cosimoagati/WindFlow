@@ -55,7 +55,8 @@ namespace wf {
  * \param buffer_capacity How many tuples the buffer contains.
  */
 template<typename tuple_t, typename func_t>
-__global__ void run_map_kernel_ip(func_t map_func, tuple_t *const tuple_buffer,
+__global__ void run_map_kernel_ip(const func_t map_func,
+				  tuple_t *const tuple_buffer,
 				  const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
@@ -73,7 +74,8 @@ __global__ void run_map_kernel_ip(func_t map_func, tuple_t *const tuple_buffer,
  * \param buffer_capacity How many tuples the buffer contains.
  */
 template<typename tuple_t, typename result_t, typename func_t>
-__global__ void run_map_kernel_nip(func_t map_func, tuple_t *const tuple_buffer,
+__global__ void run_map_kernel_nip(const func_t map_func,
+				   tuple_t *const tuple_buffer,
 				   result_t *const result_buffer,
 				   const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -93,7 +95,8 @@ __global__ void run_map_kernel_nip(func_t map_func, tuple_t *const tuple_buffer,
  * own key.
  */
 template<typename tuple_t, typename func_t>
-__global__ void run_map_kernel_keyed_ip(func_t map_func, tuple_t *const tuple_buffer,
+__global__ void run_map_kernel_keyed_ip(const func_t map_func,
+					tuple_t *const tuple_buffer,
 					char **const scratchpads,
 					const std::size_t scratchpad_size,
 					const std::size_t buffer_capacity) {
@@ -105,7 +108,8 @@ __global__ void run_map_kernel_keyed_ip(func_t map_func, tuple_t *const tuple_bu
 }
 
 template<typename tuple_t, typename result_t, typename func_t>
-__global__ void run_map_kernel_keyed_nip(func_t map_func, tuple_t *const tuple_buffer,
+__global__ void run_map_kernel_keyed_nip(const func_t map_func,
+					 tuple_t *const tuple_buffer,
 					 result_t *const result_buffer,
 					 char **const scratchpads,
 					 const std::size_t scratchpad_size,
