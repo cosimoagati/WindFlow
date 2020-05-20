@@ -93,7 +93,7 @@ void closing_func(RuntimeContext &) {}
 
 int routing_func(const size_t k, const size_t n) { return k % n; }
 
-int test_gpu() {
+void test_gpu() {
 	const auto mult_and_div = [] __host__ __device__ (tuple_t &x) {
 		// Deliberately long-to-compute function.  Cheap functions that
 		// cost less than buffering are not representative.
@@ -188,7 +188,7 @@ int test_gpu() {
 	// }
 }
 
-int test_cpu() {
+void test_cpu() {
 	output_stream << "Testing \"default\", CPU Map..." << endl;
 
 	const auto mult_and_div = [] (tuple_t &x) {
