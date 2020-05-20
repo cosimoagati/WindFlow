@@ -457,12 +457,12 @@ public:
 	MapGPU_Node(func_t map_func, const std::string &name,
 		    const int total_buffer_capacity,
 		    const int gpu_threads_per_block,
-		    const int scratchpad_size)
+		    const std::size_t scratchpad_size)
 		: map_func {map_func}, operator_name {name},
 		  total_buffer_capacity {total_buffer_capacity},
 		  gpu_threads_per_block {gpu_threads_per_block},
 		  gpu_blocks {std::ceil(total_buffer_capacity
-					/ float {gpu_threads_per_block})},
+					/ static_cast<float>(gpu_threads_per_block))},
 		  scratchpad_size {scratchpad_size}
 	{
 		const auto tuple_size = sizeof(tuple_t) * total_buffer_capacity;
