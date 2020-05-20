@@ -134,9 +134,6 @@ class MapGPU: public ff::ff_farm {
 		      "WindFlow Error: if instantiating MapGPU with an in-place "
 		      "function, the input type and the output type must match.");
 
-	/*
-	 * Type aliases.
-	 */
 	/// type of the function to map the key hashcode onto an identifier
 	/// starting from zero to pardegree-1
 	using routing_func_t = std::function<std::size_t(std::size_t,
@@ -194,9 +191,9 @@ public:
 	 *  \param func function to be executed on each input tuple
 	 *  \param pardegree parallelism degree of the MapGPU operator
 	 *  \param name string with the unique name of the MapGPU operator
+	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_threads_per_block number of GPU threads per block
-	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 */
 	MapGPU(func_t func, const int pardegree, const std::string name,
 	       routing_func_t routing_func,
