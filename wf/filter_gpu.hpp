@@ -98,7 +98,7 @@ public:
 		for (auto i = 0; i < pardegree; ++i) {
 			auto seq = new node_t {func, name,
 					       tuple_buffer_capacity,
-					       gpu_threads_per_block);
+					       gpu_threads_per_block};
 			workers.push_back(seq);
 		}
 		// add emitter
