@@ -265,6 +265,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 		const auto size = total_buffer_capacity * sizeof(tuple_t);
 		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer, size,
 			   cudaMemcpyHostToDevice);
+
 		current_buffer_capacity = 0;
 		run_kernel();
 		was_batch_started = true; //TODO: Redundant after the first
@@ -272,7 +273,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 					  //efficient,but uglier... (At least
 					  //it's not a branch).
 		return this->GO_ON;
-
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
@@ -307,10 +307,12 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 			}
 			++kcb_iter;
 		}
-		const auto size = total_buffer_capacity * sizeof(char *);
-		cudaMemcpy(gpu_scratchpad_buffer, cpu_scratchpad_buffer, size,
-			   cudaMemcpyHostToDevice);
-		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer, size,
+		const auto scratchpad_size = total_buffer_capacity * sizeof(char *);
+		cudaMemcpy(gpu_scratchpad_buffer, cpu_scratchpad_buffer,
+			   scratchpad_size, cudaMemcpyHostToDevice);
+
+		const auto tuple_size = total_buffer_capacity * sizeof(tuple_t);
+		cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer, tuple_size,
 			   cudaMemcpyHostToDevice);
 		run_kernel();
 		was_batch_started = true;
