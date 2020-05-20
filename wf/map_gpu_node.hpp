@@ -466,12 +466,12 @@ public:
 		  scratchpad_size {scratchpad_size}
 	{
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
-		const auto result_size = sizeof(result_t) * total_buffer_capacity;
+		const auto result_buffer_size = sizeof(result_t) * total_buffer_capacity;
 
 		if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU tuple buffer");
 		}
-		if (cudaMallocHost(&cpu_result_buffer, result_size) != cudaSuccess) {
+		if (cudaMallocHost(&cpu_result_buffer, result_buffer_size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU result buffer");
 		}
 		if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
