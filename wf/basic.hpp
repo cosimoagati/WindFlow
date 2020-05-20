@@ -165,7 +165,7 @@ template<typename tuple_t>
 class Filter;
 
 // forward declaration of the Filter operator (GPU version)
-template<typename tuple_t>
+template<typename tuple_t, typename func_t>
 class FilterGPU;
 
 /// forward declaration of the FlatMap operator
