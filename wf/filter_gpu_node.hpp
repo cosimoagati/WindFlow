@@ -43,21 +43,9 @@
 #include "basic.hpp"
 #include "context.hpp"
 #include "standard_nodes.hpp" // Probably not required...
+#include "gpu_utils.hpp"
 
 namespace wf {
-// Utilities (to be moved to another file?)
-template<typename F, typename... Args>
-struct is_invocable :
-		std::is_constructible<std::function<void(Args ...)>,
-				      std::reference_wrapper<typename std::remove_reference<F>::type>>
-{};
-
-inline void failwith(const std::string &err) {
-	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
-		  << std::endl;
-	std::exit(EXIT_FAILURE);
-}
-
 // TODO: Can we use a bit vector instead of a bool array?
 template<typename tuple_t, typename result_t, typename func_t>
 __global__ void run_filter_kernel(func_t filter_func,

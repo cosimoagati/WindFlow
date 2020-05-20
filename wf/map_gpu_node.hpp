@@ -41,7 +41,7 @@
 #include <ff/node.hpp>
 #include "basic.hpp"
 #include "standard_nodes.hpp"
-#include "map_gpu_utils.hpp"
+#include "gpu_utils.hpp"
 
 namespace wf {
 // N.B.: CUDA __global__ kernels must not be member functions.
