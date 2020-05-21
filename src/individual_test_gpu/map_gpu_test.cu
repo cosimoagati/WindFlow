@@ -11,7 +11,7 @@
 #include "../../wf/windflow_gpu.hpp"
 #include "../../wf/windflow.hpp"
 
-// #define TRIVIAL_TEST
+// #define PERFORMANCE_TEST
 
 using namespace std;
 using namespace std::chrono;
@@ -46,7 +46,7 @@ template<typename tuple_t>
 class Source : public ff_node_t<tuple_t, tuple_t> {
 	static constexpr auto LIMIT = 1000;
 	long counter {0};
-#ifndef TRIVIAL_TEST
+#ifndef PERFORMANCE_TEST
 	time_point<steady_clock> start_time {steady_clock::now()};
 	time_point<steady_clock> end_time = start_time + seconds {10};
 #endif
@@ -56,7 +56,7 @@ public:
 		return 0;
 	}
 	tuple_t *svc(tuple_t *) {
-#ifdef TRIVIAL_TEST
+#ifdef PERFORMANCE_TEST
 		if (counter > LIMIT) {
 			return this->EOS;
 		}
@@ -152,40 +152,40 @@ void test_gpu() {
 	delete ip_map; // Sadly needed since copy elision for builders only
 		       // works from C++17 onwards.
 
-	// output_stream << "In-pace pipeline finished, now testing non in-place version..."
-	// 	      << endl;
-	// ff_pipeline nip_pipe;
-	// nip_pipe.add_stage(::Source<tuple_t> {});
-	// auto nip_map = MapGPU_Builder<decltype(another_square)> {another_square}
-	// 	.withName("gpu_nip_map")
-	// 	.withParallelism(1)
-	// 	.build_ptr();
-	// nip_pipe.add_stage(nip_map);
-	// nip_pipe.add_stage(::Sink<tuple_t> {});
+	output_stream << "In-pace pipeline finished, now testing non in-place version..."
+		      << endl;
+	ff_pipeline nip_pipe;
+	nip_pipe.add_stage(::Source<tuple_t> {});
+	auto nip_map = MapGPU_Builder<decltype(another_square)> {another_square}
+		.withName("gpu_nip_map")
+		.withParallelism(1)
+		.build_ptr();
+	nip_pipe.add_stage(nip_map);
+	nip_pipe.add_stage(::Sink<tuple_t> {});
 
-	// if (nip_pipe.run_and_wait_end() < 0) {
-	// 	error("Error while running pipeline.");
-	// 	std::exit(EXIT_FAILURE);
-	// }
-	// delete nip_map; // Same notce above.
+	if (nip_pipe.run_and_wait_end() < 0) {
+		error("Error while running pipeline.");
+		std::exit(EXIT_FAILURE);
+	}
+	delete nip_map; // Same notce above.
 
-	// output_stream << "Non in-pace pipeline finished, now testing in-place keyed version..."
-	// 	      << endl;
-	// ff_pipeline ip_keyed_pipe;
-	// ip_keyed_pipe.add_stage(::Source<tuple_t> {});
+	output_stream << "Non in-pace pipeline finished, now testing in-place keyed version..."
+		      << endl;
+	ff_pipeline ip_keyed_pipe;
+	ip_keyed_pipe.add_stage(::Source<tuple_t> {});
 
-	// // TODO: Builder still needs a correct get_tuple_t meta_utils function!
-	// // auto ip_keyed_map = MapGPU_Builder<decltype(verify_order)> {verify_order}.withParallelism(1)
-	// // 										  .enable_KeyBy()
-	// // 										  .build_ptr();
-	// MapGPU<tuple_t, tuple_t, decltype(verify_order)> ip_keyed_map {verify_order,
-	// 		1, "gpu_ip_keyed_map", routing_func, 256, 256, sizeof(int)};
-	// ip_keyed_pipe.add_stage(&ip_keyed_map);
-	// ip_keyed_pipe.add_stage(::Sink<tuple_t> {});
-	// if (ip_keyed_pipe.run_and_wait_end() < 0) {
-	// 	error("Error while running pipeline");
-	// 	std::exit(EXIT_FAILURE);
-	// }
+	// TODO: Builder still needs a correct get_tuple_t meta_utils function!
+	// auto ip_keyed_map = MapGPU_Builder<decltype(verify_order)> {verify_order}.withParallelism(1)
+	// 										  .enable_KeyBy()
+	// 										  .build_ptr();
+	MapGPU<tuple_t, tuple_t, decltype(verify_order)> ip_keyed_map {verify_order,
+			1, "gpu_ip_keyed_map", routing_func, 256, 256, sizeof(int)};
+	ip_keyed_pipe.add_stage(&ip_keyed_map);
+	ip_keyed_pipe.add_stage(::Sink<tuple_t> {});
+	if (ip_keyed_pipe.run_and_wait_end() < 0) {
+		error("Error while running pipeline");
+		std::exit(EXIT_FAILURE);
+	}
 }
 
 void test_cpu() {
@@ -222,7 +222,7 @@ void test_cpu() {
 	const auto verify_order_nip = [] (const tuple_t &t, tuple_t &r, char *scratchpad,
 					  std::size_t size) {
 		// NB: the first tuple must have value 0!
-		assert(size >= sizeof(int));
+		assert(size >= sizeof(int)
 		assert(scratchpad != nullptr);
 		const auto prev_val = static_cast<int>(*scratchpad);
 		if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
@@ -249,6 +249,8 @@ void test_cpu() {
 
 int main(int argc, char *argv[]) {
 	test_gpu();
+#ifdef PERFORMANCE_TEST
 	test_cpu();
+#endif
 	return 0;
 }
