@@ -261,7 +261,7 @@ void test_cpu() {
 }
 #endif
 
-int main(int argc, char *argv[]) {
+int main() {
 	test_gpu();
 #ifdef PERFORMANCE_TEST
 	test_cpu();
