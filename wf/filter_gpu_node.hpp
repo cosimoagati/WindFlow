@@ -241,7 +241,7 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 	void run_kernel() {
 		run_filter_kernel_keyed<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(filter_func, gpu_tuple_buffer, gpu_tuple_mask,
-			 total_buffer_capacity)
+			 total_buffer_capacity);
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
@@ -249,7 +249,7 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 		run_filter_kernel_keyed<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(filter_func, gpu_tuple_buffer, gpu_tuple_mask,
 			 gpu_scratchpad_buffer, scratchpad_size,
-			 total_buffer_capacity)
+			 total_buffer_capacity);
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyless<F>, int> = 0>
@@ -270,9 +270,9 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 		std::vector<char> cpu_scratchpad(scratchpad_size);
 		for (auto &kv : key_control_block_map) {
 			auto &queue = kv.second.queue;
-			auto &gpu_scratchpad - kv.second.scratchpad;
+			auto &gpu_scratchpad = kv.second.scratchpad;
 
-			cudaMemcpy(cpu_scratchpad.data(), cpu_scratchpad,
+			cudaMemcpy(cpu_scratchpad.data(), gpu_scratchpad,
 				   scratchpad_size, cudaMemcpyDeviceToHost);
 			for (; !queue.empty(); queue.pop()) {
 				const auto t = queue.front();

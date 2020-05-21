@@ -126,7 +126,7 @@ public:
 		  const int tuple_buffer_capacity=default_tuple_buffer_capacity,
 		  const int gpu_threads_per_block=default_gpu_threads_per_block,
 		  const int scratchpad_size=default_scratchpad_size)
-		: keyed(true)
+		: is_keyed {true}
 	{
 		// check the validity of the parallelism degree
 		if (pardegree == 0) {
@@ -138,7 +138,9 @@ public:
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> workers;
 		for (size_t i = 0; i < pardegree; i++) {
-			auto seq = new node_t {func, name, closing_func};
+			auto seq = new node_t {func, name, tuple_buffer_capacity,
+					       gpu_threads_per_block,
+					       scratchpad_size};
 			workers.push_back(seq);
 		}
 		// add emitter
