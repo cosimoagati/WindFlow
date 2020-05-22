@@ -7,9 +7,9 @@
 #include <tuple>
 
 #define TRACE_WINDFLOW log
-#include "../../wf/builders.hpp"
-#include "../../wf/windflow_gpu.hpp"
+// #include "../../wf/builders.hpp"
 #include "../../wf/windflow.hpp"
+#include "../../wf/windflow_gpu.hpp"
 
 // #define TRIVIAL_TEST
 
@@ -116,7 +116,7 @@ int test_cpu() {
 	//output_stream << "Testing \"default\", CPU Filter..." << endl;
 }
 
-int main(int argc, char *argv[]) {
+int main() {
 	test_gpu();
 	test_cpu();
 	return 0;
