@@ -179,8 +179,7 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 		if (key_control_block_map.find(key) == key_control_block_map.end()) {
 			auto &scratchpad = key_control_block_map[key].scratchpad;
 			if (cudaMalloc(&scratchpad, scratchpad_size) != cudaSuccess) {
-				failwith("FilterGPU_Node failed to allocate GPU scratchpad for key "
-					 + std::to_string(key));
+				failwith("FilterGPU_Node failed to allocate GPU scratchpad.");
 			}
 			++current_buffer_capacity;
 		}
