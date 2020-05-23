@@ -59,11 +59,9 @@ struct TupleState {
 
 // N.B.: CUDA __global__ kernels must not be member functions.
 /**
- * \brief Map kernel (in-place version). Run function and store results in same
- * buffer
+ * \brief Map kernel (in-place keyless version). Run function and store results in same buffer.
  * \param map_func The function to be computed on each tuple.
- * \param tuple_buffer pointer to the start of the buffered tuples
- * (memory area accessible to GPU)
+ * \param tuple_buffer pointer to the start of the buffered tuples.
  * \param buffer_capacity How many tuples the buffer contains.
  */
 template<typename tuple_t, typename func_t>
@@ -78,11 +76,10 @@ __global__ void run_map_kernel_ip(const func_t map_func,
 }
 
 /**
- * \brief Map kernel (non-in-place version). Run function and store results a new buffer
+ * \brief Map kernel (non-in-place keyless version). Run function and store results a new buffer.
  * \param map_func The function to be computed on each tuple.
  * \param tuple_buffer pointer to the start of the buffered tuples
- * \param result_buffer pointer to the start of the buffer that will contain the results.
- * (memory area accessible to GPU)
+ * \param result_buffer pointer to the start of the buffer that will contain the results
  * \param buffer_capacity How many tuples the buffer contains.
  */
 template<typename tuple_t, typename result_t, typename func_t>
@@ -97,6 +94,14 @@ __global__ void run_map_kernel_nip(const func_t map_func,
 	}
 }
 
+/**
+ * \brief Map kernel (in-place keyed version). Run function and store results a new buffer.
+ * \param map_func The function to be computed on each tuple.
+ * \param tuple_buffer Pointer to the start of the buffered tuples.
+ * \param tuple_state Pointer to the start of a tuple state array.
+ * \param scratchpad_size Size of an individual scratchpad.
+ * \param buffer_capacity How many tuples the buffer contains.
+ */
 template<typename tuple_t, typename func_t>
 __global__ void run_map_kernel_keyed_ip(const func_t map_func,
 					tuple_t *const tuple_buffer,
@@ -115,6 +120,15 @@ __global__ void run_map_kernel_keyed_ip(const func_t map_func,
 	}
 }
 
+/**
+ * \brief Map kernel (non in-place keyed version). Run function and store results a new buffer
+ * \param map_func The function to be computed on each tuple.
+ * \param tuple_buffer pointer to the start of the buffered tuples
+ * \param tuple_state pointer to the start of a tuple state array.
+ * \param result_buffer pointer to the start of the buffer that will contain the results.
+ * \param buffer_capacity How many tuples the buffer contains.
+ * \param scratchpad_size Size of an individual scratchpad.
+ */
 template<typename tuple_t, typename result_t, typename func_t>
 __global__ void run_map_kernel_keyed_nip(const func_t map_func,
 					 tuple_t *const tuple_buffer,
