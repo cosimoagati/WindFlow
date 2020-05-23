@@ -47,7 +47,7 @@
 
 namespace wf {
 // TODO: Can we use a bit vector instead of a bool array?
-template<typename tuple_t, typename result_t, typename func_t>
+template<typename tuple_t, typename func_t>
 __global__ void run_filter_kernel(const func_t filter_func,
 				  tuple_t *const tuple_buffer,
 				  bool *const tuple_mask,
@@ -59,7 +59,7 @@ __global__ void run_filter_kernel(const func_t filter_func,
 	}
 }
 
-template<typename tuple_t, typename result_t, typename func_t>
+template<typename tuple_t, typename func_t>
 __global__ void run_filter_kernel_keyed(const func_t filter_func,
 					tuple_t *const tuple_buffer,
 					bool *const tuple_mask,
@@ -222,7 +222,7 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyless<F>, int> = 0>
 	void run_kernel() {
-		run_filter_kernel_keyed<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+		run_filter_kernel<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(filter_func, gpu_tuple_buffer, gpu_tuple_mask,
 			 total_buffer_capacity);
 	}

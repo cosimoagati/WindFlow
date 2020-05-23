@@ -100,8 +100,8 @@ int test_gpu() {
 	};
 	ff_pipeline ip_pipe;
 	ip_pipe.add_stage(::Source<tuple_t> {});
-	auto filter = FilterGPU<tuple_t, decltype(drop_if_odd)> {drop_if_odd,
-								 1, "filter"};
+	FilterGPU<tuple_t, decltype(drop_if_odd)> filter {drop_if_odd,
+							  1, "filter"};
 	ip_pipe.add_stage(&filter);
 	ip_pipe.add_stage(::Sink<tuple_t> {});
 
