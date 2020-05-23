@@ -46,17 +46,6 @@
 #include "gpu_utils.hpp"
 
 namespace wf {
-/*
- * This struct contains information required to compute a tuple in the
- * keyed/stateful case: the hash is used to ensure tuples with the same key are
- * always computed by the same thread, and a pointer to the respective
- * scratchpad is stored.
- */
-struct TupleState {
-	std::size_t hash;
-	char *scratchpad;
-};
-
 // N.B.: CUDA __global__ kernels must not be member functions.
 /**
  * \brief Map kernel (in-place keyless version). Run function and store results in same buffer.
@@ -239,6 +228,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 	 *Only used for stateful (keyed) computations.
 	 */
 	std::unordered_map<key_t, char *> key_scratchpad_map;
+	std::hash<key_t> hash;
 	TupleState *cpu_tuple_state_buffer;
 	TupleState *gpu_tuple_state_buffer;
 	std::size_t scratchpad_size;
@@ -289,7 +279,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 		}
 	}
 
-
 	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
 	result_t *svc_aux(tuple_t *const t) {
 		cpu_tuple_buffer[current_buffer_capacity] = *t;
@@ -319,7 +308,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 			}
 		}
 		cpu_tuple_state_buffer[current_buffer_capacity] =
-			{std::hash<key_t> {}(key), key_scratchpad_map[key]};
+			{hash(key), key_scratchpad_map[key]};
 		delete t;
 		++current_buffer_capacity;
 

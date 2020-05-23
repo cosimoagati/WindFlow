@@ -41,6 +41,17 @@ struct is_invocable :
 				      std::reference_wrapper<typename std::remove_reference<F>::type>>
 {};
 
+/*
+ * This struct contains information required to compute a tuple in the
+ * keyed/stateful case: the hash is used to ensure tuples with the same key are
+ * always computed by the same thread, and a pointer to the respective
+ * scratchpad is stored.
+ */
+struct TupleState {
+	std::size_t hash;
+	char *scratchpad;
+};
+
 inline void failwith(const std::string &err) {
 	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
 		  << std::endl;
