@@ -262,11 +262,11 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 
 			if (last_map.find(key) == last_map.end()) {
 				last_map.emplace(key, new char[scratchpad_size]);
-				cudaMemcpy(last_map[key].data(), gpu_scratchpad,
+				cudaMemcpy(last_map[key], gpu_scratchpad,
 					   scratchpad_size, cudaMemcpyDeviceToHost);
 			}
 			bool mask;
-			filter_func(t, mask, last_map[key].data(), scratchpad_size);
+			filter_func(t, mask, last_map[key], scratchpad_size);
 			if (mask) {
 				this->ff_send_out(new tuple_t {t});
 			}
