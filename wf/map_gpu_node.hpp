@@ -431,12 +431,12 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 	void deallocate_gpu_result_buffer() { cudaFree(gpu_result_buffer); }
 
 	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
-	void deallocate_scratchpad_buffers() {}
+	void deallocate_tuple_state_buffers() {}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
-	void deallocate_scratchpad_buffers() {
-		for (auto &x : key_scratchpad_map) {
-			cudaFree(x.second);
+	void deallocate_tuple_state_buffers() {
+		for (auto &pair : key_scratchpad_map) {
+			cudaFree(pair.second);
 		}
 		cudaFreeHost(cpu_tuple_state_buffer);
 		cudaFree(gpu_tuple_state_buffer);
@@ -468,11 +468,10 @@ public:
 		  scratchpad_size {scratchpad_size}
 	{
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
-		const auto result_buffer_size = sizeof(result_t) * total_buffer_capacity;
-
 		if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU tuple buffer");
 		}
+		const auto result_buffer_size = sizeof(result_t) * total_buffer_capacity;
 		if (cudaMallocHost(&cpu_result_buffer, result_buffer_size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU result buffer");
 		}
@@ -491,7 +490,7 @@ public:
 		cudaFreeHost(cpu_result_buffer);
 		cudaFree(gpu_tuple_buffer);
 		deallocate_gpu_result_buffer();
-		deallocate_scratchpad_buffers();
+		deallocate_tuple_state_buffers();
 		cudaStreamDestroy(cuda_stream);
 	}
 
