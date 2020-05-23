@@ -253,7 +253,7 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 		// This hashmap is used to copy the corresponding device
 		// scratchpads to the host.  The map itself is used to make sure
 		// we correctly preserve the scratchpad state for each key.
-		std::unordered_map<key_t, std::vector<char>> last_map;
+		std::unordered_map<key_t, char *> last_map;
 
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto &t = cpu_tuple_buffer[i];
@@ -261,7 +261,7 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 			const auto &gpu_scratchpad = key_scratchpad_map[key];
 
 			if (last_map.find(key) == last_map.end()) {
-				last_map[key] = std::vector<char> (scratchpad_size);
+				last_map.emplace(key, new char[scratchpad_size]);
 				cudaMemcpy(last_map[key].data(), gpu_scratchpad,
 					   scratchpad_size, cudaMemcpyDeviceToHost);
 			}
@@ -271,6 +271,9 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 				this->ff_send_out(new tuple_t {t});
 			}
 		}
+		for (auto &pair : last_map) {
+			delete[] pair.second;
+		}
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyless<F>, int> = 0>
@@ -278,7 +281,6 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	void deallocate_tuple_state_buffers() {
-		cudaFree(gpu_scratchpad_buffer);
 		for (auto &pair : key_scratchpad_map) {
 			cudaFree(pair.second);
 		}
@@ -329,7 +331,7 @@ public:
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in FilterGPU_Node");
 		}
-		setup_tuple_state_buffers()
+		setup_tuple_state_buffers();
 	}
 
 	~FilterGPU_Node() {
