@@ -100,7 +100,7 @@ __global__ void run_map_kernel_keyed_ip(const func_t map_func,
 	const auto num_threads = gridDim.x * blockDim.x;
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	for (auto i = index; i < buffer_capacity; ++i) {
+	for (auto i = 0; i < buffer_capacity; ++i) {
 		auto &state = tuple_state[i];
 		if (state.hash % num_threads == index) {
 			map_func(tuple_buffer[i], state.scratchpad,
@@ -128,7 +128,7 @@ __global__ void run_map_kernel_keyed_nip(const func_t map_func,
 	const auto num_threads = gridDim.x * blockDim.x;
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 
-	for (auto i = index; i < buffer_capacity; ++i) {
+	for (auto i = 0; i < buffer_capacity; ++i) {
 		auto &state = tuple_state[i];
 		if (state.hash % num_threads == index) {
 			map_func(tuple_buffer[i], result_buffer[i],
