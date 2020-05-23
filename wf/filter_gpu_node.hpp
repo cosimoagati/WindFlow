@@ -34,7 +34,6 @@
 #define FILTER_GPU_NODE_H
 
 #include <cmath>
-#include <queue>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -251,23 +250,25 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	void process_last_tuples() {
-		std::vector<char> cpu_scratchpad(scratchpad_size);
-		for (auto &kv : key_control_block_map) {
-			auto &queue = kv.second.queue;
-			auto &gpu_scratchpad = kv.second.scratchpad;
+		// This hashmap is used to copy the corresponding device
+		// scratchpads to the host.  The map itself is used to make sure
+		// we correctly preserve the scratchpad state for each key.
+		std::unordered_map<key_t, std::vector<char>> last_map;
 
-			cudaMemcpy(cpu_scratchpad.data(), gpu_scratchpad,
-				   scratchpad_size, cudaMemcpyDeviceToHost);
-			for (; !queue.empty(); queue.pop()) {
-				const auto t = queue.front();
-				bool mask;
-				filter_func(*t, mask, cpu_scratchpad.data(),
-					    scratchpad_size);
-				if (mask) {
-					this->ff_send_out(t);
-				} else {
-					delete t;
-				}
+		for (auto i = 0; i < current_buffer_capacity; ++i) {
+			auto &t = cpu_tuple_buffer[i];
+			const auto &key = std::get<0>(t.getControlFields());
+			const auto &gpu_scratchpad = key_scratchpad_map[key];
+
+			if (last_map.find(key) == last_map.end()) {
+				last_map[key] = std::vector<char> (scratchpad_size);
+				cudaMemcpy(last_map[key].data(), gpu_scratchpad,
+					   scratchpad_size, cudaMemcpyDeviceToHost);
+			}
+			bool mask;
+			filter_func(t, mask, last_map[key].data(), scratchpad_size);
+			if (mask) {
+				this->ff_send_out(new tuple_t {t});
 			}
 		}
 	}

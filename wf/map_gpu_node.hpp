@@ -394,31 +394,42 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
 	void process_last_tuples() {
-		std::vector<char> cpu_scratchpad(scratchpad_size);
+		// This hashmap is used to copy the corresponding device
+		// scratchpads to the host.  The map itself is used to make sure
+		// we correctly preserve the scratchpad state for each key.
+		std::unordered_map<key_t, std::vector<char>> last_map;
+
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto &t = cpu_tuple_buffer[i];
 			const auto &key = std::get<0>(t.getControlFields());
 			const auto &gpu_scratchpad = key_scratchpad_map[key];
 
-			cudaMemcpy(cpu_scratchpad.data(), gpu_scratchpad,
-				   scratchpad_size, cudaMemcpyDeviceToHost);
-			map_func(t, cpu_scratchpad.data(), scratchpad_size);
+			if (last_map.find(key) == last_map.end()) {
+				last_map[key] = std::vector<char> (scratchpad_size);
+				cudaMemcpy(last_map[key].data(), gpu_scratchpad,
+					   scratchpad_size, cudaMemcpyDeviceToHost);
+			}
+			map_func(t, last_map[key].data(), scratchpad_size);
 			this->ff_send_out(new tuple_t {t});
 		}
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
 	void process_last_tuples() {
-		std::vector<char> cpu_scratchpad(scratchpad_size);
+		std::unordered_map<key_t, std::vector<char>> last_map;
+
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto &t = cpu_tuple_buffer[i];
 			const auto &key = std::get<0>(t.getControlFields());
 			const auto &gpu_scratchpad = key_scratchpad_map[key];
-			auto res = new result_t;
 
-			cudaMemcpy(cpu_scratchpad.data(), gpu_scratchpad,
-				   scratchpad_size, cudaMemcpyDeviceToHost);
-			map_func(t, *res, cpu_scratchpad.data(), scratchpad_size);
+			if (last_map.find(key) == last_map.end()) {
+				last_map[key] = std::vector<char> (scratchpad_size);
+				cudaMemcpy(last_map[key].data(), gpu_scratchpad,
+					   scratchpad_size, cudaMemcpyDeviceToHost);
+			}
+			auto res = new result_t;
+			map_func(t, *res, last_map[key].data(), scratchpad_size);
 			this->ff_send_out(res);
 		}
 	}
