@@ -38,7 +38,6 @@
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
-#include <vector>
 
 #include <ff/node.hpp>
 #include "basic.hpp"
@@ -394,42 +393,41 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
 	void process_last_tuples() {
-		// This hashmap is used to copy the corresponding device
-		// scratchpads to the host.  The map itself is used to make sure
-		// we correctly preserve the scratchpad state for each key.
-		std::unordered_map<key_t, std::vector<char>> last_map;
+		char scratchpads[total_buffer_capacity][scratchpad_size];
+		bool tuple_found[total_buffer_capacity] {0};
 
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto &t = cpu_tuple_buffer[i];
 			const auto &key = std::get<0>(t.getControlFields());
-			const auto &gpu_scratchpad = key_scratchpad_map[key];
+			const auto hash_mod = hash(key) % total_buffer_capacity;
 
-			if (last_map.find(key) == last_map.end()) {
-				last_map.insert(std::make_pair(key, std::vector<char>(scratchpad_size)));
-				cudaMemcpy(last_map[key].data(), gpu_scratchpad,
+			if (!tuple_found[hash_mod]) {
+				cudaMemcpy(scratchpads[hash_mod], key_scratchpad_map[key],
 					   scratchpad_size, cudaMemcpyDeviceToHost);
+				tuple_found[hash_mod] = true;
 			}
-			map_func(t, last_map[key].data(), scratchpad_size);
+			map_func(t, scratchpads[hash_mod], scratchpad_size);
 			this->ff_send_out(new tuple_t {t});
 		}
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
 	void process_last_tuples() {
-		std::unordered_map<key_t, std::vector<char>> last_map;
+		char scratchpads[total_buffer_capacity][scratchpad_size];
+		bool tuple_found[total_buffer_capacity] {0};
 
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto &t = cpu_tuple_buffer[i];
 			const auto &key = std::get<0>(t.getControlFields());
-			const auto &gpu_scratchpad = key_scratchpad_map[key];
+			const auto hash_mod = hash(key) % total_buffer_capacity;
 
-			if (last_map.find(key) == last_map.end()) {
-				last_map.insert({key, std::vector<char>(scratchpad_size)});
-				cudaMemcpy(last_map[key].data(), gpu_scratchpad,
+			if (!tuple_found[hash_mod]) {
+				cudaMemcpy(scratchpads[hash_mod], key_scratchpad_map[key],
 					   scratchpad_size, cudaMemcpyDeviceToHost);
+				tuple_found[hash_mod] = true;
 			}
 			auto res = new result_t;
-			map_func(t, *res, last_map[key].data(), scratchpad_size);
+			map_func(t, *res, scratchpads[hash_mod], scratchpad_size);
 			this->ff_send_out(res);
 		}
 	}
