@@ -11,7 +11,7 @@
 #include "../../wf/windflow.hpp"
 #include "../../wf/windflow_gpu.hpp"
 
-// #define TRIVIAL_TEST
+#define TRIVIAL_TEST
 
 using namespace std;
 using namespace std::chrono;
