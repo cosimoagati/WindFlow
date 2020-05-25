@@ -105,6 +105,7 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 
 	cudaStream_t cuda_stream;
 	tuple_t *cpu_tuple_buffer;
+	tuple_t *cpu_result_buffer; // Needed to avoid overwriting on buffering.
 	tuple_t *gpu_tuple_buffer;
 	bool *cpu_tuple_mask;
 	bool *gpu_tuple_mask;
@@ -168,9 +169,10 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 		}
 		send_last_batch_if_any();
 		copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
-		copy_host_buffer_to_device(gpu_tuple_mask, cpu_tuple_mask);
+		for (auto i = 0; i < total_buffer_capacity; ++i) {
+			cpu_result_buffer[i] = cpu_tuple_buffer[i]; // Can we avoid these copies?
+		}
 		current_buffer_capacity = 0;
-
 		run_kernel();
 		was_batch_started = true;
 		return this->GO_ON;
@@ -199,6 +201,9 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 		copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
 		copy_host_buffer_to_device(gpu_tuple_state_buffer,
 					   cpu_tuple_state_buffer);
+		for (auto i = 0; i < total_buffer_capacity; ++i) {
+			cpu_result_buffer[i] = cpu_tuple_buffer[i]; // Can we avoid these copies?
+		}
 		current_buffer_capacity = 0;
 		run_kernel();
 		was_batch_started = true;
@@ -210,12 +215,12 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 			return;
 		}
 		cudaStreamSynchronize(cuda_stream);
-		const auto size = total_buffer_capacity * sizeof(bool);
-		cudaMemcpy(cpu_tuple_mask, gpu_tuple_mask, size,
+		const auto mask_size = total_buffer_capacity * sizeof(bool);
+		cudaMemcpy(cpu_tuple_mask, gpu_tuple_mask, mask_size,
 			   cudaMemcpyDeviceToHost);
 		for (auto i = 0; i < total_buffer_capacity; ++i) {
 			if (cpu_tuple_mask[i]) {
-				this->ff_send_out(new tuple_t {cpu_tuple_buffer[i]});
+				this->ff_send_out(new tuple_t {cpu_result_buffer[i]});
 			}
 		}
 	}
@@ -312,6 +317,9 @@ public:
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
 		if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
 			failwith("FilterGPU_Node failed to allocate CPU tuple buffer");
+		}
+		if (cudaMallocHost(&cpu_result_buffer, tuple_buffer_size) != cudaSuccess) {
+			failwith("FilterGPU_Node failed to allocate CPU result buffer");
 		}
 		const auto tuple_mask_size = sizeof(bool) * total_buffer_capacity;
 		if (cudaMallocHost(&cpu_tuple_mask, tuple_mask_size) != cudaSuccess) {
