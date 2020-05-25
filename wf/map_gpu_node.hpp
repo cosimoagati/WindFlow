@@ -459,14 +459,14 @@ public:
 	 * first constructor is used for keyless (stateless) version, the second is
 	 * for the keyed (stateful) version.
 	 */
-	MapGPU_Node(func_t map_func, const std::string &name,
+	MapGPU_Node(const func_t map_func, const std::string &name,
 		    const int total_buffer_capacity,
 		    const int gpu_threads_per_block)
 		: MapGPU_Node {map_func, name, total_buffer_capacity,
 			       gpu_threads_per_block, 0}
 	{}
 
-	MapGPU_Node(func_t map_func, const std::string &name,
+	MapGPU_Node(const func_t map_func, const std::string &name,
 		    const int total_buffer_capacity,
 		    const int gpu_threads_per_block,
 		    const std::size_t scratchpad_size)
