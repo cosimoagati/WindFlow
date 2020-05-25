@@ -424,7 +424,7 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 			const auto &gpu_scratchpad = key_scratchpad_map[key];
 
 			if (last_map.find(key) == last_map.end()) {
-				last_map.insert(std::make_pair(key, std::vector<char>(scratchpad_size)));
+				last_map.insert({key, std::vector<char>(scratchpad_size)});
 				cudaMemcpy(last_map[key].data(), gpu_scratchpad,
 					   scratchpad_size, cudaMemcpyDeviceToHost);
 			}
