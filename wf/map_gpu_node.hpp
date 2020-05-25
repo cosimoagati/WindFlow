@@ -397,9 +397,6 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 		std::unordered_map<key_t, std::vector<char>> last_map;
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto &t = cpu_tuple_buffer[i];
-			// Warning: don't use a reference to key, copy instead
-			// (otherwise unordered_map maps to a non-existing
-			// temporary).
 			const auto key = std::get<0>(t.getControlFields());
 
 			if (last_map.find(key) == last_map.end()) {
