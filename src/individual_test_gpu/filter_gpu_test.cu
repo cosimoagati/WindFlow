@@ -11,7 +11,7 @@
 #include "../../wf/windflow.hpp"
 #include "../../wf/windflow_gpu.hpp"
 
-#define TRIVIAL_TEST
+// #define PERFORMANCE_TEST
 
 using namespace std;
 using namespace std::chrono;
@@ -46,7 +46,7 @@ template<typename tuple_t>
 class Source : public ff_node_t<tuple_t, tuple_t> {
 	static constexpr auto LIMIT = 1000;
 	long counter {0};
-#ifndef TRIVIAL_TEST
+#ifdef PERFORMANCE_TEST
 	time_point<steady_clock> start_time {steady_clock::now()};
 	time_point<steady_clock> end_time = start_time + seconds {10};
 #endif
@@ -56,13 +56,13 @@ public:
 		return 0;
 	}
 	tuple_t *svc(tuple_t *) {
-#ifdef TRIVIAL_TEST
-		if (counter > LIMIT) {
+#ifdef PERFORMANCE_TEST
+		const auto current_time = steady_clock::now();
+		if (current_time >= end_time) {
 			return this->EOS;
 		}
 #else
-		const auto current_time = steady_clock::now();
-		if (current_time >= end_time) {
+		if (counter > LIMIT) {
 			return this->EOS;
 		}
 #endif
@@ -111,13 +111,17 @@ int test_gpu() {
 	}
 }
 
+#ifdef PERFORMANCE_TEST
 int test_cpu() {
 	// TODO
 	//output_stream << "Testing \"default\", CPU Filter..." << endl;
 }
+#endif
 
 int main() {
 	test_gpu();
+#ifdef PERFORMANCE_TEST
 	test_cpu();
+#endif
 	return 0;
 }
