@@ -38,6 +38,7 @@
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 #include <ff/node.hpp>
 #include "basic.hpp"
@@ -181,7 +182,7 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	tuple_t *svc_aux(tuple_t *const t) {
 		cpu_tuple_buffer[current_buffer_capacity] = *t;
-		const auto &key = std::get<0>(t->getControlFields());
+		const auto key = std::get<0>(t->getControlFields());
 
 		if (key_scratchpad_map.find(key) == key_scratchpad_map.end()) {
 			auto &scratchpad = key_scratchpad_map[key];
@@ -255,21 +256,24 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	void process_last_tuples() {
-		char scratchpads[total_buffer_capacity][scratchpad_size];
-		bool tuple_found[total_buffer_capacity] {0};
+		std::unordered_map<key_t, std::vector<char>> last_map;
 
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			auto &t = cpu_tuple_buffer[i];
-			const auto &key = std::get<0>(t.getControlFields());
-			const auto hash_mod = hash(key) % total_buffer_capacity;
+			// Warning: don't use a reference to key, copy instead
+			// (otherwise unordered_map maps to a non-existing
+			// temporary).
+			const auto key = std::get<0>(t.getControlFields());
 
-			if (!tuple_found[hash_mod]) {
-				cudaMemcpy(scratchpads[hash_mod], key_scratchpad_map[key],
-					   scratchpad_size, cudaMemcpyDeviceToHost);
-				tuple_found[hash_mod] = true;
+			if (last_map.find(key) == last_map.end()) {
+				last_map.emplace(key, std::vector<char>(scratchpad_size));
+				if (key_scratchpad_map.find(key) != key_scratchpad_map.end()) {
+					cudaMemcpy(last_map[key].data(), key_scratchpad_map[key],
+						   scratchpad_size, cudaMemcpyDeviceToHost);
+				}
 			}
 			bool mask;
-			filter_func(t, mask, scratchpads[hash_mod], scratchpad_size);
+			filter_func(t, mask, last_map[key].data(), scratchpad_size);
 			if (mask) {
 				this->ff_send_out(new tuple_t {t});
 			}
