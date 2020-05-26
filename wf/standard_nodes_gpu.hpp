@@ -19,11 +19,11 @@
  *  @author  Cosimo Agati
  *  @date    12/02/2019
  *
- *  @brief Standard emitter and collector used by the WindFlow library
+ *  @brief Standard GPU emitter and collector used by the WindFlow library
  *
- *  @section Standard Emitter and Collector (Description)
+ *  @section Standard Emitter and Collector (GPU versions) (Description)
  *
- *  This file implements the standard emitter and collector used by the library.
+ *  This file implements the standard GPU emitter and collector used by the library.
  */
 
 #ifndef STANDARD_GPU_H
