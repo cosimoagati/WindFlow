@@ -413,6 +413,8 @@ class MapGPU_Builder
 	std::size_t gpu_threads_per_block {256};
 	std::size_t scratchpad_size {64};
 	bool is_keyed {false};
+	bool has_gpu_input {false};
+	bool has_gpu_output {false};
 public:
 	/**
 	 *  \brief Constructor
@@ -427,9 +429,7 @@ public:
 	 *  \param name std::string with the name to be given.
 	 *  \return the object itself.
 	 */
-	MapGPU_Builder<F_t> &
-	withName(std::string name)
-	{
+	MapGPU_Builder<F_t> &withName(const std::string &name) {
 		this->name = name;
 		return *this;
 	}
@@ -440,9 +440,7 @@ public:
 	 *  \param pardegree number of map replicas.
 	 *  \return the object itself.
 	 */
-	MapGPU_Builder<F_t> &
-	withParallelism(std::size_t pardegree)
-	{
+	MapGPU_Builder<F_t> &withParallelism(const std::size_t pardegree) {
 		this->pardegree = pardegree;
 		return *this;
 	}
@@ -452,9 +450,7 @@ public:
 	 *
 	 *  \return the object itself.
 	 */
-	MapGPU_Builder<F_t> &
-	enable_KeyBy()
-	{
+	MapGPU_Builder<F_t> &enable_KeyBy() {
 		is_keyed = true;
 		return *this;
 	}
@@ -464,9 +460,7 @@ public:
 	 *
 	 *  \return the object itself.
 	 */
-	MapGPU_Builder<F_t> &
-	disable_KeyBy()
-	{
+	MapGPU_Builder<F_t> &disable_KeyBy() {
 		is_keyed = false;
 		return *this;
 	}
@@ -477,16 +471,22 @@ public:
 	 *  \param is_keyed determines whether the MapGPU is keyed or not.
 	 *  \return the object itself.
 	 */
-	MapGPU_Builder<F_t> &
-	withKeyBy(bool is_keyed)
-	{
+	MapGPU_Builder<F_t> &withKeyBy(const bool is_keyed) {
 		this->is_keyed = is_keyed;
 		return *this;
 	}
 
-	MapGPU_Builder<F_t> &
-	withRoutingFunction(routing_func_t routing_func)
-	{
+	MapGPU_Builder<F_t> &withGPUInput(const bool has_gpu_input) {
+		this->has_gpu_input = has_gpu_input;
+		return *this;
+	}
+
+	MapGPU_Builder<F_t> &withGPUOutput(const bool has_gpu_output) {
+		this->has_gpu_output = has_gpu_output;
+		return *this;
+	}
+
+	MapGPU_Builder<F_t> &withRoutingFunction(routing_func_t routing_func) {
 		this->routing_func = routing_func;
 		return *this;
 	}
@@ -497,9 +497,7 @@ public:
 	 *  \param tuple_buffer_capacity the maximum amount of buffered tuples.
 	 *  \return the object itself.
 	 */
-	MapGPU_Builder<F_t> &
-        withTupleBufferCapacity(std::size_t tuple_buffer_capacity)
-	{
+	MapGPU_Builder<F_t> &withTupleBufferCapacity(const std::size_t tuple_buffer_capacity) {
 		this->tuple_buffer_capacity = tuple_buffer_capacity;
 		return *this;
 	}
@@ -510,17 +508,13 @@ public:
 	 *  \param _tuple_buffer_capacity the maximum amount of buffered tuples.
 	 *  \return the object itself.
 	 */
-	MapGPU_Builder<F_t> &
-	withGPUThreadsPerBlock(std::size_t gpu_threads_per_block)
-	{
+	MapGPU_Builder<F_t> &withGPUThreadsPerBlock(const std::size_t gpu_threads_per_block) {
 		this->gpu_threads_per_block = gpu_threads_per_block;
 		return *this;
 	}
 
-	MapGPU_Builder<F_t> &
-	withScratchpadSize(std::size_t scratchpad_size)
-	{
-		this->scratchpad_size = scratchpad_size;
+	MapGPU_Builder<F_t> &withScratchpadSize(const std::size_t size) {
+		this->scratchpad_size = size;
 		return *this;
 	}
 
@@ -530,9 +524,7 @@ public:
 	 *
 	 *  \return the created MapGPU operator by value.
 	 */
-	mapgpu_t
-	build()
-	{
+	mapgpu_t build() {
 		// Copy elision in C++17
 		return !is_keyed ?
 			mapgpu_t {func, pardegree, name, tuple_buffer_capacity,
@@ -549,9 +541,7 @@ public:
 	 *
 	 *  \return a pointer to the created MapGPU operator (to be explicitly deallocated/destroyed).
 	 */
-	mapgpu_t *
-	build_ptr()
-	{
+	mapgpu_t *build_ptr() {
 		return !is_keyed ?
 			new mapgpu_t {func, pardegree, name,
 				      tuple_buffer_capacity,
@@ -566,9 +556,7 @@ public:
 	 *
 	 *  \return a std::unique_ptr to the newly created MapGPU operator.
 	 */
-	std::unique_ptr<mapgpu_t>
-	build_unique()
-	{
+	std::unique_ptr<mapgpu_t> build_unique() {
 		return !is_keyed ?
 			std::make_unique<mapgpu_t>(func, pardegree, name,
 						   tuple_buffer_capacity,
