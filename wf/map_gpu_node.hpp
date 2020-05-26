@@ -138,7 +138,7 @@ __global__ void run_map_kernel_keyed_nip(const func_t map_func,
 }
 
 template<typename tuple_t, typename result_t, typename func_t>
-class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
+class MapGPU_Node: public ff::ff_minode_t<tuple_t, result_t> {
 	/*
 	 * Name function properties, used to verify compile-time invariants and
 	 * only compile the required member functions.  These predicates cannot
@@ -215,6 +215,8 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 	int total_buffer_capacity;
 	int gpu_threads_per_block;
 	int gpu_blocks;
+	bool have_gpu_input;
+	bool have_gpu_output;
 
 	int current_buffer_capacity {0};
 
@@ -279,91 +281,219 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 		}
 	}
 
-	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
-	result_t *svc_aux(tuple_t *const t) {
-		cpu_tuple_buffer[current_buffer_capacity] = *t;
-		++current_buffer_capacity;
-		delete t;
-		if (current_buffer_capacity < total_buffer_capacity) {
-			return this->GO_ON;
-		}
-		send_last_batch_if_any();
-		copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
-		current_buffer_capacity = 0;
-
-		run_kernel();
-		was_batch_started = true;
-		return this->GO_ON;
-	}
-
-	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
-	result_t *svc_aux(tuple_t *const t) {
-		cpu_tuple_buffer[current_buffer_capacity] = *t;
-		const auto key = std::get<0>(t->getControlFields());
-
-		if (key_scratchpad_map.find(key) == key_scratchpad_map.end()) {
-			if (cudaMalloc(&key_scratchpad_map[key], scratchpad_size) != cudaSuccess) {
-				failwith("MapGPU_Node failed to allocate GPU scratchpad.");
+	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
+	void *svc_aux(void *const input) {
+		const auto t = reinterpret_cast<tuple_t *>(input);
+		if (have_gpu_input) {
+			if (was_batch_started) {
+				cudaStreamSynchronize(cuda_stream);
+				if (have_gpu_output) {
+					this->ff_send_out(gpu_tuple_buffer);
+				} else {
+					send_tuples_to_cpu_operator();
+					cudaFree(gpu_tuple_buffer);
+				}
 			}
-		}
-		cpu_tuple_state_buffer[current_buffer_capacity] =
-			{hash(key), key_scratchpad_map[key]};
-		delete t;
-		++current_buffer_capacity;
+			gpu_tuple_buffer = t;
+		} else {
+			cpu_tuple_buffer[current_buffer_capacity] = *t;
+			delete t;
+			++current_buffer_capacity;
 
-		if (current_buffer_capacity < total_buffer_capacity) {
-			return this->GO_ON;
+			if (current_buffer_capacity < total_buffer_capacity) {
+				return this->GO_ON;
+			}
+			if (was_batch_started) {
+				cudaStreamSynchronize(cuda_stream);
+				if (have_gpu_output) {
+					this->ff_send_out(gpu_tuple_buffer);
+					const auto size = total_buffer_capacity * sizeof(tuple_t);
+					while (cudaMalloc(&gpu_tuple_buffer, size) != cudaSuccess) {
+						// Empty loop body.
+					}
+				} else {
+					send_tuples_to_cpu_operator();
+				}
+			}
+			copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
+			current_buffer_capacity = 0;
 		}
-		send_last_batch_if_any();
-		copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
-		copy_host_buffer_to_device(gpu_tuple_state_buffer,
-					   cpu_tuple_state_buffer);
-		current_buffer_capacity = 0;
-		run_kernel();
+		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+			(map_func, gpu_tuple_buffer, total_buffer_capacity);
 		was_batch_started = true;
 		return this->GO_ON;
 	}
 
-	void send_last_batch_if_any() {
-		if (!was_batch_started) {
-			return;
+
+	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
+	void *svc_aux(void *const input) {
+		const auto t = reinterpret_cast<tuple_t *>(input);
+		if (have_gpu_input) {
+			cudaFree(gpu_tuple_buffer);
+			gpu_tuple_buffer = t;
+			if (was_batch_started) {
+				cudaStreamSynchronize(cuda_stream);
+				if (have_gpu_output) {
+					this->ff_send_out(gpu_result_buffer);
+					const auto size = total_buffer_capacity * sizeof(result_t);
+					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
+						// Empty loop body.
+					}
+				} else {
+					send_tuples_to_cpu_operator();
+				}
+			}
+		} else {
+			cpu_tuple_buffer[current_buffer_capacity] = *t;
+			++current_buffer_capacity;
+			delete t;
+			if (current_buffer_capacity < total_buffer_capacity) {
+				return this->GO_ON;
+			}
+			if (was_batch_started) {
+				cudaStreamSynchronize(cuda_stream);
+				if (have_gpu_output) {
+					this->ff_send_out(gpu_result_buffer);
+					const auto size = total_buffer_capacity * sizeof(result_t);
+					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
+						// Empty loop body.
+					}
+				} else {
+					send_tuples_to_cpu_operator();
+				}
+			}
+			copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
+			current_buffer_capacity = 0;
 		}
-		cudaStreamSynchronize(cuda_stream);
+		run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+			(map_func, gpu_tuple_buffer, gpu_result_buffer,
+			 total_buffer_capacity);
+		was_batch_started = true;
+		return this->GO_ON;
+	}
+
+	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
+	void *svc_aux(void *const input) {
+		const auto t = reinterpret_cast<tuple_t *>(input);
+		if (have_gpu_input) {
+			if (was_batch_started) {
+				cudaStreamSynchronize(cuda_stream);
+				if (have_gpu_output) {
+					this->ff_send_out(gpu_result_buffer);
+				} else {
+					send_tuples_to_cpu_operator();
+					cudaFree(gpu_tuple_buffer);
+				}
+			}
+			gpu_tuple_buffer = t;
+		} else {
+			cpu_tuple_buffer[current_buffer_capacity] = *t;
+			const auto key = std::get<0>(t->getControlFields());
+			delete t;
+
+			if (key_scratchpad_map.find(key) == key_scratchpad_map.end()) {
+				if (cudaMalloc(&key_scratchpad_map[key], scratchpad_size) != cudaSuccess) {
+					failwith("MapGPU_Node failed to allocate GPU scratchpad.");
+				}
+			}
+			cpu_tuple_state_buffer[current_buffer_capacity] =
+				{hash(key), key_scratchpad_map[key]};
+			++current_buffer_capacity;
+
+			if (current_buffer_capacity < total_buffer_capacity) {
+				return this->GO_ON;
+			}
+			if (was_batch_started) {
+				cudaStreamSynchronize(cuda_stream);
+				if (have_gpu_output) {
+					this->ff_send_out(gpu_tuple_buffer);
+					const auto size = total_buffer_capacity * sizeof(tuple_t);
+					while (cudaMalloc(&gpu_tuple_buffer, size) != cudaSuccess) {
+						// Empty loop body.
+					}
+				} else {
+					send_tuples_to_cpu_operator();
+				}
+			}
+			copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
+			copy_host_buffer_to_device(gpu_tuple_state_buffer,
+						   cpu_tuple_state_buffer);
+			current_buffer_capacity = 0;
+		}
+		run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+			(map_func, gpu_tuple_buffer, gpu_tuple_state_buffer,
+			 scratchpad_size, total_buffer_capacity);
+		was_batch_started = true;
+		return this->GO_ON;
+	}
+
+	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
+	void *svc_aux(void *const input) {
+		const auto t = reinterpret_cast<tuple_t *>(input);
+		if (have_gpu_input) {
+			cudaFree(gpu_tuple_buffer);
+			gpu_tuple_buffer = t;
+			if (was_batch_started) {
+				cudaStreamSynchronize(cuda_stream);
+				if (have_gpu_output) {
+					this->ff_send_out(gpu_result_buffer);
+					const auto size = total_buffer_capacity * sizeof(result_t);
+					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
+						// Empty loop body.
+					}
+				} else {
+					send_tuples_to_cpu_operator();
+				}
+			}
+		} else {
+			cpu_tuple_buffer[current_buffer_capacity] = *t;
+			const auto key = std::get<0>(t->getControlFields());
+			delete t;
+
+			if (key_scratchpad_map.find(key) == key_scratchpad_map.end()) {
+				if (cudaMalloc(&key_scratchpad_map[key], scratchpad_size) != cudaSuccess) {
+					failwith("MapGPU_Node failed to allocate GPU scratchpad.");
+				}
+			}
+			cpu_tuple_state_buffer[current_buffer_capacity] =
+				{hash(key), key_scratchpad_map[key]};
+			++current_buffer_capacity;
+
+			if (current_buffer_capacity < total_buffer_capacity) {
+				return this->GO_ON;
+			}
+			if (was_batch_started) {
+				cudaStreamSynchronize(cuda_stream);
+				if (have_gpu_output) {
+					this->ff_send_out(gpu_result_buffer);
+					const auto size = total_buffer_capacity * sizeof(result_t);
+					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
+						// Empty loop body.
+					}
+				} else {
+					send_tuples_to_cpu_operator();
+				}
+			}
+			copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
+			copy_host_buffer_to_device(gpu_tuple_state_buffer,
+						   cpu_tuple_state_buffer);
+			current_buffer_capacity = 0;
+		}
+		run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+			(map_func, gpu_tuple_buffer, gpu_result_buffer,
+			 gpu_tuple_state_buffer, scratchpad_size,
+			 total_buffer_capacity);
+		was_batch_started = true;
+		return this->GO_ON;
+	}
+
+	void send_tuples_to_cpu_operator() {
 		const auto size = total_buffer_capacity * sizeof(result_t);
 		cudaMemcpy(cpu_result_buffer, gpu_result_buffer, size,
 			   cudaMemcpyDeviceToHost);
 		for (auto i = 0; i < total_buffer_capacity; ++i) {
 			this->ff_send_out(new result_t {cpu_result_buffer[i]});
 		}
-	}
-
-	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
-	void run_kernel() {
-		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-			(map_func, gpu_tuple_buffer, total_buffer_capacity);
-	}
-
-
-	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
-	void run_kernel() {
-		run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-			(map_func, gpu_tuple_buffer, gpu_result_buffer,
-			 total_buffer_capacity);
-	}
-
-	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
-	void run_kernel() {
-		run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-			(map_func, gpu_tuple_buffer, gpu_tuple_state_buffer,
-			 scratchpad_size, total_buffer_capacity);
-	}
-
-	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
-	void run_kernel() {
-		run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-			(map_func, gpu_tuple_buffer, gpu_result_buffer,
-			 gpu_tuple_state_buffer, scratchpad_size,
-			 total_buffer_capacity);
 	}
 
 	/*
@@ -449,30 +579,20 @@ class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 		cudaFree(gpu_tuple_state_buffer);
 	}
 public:
-	/*
-	 * A single worker allocates both CPU and GPU buffers to store tuples.
-	 * In case the function to be used is NOT in-place, it also allocates
-	 * enough space for the CPU and GPU buffers to store the results.  The
-	 * first constructor is used for keyless (stateless) version, the second is
-	 * for the keyed (stateful) version.
-	 */
-	MapGPU_Node(const func_t map_func, const std::string &name,
-		    const int total_buffer_capacity,
-		    const int gpu_threads_per_block)
-		: MapGPU_Node {map_func, name, total_buffer_capacity,
-			       gpu_threads_per_block, 0}
-	{}
-
 	MapGPU_Node(const func_t map_func, const std::string &name,
 		    const int total_buffer_capacity,
 		    const int gpu_threads_per_block,
-		    const std::size_t scratchpad_size)
+		    const std::size_t scratchpad_size=0,
+		    const bool have_gpu_input=false,
+		    const bool have_gpu_output=false)
 		: map_func {map_func}, operator_name {name},
 		  total_buffer_capacity {total_buffer_capacity},
 		  gpu_threads_per_block {gpu_threads_per_block},
 		  gpu_blocks {std::ceil(total_buffer_capacity
 					/ static_cast<float>(gpu_threads_per_block))},
-		  scratchpad_size {scratchpad_size}
+		  scratchpad_size {scratchpad_size},
+		  have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}
 	{
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
 		if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
@@ -524,7 +644,7 @@ public:
 	 * auxiliary function based on whether the function is stateless or not
 	 * (keyed).
 	 */
-	result_t *svc(tuple_t *const t) {
+	void *svc(void *const t) {
 #if defined (TRACE_WINDFLOW)
 		startTS = current_time_nsecs();
 		if (rcvTuples == 0) {
