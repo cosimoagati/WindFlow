@@ -294,7 +294,7 @@ class MapGPU_Node: public ff::ff_minode_t<tuple_t, result_t> {
 					cudaFree(gpu_tuple_buffer);
 				}
 			}
-			gpu_tuple_buffer = t;
+			gpu_tuple_buffer = gpu_tuple_buffer = t;
 		} else {
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
 			delete t;
@@ -379,13 +379,13 @@ class MapGPU_Node: public ff::ff_minode_t<tuple_t, result_t> {
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
-					this->ff_send_out(gpu_result_buffer);
+					this->ff_send_out(gpu_tuple_buffer);
 				} else {
 					send_tuples_to_cpu_operator();
 					cudaFree(gpu_tuple_buffer);
 				}
 			}
-			gpu_tuple_buffer = t;
+			gpu_tuple_buffer = gpu_result_buffer = t;
 		} else {
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
 			const auto key = std::get<0>(t->getControlFields());
@@ -672,7 +672,14 @@ public:
 	 * kernel.
 	 */
 	void eosnotify(ssize_t) {
-		send_last_batch_if_any();
+		if (was_batch_started) {
+			cudaStreamSynchronize(cuda_stream);
+			if (have_gpu_output) {
+				this->ff_send_out(gpu_tuple_buffer);
+			} else {
+				send_tuples_to_cpu_operator();
+			}
+		}
 		process_last_tuples();
 	}
 
