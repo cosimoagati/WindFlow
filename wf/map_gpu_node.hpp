@@ -31,6 +31,7 @@
 #ifndef MAP_GPU_NODE_H
 #define MAP_GPU_NODE_H
 
+#include <cassert>
 #include <cmath>
 #include <cstdlib>
 #include <functional>
@@ -590,6 +591,7 @@ public:
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
+		assert(total_buffer_capacity > 0 && gpu_threads_per_block > 0);
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
 		if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
 			failwith("MapGPU_Node failed to allocate CPU tuple buffer");
