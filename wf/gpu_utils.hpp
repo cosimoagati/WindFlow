@@ -58,7 +58,7 @@ struct TupleState {
  * to another GPU operator, in order to avoid re-buffering.
  */
 template<typename tuple_t>
-struct TupleBuffer {
+struct GPUBufferHandle {
 	tuple_t *buffer;
 	int size; // Because making std::size_t unsigned was a mistake.
 };
