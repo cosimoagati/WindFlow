@@ -29,8 +29,9 @@
 #define MAP_GPU_UTILS_H
 
 #include <functional>
-#include <type_traits>
 #include <iostream>
+#include <string>
+#include <type_traits>
 
 #include "basic.hpp"
 
@@ -50,6 +51,16 @@ struct is_invocable :
 struct TupleState {
 	std::size_t hash;
 	char *scratchpad;
+};
+
+/*
+ * This struct is useful to pass a tuple buffer allocated on GPU memory directly
+ * to another GPU operator, in order to avoid re-buffering.
+ */
+template<typename tuple_t>
+struct TupleBuffer {
+	tuple_t *buffer;
+	int size; // Because making std::size_t unsigned was a mistake.
 };
 
 inline void failwith(const std::string &err) {
