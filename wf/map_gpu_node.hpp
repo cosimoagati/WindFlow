@@ -138,7 +138,7 @@ __global__ void run_map_kernel_keyed_nip(const func_t map_func,
 }
 
 template<typename tuple_t, typename result_t, typename func_t>
-class MapGPU_Node: public ff::ff_minode_t<tuple_t, result_t> {
+class MapGPU_Node: public ff::ff_node_t<tuple_t, result_t> {
 	/*
 	 * Name function properties, used to verify compile-time invariants and
 	 * only compile the required member functions.  These predicates cannot
@@ -282,8 +282,7 @@ class MapGPU_Node: public ff::ff_minode_t<tuple_t, result_t> {
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
-	void *svc_aux(void *const input) {
-		const auto t = reinterpret_cast<tuple_t *>(input);
+	result_t *svc_aux(tuple_t *const t) {
 		if (have_gpu_input) {
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
@@ -325,7 +324,7 @@ class MapGPU_Node: public ff::ff_minode_t<tuple_t, result_t> {
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
-	void *svc_aux(void *const input) {
+	result_t *svc_aux(tuple_t *const input) {
 		const auto t = reinterpret_cast<tuple_t *>(input);
 		if (have_gpu_input) {
 			cudaFree(gpu_tuple_buffer);
@@ -372,8 +371,7 @@ class MapGPU_Node: public ff::ff_minode_t<tuple_t, result_t> {
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
-	void *svc_aux(void *const input) {
-		const auto t = reinterpret_cast<tuple_t *>(input);
+	result_t *svc_aux(tuple_t *const t) {
 		if (have_gpu_input) {
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
@@ -427,8 +425,7 @@ class MapGPU_Node: public ff::ff_minode_t<tuple_t, result_t> {
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
-	void *svc_aux(void *const input) {
-		const auto t = reinterpret_cast<tuple_t *>(input);
+	result_t *svc_aux(tuple_t *const t) {
 		if (have_gpu_input) {
 			cudaFree(gpu_tuple_buffer);
 			gpu_tuple_buffer = t;
@@ -643,7 +640,7 @@ public:
 	 * auxiliary function based on whether the function is stateless or not
 	 * (keyed).
 	 */
-	void *svc(void *const t) {
+	result_t *svc(tuple_t *const t) {
 #if defined (TRACE_WINDFLOW)
 		startTS = current_time_nsecs();
 		if (rcvTuples == 0) {
