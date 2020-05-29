@@ -45,6 +45,7 @@
 #include <ff/node.hpp>
 #include <ff/pipeline.hpp>
 #include "basic.hpp"
+#include "basic_operator.hpp"
 #include "context.hpp"
 #include "standard_emitter.hpp"
 
@@ -79,7 +80,7 @@ inline void check_constructor_parameters(int pardegree,
 // TODO: Can we put set the result_t parameter to be the same as tuple_t
 // if not specified?
 template<typename tuple_t, typename result_t, typename func_t>
-class MapGPU: public ff::ff_farm {
+class MapGPU: public ff::ff_farm, public Basic_Operator {
 	/*
 	 * Name function properties, used to verify compile-time invariants and
 	 * only compile the required member functions.  These predicates cannot
@@ -146,10 +147,13 @@ class MapGPU: public ff::ff_farm {
 	static constexpr auto default_gpu_threads_per_block = 256;
 	static constexpr auto default_scratchpad_size = 64;
 
+	std::string name;
+	std::size_t pardegree;
+	routing_modes_t routing_mode;
+
 	bool is_used {false}; // is the MapGPU used in a MultiPipe or not?
 	bool have_gpu_input; // is the MapGPU receiving input from another operator on the GPU?
 	bool have_gpu_output; // is the MapGPU sending output to another operator on the GPU?
-	bool is_keyed; // is the MapGPU is configured with keyBy or not?
 
 	friend class MultiPipe;
 public:
@@ -167,8 +171,8 @@ public:
 	       const int gpu_threads_per_block=default_gpu_threads_per_block,
 	       const bool have_gpu_input=false,
 	       const bool have_gpu_output=false)
-		: have_gpu_input {have_gpu_input},
-		  have_gpu_output {have_gpu_output}, is_keyed {false}
+		: routing_mode {NONE}, have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
@@ -212,8 +216,8 @@ public:
 	       const int scratchpad_size=default_scratchpad_size,
 	       const bool have_gpu_input=false,
 	       const bool have_gpu_output=false)
-		: have_gpu_input {have_gpu_input},
-		  have_gpu_output {have_gpu_output}, is_keyed {true}
+		: routing_mode {KEYBY}, have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
@@ -240,16 +244,37 @@ public:
 	}
 
 	/**
-	 *  \brief Check whether the MapGPU has been instantiated with a key-based distribution or not
-	 *  \return true if the MapGPU is configured with keyBy
+	 *  \brief Get the name of the operator
+	 *  \return name of the operator
 	 */
-	bool isKeyed() const { return is_keyed; }
+	std::string getName() const { return name; }
+
+	/**
+	 *  \brief Get the total parallelism within the operator
+	 *  \return total parallelism within the operator
+	 */
+	std::size_t getParallelism() const { return pardegree; }
+
+	/**
+	 *  \brief Return the routing mode of the operator
+	 *  \return routing mode used by the operator
+	 */
+	routing_modes_t getRoutingMode() const { return routing_mode; }
 
 	/**
 	 *  \brief Check whether the MapGPU has been used in a MultiPipe
 	 *  \return true if the MapGPU has been added/chained to an existing MultiPipe
 	 */
 	bool isUsed() const { return is_used; }
+
+	/**
+	 *  \brief Get the Stats_Record of each replica within the operator
+	 *  \return vector of Stats_Record objects
+	 */
+	std::vector<Stats_Record> get_StatsRecords() const {
+		// TODO
+		return {Stats_Record {name, name, true}};
+	}
 
 	/**
 	 *  \brief Check whether the MapGPU has input from another GPU operator
