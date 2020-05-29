@@ -43,7 +43,6 @@
 #include <ff/node.hpp>
 #include "basic.hpp"
 #include "context.hpp"
-#include "standard_nodes.hpp" // Probably not required...
 #include "gpu_utils.hpp"
 
 namespace wf {

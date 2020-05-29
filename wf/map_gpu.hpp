@@ -46,7 +46,7 @@
 #include <ff/pipeline.hpp>
 #include "basic.hpp"
 #include "context.hpp"
-#include "standard_nodes.hpp"
+#include "standard_emitter.hpp"
 
 #include "gpu_utils.hpp"
 #include "map_gpu_node.hpp"
@@ -196,6 +196,10 @@ public:
 	 *  \param routing_func function to map the key hashcode onto an identifier starting from zero to pardegree-1
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_threads_per_block number of GPU threads per block
+	 *  \param scratchpad_size size of the scratchpad in case of keyed computations.
+	 *  \param have_gpu_input specifies if the operator is receiving input directly from the GPU
+	 *  \param have_gpu_output specifies if the operator is sending output directly to the GPU
+	 *  \param is_keyed specifies whether the operator is operating via key-based routing
 	 */
 	MapGPU(func_t func, const int pardegree, const std::string name,
 	       routing_func_t routing_func,
@@ -203,9 +207,10 @@ public:
 	       const int gpu_threads_per_block=default_gpu_threads_per_block,
 	       const int scratchpad_size=default_scratchpad_size,
 	       const bool have_gpu_input=false,
-	       const bool have_gpu_output=false)
-		: is_keyed {true}, have_gpu_input {have_gpu_input},
-		  have_gpu_output {have_gpu_output}
+	       const bool have_gpu_output=false,
+	       const bool is_keyed=false)
+		: have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}, is_keyed {is_keyed}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
