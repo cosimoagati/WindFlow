@@ -531,57 +531,51 @@ class MapGPU_Node: public ff::ff_minode {
 	}
 
 	/*
-	 * Ulness the stream happens to have exactly a number of tuples that is
-	 * a multiple of the buffer capacity, some tuples will be "left out" at
-	 * the end of the stream, since there aren't any tuples left to
-	 * completely fill the buffer.  We compute the function on the remaining
-	 * tuples directly on the CPU, for simplicity, since they are likely to
-	 * be a much smaller number than the total stream length.
+	 * In case of input from a host (CPU) operator, we must process any
+	 * remaining tuples in the buffer at the end of the stream.
 	 */
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
-	void process_last_tuples() {
+	void process_last_buffered_tuples() {
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
-			map_func(cpu_result_buffer[i]);
+			map_func(cpu_tuple_buffer[i]);
 		}
 		if (have_gpu_output) {
 			const auto size = current_buffer_capacity * sizeof(result_t);
-			cudaMemcpy(gpu_result_buffer, cpu_result_buffer,
-				   size, cudaMemcpyHostToDevice);
+			cudaMemcpy(gpu_result_buffer, cpu_tuple_buffer, size,
+				   cudaMemcpyHostToDevice);
 			this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
 									 current_buffer_capacity});
 		} else {
 			for (auto i = 0; i < current_buffer_capacity; ++i) {
-				this->ff_send_out(cpu_result_buffer[i]);
+				this->ff_send_out(new result_t {cpu_tuple_buffer[i]});
 			}
 		}
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
-	void process_last_tuples() {
+	void process_last_buffered_tuples() {
+		for (auto i = 0; i < current_buffer_capacity; ++i) {
+			map_func(cpu_tuple_buffer[i], cpu_result_buffer[i]);
+		}
 		if (have_gpu_output) {
-			std::vector<result_t> last_cpu_result_buffer (current_buffer_capacity);
-			for (auto i = 0; i < current_buffer_capacity; ++i) {
-				map_func(cpu_tuple_buffer[i], last_cpu_result_buffer[i]);
-			}
 			const auto size = current_buffer_capacity * sizeof(result_t);
-			cudaMemcpy(gpu_result_buffer, last_cpu_result_buffer.data(),
-				   size, cudaMemcpyHostToDevice);
+			cudaMemcpy(gpu_result_buffer, cpu_result_buffer, size,
+				   cudaMemcpyHostToDevice);
 			this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
 									 current_buffer_capacity});
 		} else {
 			for (auto i = 0; i < current_buffer_capacity; ++i) {
-				auto res = new result_t;
-				map_func(cpu_tuple_buffer[i], *res);
-				this->ff_send_out(res);
+				this->ff_send_out(new result_t {cpu_result_buffer[i]});
 			}
 		}
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
-	void process_last_tuples() {
+	void process_last_buffered_tuples() {
 		std::unordered_map<key_t, std::vector<char>> last_map;
+
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
-			auto &t = cpu_result_buffer[i];
+			auto &t = cpu_tuple_buffer[i];
 			const auto key = std::get<0>(t.getControlFields());
 
 			if (last_map.find(key) == last_map.end()) {
@@ -595,57 +589,44 @@ class MapGPU_Node: public ff::ff_minode {
 		}
 		if (have_gpu_output) {
 			const auto size = current_buffer_capacity * sizeof(result_t);
-			cudaMemcpy(gpu_result_buffer, cpu_result_buffer,
+			cudaMemcpy(gpu_result_buffer, cpu_tuple_buffer,
 				   size, cudaMemcpyHostToDevice);
 			this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
 									 current_buffer_capacity});
 		} else {
 			for (auto i = 0; i < current_buffer_capacity; ++i) {
-				this->ff_send_out(cpu_result_buffer[i]);
+				this->ff_send_out(new result_t {cpu_tuple_buffer[i]});
 			}
 		}
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
-	void process_last_tuples() {
+	void process_last_buffered_tuples() {
 		std::unordered_map<key_t, std::vector<char>> last_map;
-		if (have_gpu_output) {
-			std::vector<result_t> last_cpu_result_buffer (current_buffer_capacity);
-			for (auto i = 0; i < current_buffer_capacity; ++i) {
-				auto &t = cpu_tuple_buffer[i];
-				const auto key = std::get<0>(t.getControlFields());
 
-				if (last_map.find(key) == last_map.end()) {
-					last_map.emplace(key, std::vector<char>(scratchpad_size));
-					if (key_scratchpad_map.find(key) != key_scratchpad_map.end()) {
-						cudaMemcpy(last_map[key].data(), key_scratchpad_map[key],
-							   scratchpad_size, cudaMemcpyDeviceToHost);
-					}
+		for (auto i = 0; i < current_buffer_capacity; ++i) {
+			auto &t = cpu_tuple_buffer[i];
+			const auto key = std::get<0>(t.getControlFields());
+
+			if (last_map.find(key) == last_map.end()) {
+				last_map.emplace(key, std::vector<char>(scratchpad_size));
+				if (key_scratchpad_map.find(key) != key_scratchpad_map.end()) {
+					cudaMemcpy(last_map[key].data(), key_scratchpad_map[key],
+						   scratchpad_size, cudaMemcpyDeviceToHost);
 				}
-				const auto size = current_buffer_capacity * sizeof(result_t);
-				cudaMemcpy(gpu_result_buffer, last_cpu_result_buffer.data(),
-					   size, cudaMemcpyHostToDevice);
-				this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
-										 current_buffer_capacity});
-				map_func(t, last_cpu_result_buffer[i],
-					 last_map[key].data(), scratchpad_size);
 			}
-
+			map_func(t, cpu_result_buffer[i],
+				 last_map[key].data(), scratchpad_size);
+		}
+		if (have_gpu_output) {
+			const auto size = current_buffer_capacity * sizeof(result_t);
+			cudaMemcpy(gpu_result_buffer, cpu_result_buffer, size,
+				   cudaMemcpyHostToDevice);
+			this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
+									 current_buffer_capacity});
 		} else {
 			for (auto i = 0; i < current_buffer_capacity; ++i) {
-				auto &t = cpu_tuple_buffer[i];
-				const auto key = std::get<0>(t.getControlFields());
-
-				if (last_map.find(key) == last_map.end()) {
-					last_map.emplace(key, std::vector<char>(scratchpad_size));
-					if (key_scratchpad_map.find(key) != key_scratchpad_map.end()) {
-						cudaMemcpy(last_map[key].data(), key_scratchpad_map[key],
-							   scratchpad_size, cudaMemcpyDeviceToHost);
-					}
-				}
-				auto res = new result_t;
-				map_func(t, *res, last_map[key].data(), scratchpad_size);
-				this->ff_send_out(res);
+				this->ff_send_out(new result_t {cpu_result_buffer[i]});
 			}
 		}
 	}
@@ -765,12 +746,14 @@ public:
 			cudaStreamSynchronize(cuda_stream);
 			if (have_gpu_output) {
 				this->ff_send_out(new GPUBufferHandle<result_t>{gpu_result_buffer,
-										tuple_buffer_size});
+										total_buffer_capacity});
 			} else {
 				send_tuples_to_cpu_operator();
 			}
 		}
-		process_last_tuples();
+		if (!have_gpu_input) {
+			process_last_buffered_tuples();
+		}
 	}
 
 	// svc_end method (utilized by the FastFlow runtime)
