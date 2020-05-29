@@ -25,8 +25,8 @@
  *  @section MapGPU_Node (Description)
  */
 
-#ifndef MAP_GPU_UTILS_H
-#define MAP_GPU_UTILS_H
+#ifndef GPU_UTILS_H
+#define GPU_UTILS_H
 
 #include <functional>
 #include <iostream>
@@ -57,9 +57,9 @@ struct TupleState {
  * This struct is useful to pass a tuple buffer allocated on GPU memory directly
  * to another GPU operator, in order to avoid re-buffering.
  */
-template<typename tuple_t>
+template<typename T>
 struct GPUBufferHandle {
-	tuple_t *buffer;
+	T *buffer;
 	int size; // Because making std::size_t unsigned was a mistake.
 };
 

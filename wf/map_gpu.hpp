@@ -48,8 +48,8 @@
 #include "context.hpp"
 #include "standard_nodes.hpp"
 
+#include "gpu_utils.hpp"
 #include "map_gpu_node.hpp"
-#include "map_gpu_utils.hpp"
 
 namespace wf {
 inline void check_constructor_parameters(int pardegree,

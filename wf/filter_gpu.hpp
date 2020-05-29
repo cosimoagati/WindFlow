@@ -48,6 +48,7 @@
 #include "context.hpp"
 #include "standard_nodes.hpp"
 #include "filter_gpu_node.hpp"
+#include "gpu_utils.hpp"
 
 namespace wf {
 /**
