@@ -338,7 +338,7 @@ class MapGPU_Node: public ff::ff_minode {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
 					this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
-											total_buffer_capacity});
+											 total_buffer_capacity});
 					const auto size = total_buffer_capacity * sizeof(result_t);
 					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
 						// Empty loop body.
