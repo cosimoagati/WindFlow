@@ -147,9 +147,9 @@ class MapGPU: public ff::ff_farm {
 	static constexpr auto default_scratchpad_size = 64;
 
 	bool is_used {false}; // is the MapGPU used in a MultiPipe or not?
-	bool is_keyed; // is the MapGPU is configured with keyBy or not?
 	bool have_gpu_input; // is the MapGPU receiving input from another operator on the GPU?
 	bool have_gpu_output; // is the MapGPU sending output to another operator on the GPU?
+	bool is_keyed; // is the MapGPU is configured with keyBy or not?
 
 	friend class MultiPipe;
 public:
@@ -162,11 +162,13 @@ public:
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 */
-	// TODO: It would be nice to factor out common constructor behavior...
 	MapGPU(func_t func, const int pardegree, const std::string name,
 	       const int tuple_buffer_capacity=default_tuple_buffer_capacity,
-	       const int gpu_threads_per_block=default_gpu_threads_per_block)
-		: is_keyed {false}
+	       const int gpu_threads_per_block=default_gpu_threads_per_block,
+	       const bool have_gpu_input=false,
+	       const bool have_gpu_output=false)
+		: have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}, is_keyed {false}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
@@ -174,7 +176,9 @@ public:
 		for (auto i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name,
 					       tuple_buffer_capacity,
-					       gpu_threads_per_block};
+					       gpu_threads_per_block,
+					       0, have_gpu_input,
+					       have_gpu_output};
 			workers.push_back(seq);
 		}
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
@@ -207,10 +211,9 @@ public:
 	       const int gpu_threads_per_block=default_gpu_threads_per_block,
 	       const int scratchpad_size=default_scratchpad_size,
 	       const bool have_gpu_input=false,
-	       const bool have_gpu_output=false,
-	       const bool is_keyed=false)
+	       const bool have_gpu_output=false)
 		: have_gpu_input {have_gpu_input},
-		  have_gpu_output {have_gpu_output}, is_keyed {is_keyed}
+		  have_gpu_output {have_gpu_output}, is_keyed {true}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
