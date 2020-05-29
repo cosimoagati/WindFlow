@@ -31,6 +31,7 @@
 #define BASIC_OP_H
 
 /// includes
+#include <vector>
 #include<basic.hpp>
 #include<stats_record.hpp>
 
