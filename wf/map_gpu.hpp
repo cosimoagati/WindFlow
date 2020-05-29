@@ -148,6 +148,8 @@ class MapGPU: public ff::ff_farm {
 
 	bool is_used {false}; // is the MapGPU used in a MultiPipe or not?
 	bool is_keyed; // is the MapGPU is configured with keyBy or not?
+	bool have_gpu_input; // is the MapGPU receiving input from another operator on the GPU?
+	bool have_gpu_output; // is the MapGPU sending output to another operator on the GPU?
 
 	friend class MultiPipe;
 public:
@@ -199,8 +201,11 @@ public:
 	       routing_func_t routing_func,
 	       const int tuple_buffer_capacity=default_tuple_buffer_capacity,
 	       const int gpu_threads_per_block=default_gpu_threads_per_block,
-	       const int scratchpad_size=default_scratchpad_size)
-		: is_keyed {true}
+	       const int scratchpad_size=default_scratchpad_size,
+	       const bool have_gpu_input=false,
+	       const bool have_gpu_output=false)
+		: is_keyed {true}, have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
 					     gpu_threads_per_block);
@@ -212,7 +217,9 @@ public:
 			auto seq = new node_t {func, name,
 					       tuple_buffer_capacity,
 					       gpu_threads_per_block,
-					       scratchpad_size};
+					       scratchpad_size,
+					       have_gpu_input,
+					       have_gpu_output};
 			workers.push_back(seq);
 		}
 		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
@@ -232,10 +239,22 @@ public:
 	bool isKeyed() const { return is_keyed; }
 
 	/**
-	 *  \brief Check whether the Map has been used in a MultiPipe
-	 *  \return true if the Map has been added/chained to an existing MultiPipe
+	 *  \brief Check whether the MapGPU has been used in a MultiPipe
+	 *  \return true if the MapGPU has been added/chained to an existing MultiPipe
 	 */
 	bool isUsed() const { return is_used; }
+
+	/**
+	 *  \brief Check whether the MapGPU has input from another GPU operator
+	 *  \return true if the MapGPU has input on the GPU, false otherwise
+	 */
+	bool HasGPUInput() const { return have_gpu_input; }
+
+	/**
+	 *  \brief Check whether the MapGPU has output to another GPU operator
+	 *  \return true if the MapGPU has output to the GPU, false otherwise
+	 */
+	bool HasGPUOutput() const { return have_gpu_output; }
 
 	/*
 	 * This object may not be copied nor moved.
