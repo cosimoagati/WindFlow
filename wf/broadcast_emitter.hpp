@@ -30,10 +30,10 @@
 #define BROADCASTNODE_H
 
 // includes
-#include <vector>
-#include <ff/multinode.hpp>
-#include "meta_utils.hpp"
-#include "basic_emitter.hpp"
+#include<vector>
+#include<ff/multinode.hpp>
+#include<meta.hpp>
+#include<basic_emitter.hpp>
 
 namespace wf {
 
@@ -42,67 +42,67 @@ template<typename tuple_t, typename input_t=tuple_t>
 class Broadcast_Emitter: public Basic_Emitter
 {
 private:
-	// type of the wrapper of input tuples
-	using wrapper_in_t = wrapper_tuple_t<tuple_t>;
-	size_t n_dest; // number of destinations
-	bool isCombined; // true if this node is used within a Tree_Emitter node
-	std::vector<std::pair<void *, int>> output_queue; // used in case of Tree_Emitter mode
+    // type of the wrapper of input tuples
+    using wrapper_in_t = wrapper_tuple_t<tuple_t>;
+    size_t n_dest; // number of destinations
+    bool isCombined; // true if this node is used within a Tree_Emitter node
+    std::vector<std::pair<void *, int>> output_queue; // used in case of Tree_Emitter mode
 
 public:
-	// Constructor
-	Broadcast_Emitter(size_t _n_dest):
-		n_dest(_n_dest),
-		isCombined(false)
-	{}
+    // Constructor
+    Broadcast_Emitter(size_t _n_dest):
+                      n_dest(_n_dest),
+                      isCombined(false) {}
 
-	// clone method
-	Basic_Emitter *clone() const
-	{
-		Broadcast_Emitter<tuple_t, input_t> *copy =
-			new Broadcast_Emitter<tuple_t, input_t>(*this);
-		return copy;
-	}
+    // clone method
+    Basic_Emitter *clone() const override
+    {
+        Broadcast_Emitter<tuple_t, input_t> *copy = new Broadcast_Emitter<tuple_t, input_t>(*this);
+        return copy;
+    }
 
-	// svc_init method (utilized by the FastFlow runtime)
-	int svc_init()
-	{
-		return 0;
-	}
+    // svc_init method (utilized by the FastFlow runtime)
+    int svc_init() override
+    {
+        return 0;
+    }
 
-	// svc method (utilized by the FastFlow runtime)
-	void *svc(void *in)
-	{
-		input_t *wt = reinterpret_cast<input_t *>(in);
-		wrapper_in_t *out = prepareWrapper<input_t, wrapper_in_t>(wt, n_dest);
-		for(size_t i=0; i<n_dest; i++) {
-			if (!isCombined)
-				this->ff_send_out_to(out, i);
-			else
-				output_queue.push_back(std::make_pair(out, i));
-		}
-		return this->GO_ON;
-	}
+    // svc method (utilized by the FastFlow runtime)
+    void *svc(void *in) override
+    {
+        input_t *wt = reinterpret_cast<input_t *>(in);
+        wrapper_in_t *out = prepareWrapper<input_t, wrapper_in_t>(wt, n_dest);
+        for(size_t i=0; i<n_dest; i++) {
+            if (!isCombined) {
+                this->ff_send_out_to(out, i);
+            }
+            else {
+                output_queue.push_back(std::make_pair(out, i));
+            }
+        }
+        return this->GO_ON;
+    }
 
-	// svc_end method (utilized by the FastFlow runtime)
-	void svc_end() {}
+    // svc_end method (utilized by the FastFlow runtime)
+    void svc_end() override {}
 
-	// get the number of destinations
-	size_t getNDestinations() const
-	{
-		return n_dest;
-	}
+    // get the number of destinations
+    size_t getNDestinations() const override
+    {
+        return n_dest;
+    }
 
-	// set/unset the Tree_Emitter mode
-	void setTree_EmitterMode(bool _val)
-	{
-		isCombined = _val;
-	}
+    // set/unset the Tree_Emitter mode
+    void setTree_EmitterMode(bool _val) override
+    {
+        isCombined = _val;
+    }
 
-	// method to get a reference to the internal output queue (used in Tree_Emitter mode)
-	std::vector<std::pair<void *, int>> &getOutputQueue()
-	{
-		return output_queue;
-	}
+    // method to get a reference to the internal output queue (used in Tree_Emitter mode)
+    std::vector<std::pair<void *, int>> &getOutputQueue() override
+    {
+        return output_queue;
+    }
 };
 
 } // namespace wf

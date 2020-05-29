@@ -31,8 +31,8 @@
 #define BASIC_EMITTER_H
 
 // includes
-#include <vector>
-#include <ff/multinode.hpp>
+#include<vector>
+#include<ff/multinode.hpp>
 
 namespace wf {
 
@@ -40,20 +40,20 @@ namespace wf {
 class Basic_Emitter: public ff::ff_monode
 {
 public:
-	// destructor
-	virtual ~Basic_Emitter() {}
+    // destructor
+    virtual ~Basic_Emitter() {}
 
-	// clone method
-	virtual Basic_Emitter *clone() const = 0;
+    // clone method
+    virtual Basic_Emitter *clone() const = 0;
 
-	// getNDestinations method
-	virtual size_t getNDestinations() const = 0;
+    // getNDestinations method
+    virtual size_t getNDestinations() const = 0;
 
-	// setTree_EmitterMode method
-	virtual void setTree_EmitterMode(bool) = 0;
+    // setTree_EmitterMode method
+    virtual void setTree_EmitterMode(bool) = 0;
 
-	// getOutputQueue method
-	virtual std::vector<std::pair<void *, int>> &getOutputQueue() = 0;
+    // getOutputQueue method
+    virtual std::vector<std::pair<void *, int>> &getOutputQueue() = 0;
 };
 
 } // namespace wf

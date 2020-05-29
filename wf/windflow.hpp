@@ -19,9 +19,9 @@
  *  @author  Gabriele Mencagli
  *  @date    28/01/2019
  *  
- *  @brief General header file of the WindFlow library
+ *  @brief General Header File
  *  
- *  @section General Header File
+ *  @section First General Header File of the WindFlow Library
  *  
  *  General header file to be included in any WindFlow program.
  */ 
@@ -30,19 +30,21 @@
 #define WINDFLOW_H
 
 /// includes
-#include <ff/ff.hpp>
-#include "builders.hpp"
-#include "source.hpp"
-#include "map.hpp"
-#include "filter.hpp"
-#include "flatmap.hpp"
-#include "accumulator.hpp"
-#include "win_seq.hpp"
-#include "win_farm.hpp"
-#include "key_farm.hpp"
-#include "pane_farm.hpp"
-#include "win_mapreduce.hpp"
-#include "pipegraph.hpp"
-#include "sink.hpp"
+#include<ff/ff.hpp>
+#include<builders.hpp>
+#include<source.hpp>
+#include<map.hpp>
+#include<filter.hpp>
+#include<flatmap.hpp>
+#include<accumulator.hpp>
+#include<win_seq.hpp>
+#include<win_seqffat.hpp>
+#include<win_farm.hpp>
+#include<key_farm.hpp>
+#include<key_ffat.hpp>
+#include<pane_farm.hpp>
+#include<win_mapreduce.hpp>
+#include<pipegraph.hpp>
+#include<sink.hpp>
 
 #endif

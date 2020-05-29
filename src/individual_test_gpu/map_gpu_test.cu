@@ -7,7 +7,6 @@
 #include <tuple>
 
 #define TRACE_WINDFLOW log
-#include "../../wf/builders.hpp"
 #include "../../wf/windflow_gpu.hpp"
 #include "../../wf/windflow.hpp"
 
@@ -148,37 +147,37 @@ void test_gpu() {
 #endif
 	ff_pipeline ip_pipe;
 	ip_pipe.add_stage(::Source<tuple_t> {});
-	auto ip_map = MapGPU_Builder<decltype(ip_keyless_func)> {ip_keyless_func}
-		.withName("gpu_ip_map")
-		.withParallelism(1)
-		.build_ptr();
-	ip_pipe.add_stage(ip_map);
+	// auto ip_map = MapGPU_Builder<decltype(ip_keyless_func)> {ip_keyless_func}
+	// 	.withName("gpu_ip_map")
+	// 	.withParallelism(1)
+	// 	.build_ptr();
+	MapGPU<tuple_t, tuple_t, decltype(ip_keyless_func)> ip_map {ip_keyless_func, 1,
+			"gpu_ip_map"};
+	ip_pipe.add_stage(&ip_map);
 	ip_pipe.add_stage(::Sink<tuple_t> {});
 
 	if (ip_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline.");
 		std::exit(EXIT_FAILURE);
 	}
-	delete ip_map; // Sadly needed since copy elision for builders only
-		       // works from C++17 onwards.
-
 #ifndef PERFORMANCE_TEST
 	output_stream << "In-pace pipeline finished, now testing non in-place version..."
 		      << endl;
 	ff_pipeline nip_pipe;
 	nip_pipe.add_stage(::Source<tuple_t> {});
-	auto nip_map = MapGPU_Builder<decltype(nip_keyless_func)> {nip_keyless_func}
-		.withName("gpu_nip_map")
-		.withParallelism(1)
-		.build_ptr();
-	nip_pipe.add_stage(nip_map);
+	// auto nip_map = MapGPU_Builder<decltype(nip_keyless_func)> {nip_keyless_func}
+	// 	.withName("gpu_nip_map")
+	// 	.withParallelism(1)
+	// 	.build_ptr();
+	MapGPU<tuple_t, tuple_t, decltype(nip_keyless_func)> nip_map {nip_keyless_func, 1,
+			"gpu_nip_map"};
+	nip_pipe.add_stage(&nip_map);
 	nip_pipe.add_stage(::Sink<tuple_t> {});
 
 	if (nip_pipe.run_and_wait_end() < 0) {
 		error("Error while running pipeline.");
 		std::exit(EXIT_FAILURE);
 	}
-	delete nip_map; // Same notce above.
 
 	output_stream << "Non in-pace pipeline finished, now testing in-place keyed version..."
 		      << endl;
@@ -245,7 +244,7 @@ void test_cpu() {
 	};
 	ff_pipeline ip_pipe;
 	ip_pipe.add_stage(::Source<tuple_t> {});
-	auto ip_map = Map_Builder<decltype(ip_keyless_func)> {ip_keyless_func}
+	auto ip_map = MapGPU_Builder<decltype(ip_keyless_func)> {ip_keyless_func}
 		.withName("cpu_ip_map")
 		.withParallelism(1)
 		.build_ptr();

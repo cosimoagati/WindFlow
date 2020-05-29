@@ -20,13 +20,12 @@
  *  @date    23/02/2019
  *  
  *  @brief RuntimeContext class to access the run-time system information
- *         used by a operator's functional logic
  *  
  *  @section RuntimeContext (Description)
  *  
  *  This file implements the RuntimeContext class used to access the run-time system
- *  information used by the functional logic of a operator (static information such
- *  as the parallelism degree of the operator and which is the current replica invoking
+ *  information used by the functional logic of an operator (static information such
+ *  as the parallelism of the operator and which is the current replica invoking
  *  the operator's functional logic).
  */ 
 
@@ -34,15 +33,14 @@
 #define CONTEXT_H
 
 /// includes
-#include "local_storage.hpp"
+#include<local_storage.hpp>
 
-namespace wf
-{
-/**
+namespace wf {
+
+/** 
  *  \class RuntimeContext
  *  
  *  \brief RuntimeContext class used to access to run-time system information
- *         used by a operator's functional logic
  *  
  *  This class implements the RuntimeContext object used to access the run-time system
  *  information used by the operator's functiona logic (access to static information like
@@ -51,54 +49,56 @@ namespace wf
 class RuntimeContext
 {
 private:
-	size_t parallelism; // parallelism degree of the operator
-	size_t index; // index of the replica
-	LocalStorage storage; // local storage
+    size_t parallelism; // parallelism of the operator
+    size_t index; // index of the replica
+    LocalStorage storage; // local storage
 
 public:
-	/// Constructor I
-	RuntimeContext(): parallelism(0), index(0)
-	{}
+    /// Constructor I
+    RuntimeContext():
+                  parallelism(0),
+                  index(0) {}
 
-	/** 
-	 *  \brief Constructor II
-	 *  
-	 *  \param _parallelism number of replicas of the operator
-	 *  \param _index index of the replica invoking the functional logic
-	 */ 
-	RuntimeContext(size_t _parallelism, size_t _index):
-		parallelism(_parallelism), index(_index)
-	{}
+    /** 
+     *  \brief Constructor II
+     *  
+     *  \param _parallelism number of replicas of the operator
+     *  \param _index index of the replica invoking the functional logic
+     */ 
+    RuntimeContext(size_t _parallelism,
+                   size_t _index):
+                   parallelism(_parallelism),
+                   index(_index) {}
 
-	/** 
-	 *  \brief Return the parallelism of the operator in which the RuntimeContext is used
-	 *  
-	 *  \return parallelism degree (number of operator's replicas)
-	 */  
-	size_t getParallelism() const
-	{
-		return parallelism;
-	}
+    /** 
+     *  \brief Return the parallelism of the operator
+     *  
+     *  \return parallelism (number of operator's replicas)
+     */  
+    size_t getParallelism() const
+    {
+        return parallelism;
+    }
 
-	/** 
-	 *  \brief Return the index of the replica where the RuntimeContext is used
-	 *  
-	 *  \return index of the replica (starting from zero)
-	 */ 
-	size_t getReplicaIndex() const
-	{
-		return index;
-	}
+    /** 
+     *  \brief Return the index of the replica
+     *  
+     *  \return index of the replica (starting from zero)
+     */ 
+    size_t getReplicaIndex() const
+    {
+        return index;
+    }
 
-	/** 
-	 *  \brief Return a reference to the local storage used by the operator replica
-	 *  
-	 *  \return reference to the local storage
-	 */ 
-	LocalStorage &getLocalStorage()
-	{
-		return storage;
-	}
+    /** 
+     *  \brief Return a reference to the local storage (private per replica)
+     *  
+     *  \return reference to the local storage
+     */ 
+    LocalStorage &getLocalStorage()
+    {
+        return storage;
+    }
 };
 
 } // namespace wf

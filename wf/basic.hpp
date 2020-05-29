@@ -31,13 +31,17 @@
 #define BASIC_H
 
 /// includes
-#include <deque>
-#include <mutex>
-#include <sstream>
-#include <iostream>
-#include <errno.h>
-#include <sys/time.h>
-#include <sys/stat.h>
+#include<deque>
+#include<mutex>
+#include<numeric>
+#include<sstream>
+#include<iostream>
+#include<errno.h>
+#include<sys/time.h>
+#include<sys/stat.h>
+#ifdef GRAPHVIZ_WINDFLOW
+  #include<graphviz/gvc.h>
+#endif
 
 namespace wf {
 
@@ -50,9 +54,9 @@ namespace wf {
 inline unsigned long current_time_usecs() __attribute__((always_inline));
 inline unsigned long current_time_usecs()
 {
-	struct timespec t;
-	clock_gettime(CLOCK_REALTIME, &t);
-	return (t.tv_sec)*1000000L + (t.tv_nsec / 1000);
+    struct timespec t;
+    clock_gettime(CLOCK_REALTIME, &t);
+    return (t.tv_sec)*1000000L + (t.tv_nsec / 1000);
 }
 
 /** 
@@ -64,29 +68,57 @@ inline unsigned long current_time_usecs()
 inline unsigned long current_time_nsecs() __attribute__((always_inline));
 inline unsigned long current_time_nsecs()
 {
-	struct timespec t;
-	clock_gettime(CLOCK_REALTIME, &t);
-	return (t.tv_sec)*1000000000L + t.tv_nsec;
+    struct timespec t;
+    clock_gettime(CLOCK_REALTIME, &t);
+    return (t.tv_sec)*1000000000L + t.tv_nsec;
 }
 
-/// utility macros
-#define DEFAULT_VECTOR_CAPACITY 500 //< default capacity of vectors used internally by the library
-#define DEFAULT_BATCH_SIZE_TB 1000 //< inital batch size (in no. of tuples) used by GPU operators with time-based windows
-#define DEFAULT_CUDA_NUM_THREAD_BLOCK 256 //< default number of threads per block used by GPU operators
-#define gpuErrChk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+/// default capacity of vectors used internally by the library
+#define DEFAULT_VECTOR_CAPACITY 500
 
-// supported processing modes of the PipeGraph
+/// inital batch size (in no. of tuples) used by GPU window-based operators with time-based windows
+#define DEFAULT_BATCH_SIZE_TB 1000
+
+/// default number of threads per block used by GPU window-based operators
+#define DEFAULT_CUDA_NUM_THREAD_BLOCK 256
+
+/// supported processing modes of the PipeGraph
 enum class Mode { DEFAULT, DETERMINISTIC };
 
-// supported window types
+/// supported window types of window-based operators
 enum win_type_t { CB, TB };
 
-// supported optimization levels
+/// supported optimization levels of window-based operators
 enum opt_level_t { LEVEL0, LEVEL1, LEVEL2 };
+
+/// enumeration of the routing modes of inputs to operator replicas
+enum routing_modes_t { NONE, FORWARD, KEYBY, COMPLEX };
+
+/// existing types of window-based operators in the library
+enum pattern_t { SEQ_CPU, SEQ_GPU, KF_CPU, KFF_CPU, KF_GPU, KFF_GPU, WF_CPU, WF_GPU, PF_CPU, PF_GPU, WMR_CPU, WMR_GPU };
 
 //@cond DOXY_IGNORE
 
-// defines
+#if __CUDACC__
+// assert function on GPU
+inline void gpuAssert(cudaError_t code,
+                      const char *file,
+                      int line,
+                      bool abort=false)
+{
+    if (code != cudaSuccess) {
+        fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+        if (abort) {
+            exit(code);
+        }
+    }
+}
+
+// gpuErrChk macro
+#define gpuErrChk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+#endif
+
+// defines useful for strings
 #define STRINGIFY(x) XSTRINGIFY(x)
 #define XSTRINGIFY(x) #x
 
@@ -99,20 +131,16 @@ enum ordering_mode_t { ID, TS, TS_RENUMBERING };
 // supported roles of the Win_Seq/Win_Seq_GPU operators
 enum role_t { SEQ, PLQ, WLQ, MAP, REDUCE };
 
-// existing window-based operators of the library
-enum pattern_t {SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU, PF_CPU,
-		PF_GPU, WMR_CPU, WMR_GPU};
-
 // macros for the linux terminal colors
-#define DEFAULT_COLOR        "\033[0m"
-#define BLACK                "\033[30m"
-#define RED                 "\033[31m"
-#define GREEN                "\033[32m"
-#define YELLOW               "\033[33m"
-#define BLUE                 "\033[34m"
-#define MAGENTA              "\033[35m"
-#define CYAN                 "\033[36m"
-#define WHITE                "\033[37m"
+#define DEFAULT_COLOR   "\033[0m"
+#define BLACK             "\033[30m"
+#define RED               "\033[31m"
+#define GREEN             "\033[32m"
+#define YELLOW            "\033[33m"
+#define BLUE              "\033[34m"
+#define MAGENTA           "\033[35m"
+#define CYAN              "\033[36m"
+#define WHITE             "\033[37m"
 #define BOLDBLACK       "\033[1m\033[30m"
 #define BOLDRED         "\033[1m\033[31m"
 #define BOLDGREEN       "\033[1m\033[32m"
@@ -123,27 +151,36 @@ enum pattern_t {SEQ_CPU, SEQ_GPU, KF_CPU, KF_GPU, WF_CPU, WF_GPU, PF_CPU,
 #define BOLDWHITE       "\033[1m\033[37m"
 
 // struct of the window-based operator's configuration parameters
-struct PatternConfig {
-	size_t id_outer; // identifier in the outermost operator
-	size_t n_outer; // parallelism degree in the outermost operator
-	uint64_t slide_outer; // sliding factor of the outermost operator
-	size_t id_inner; // identifier in the innermost operator
-	size_t n_inner; // parallelism degree in the innermost operator
-	uint64_t slide_inner; // sliding factor of the innermost operator
+struct WinOperatorConfig {
+    size_t id_outer; // identifier in the outermost operator
+    size_t n_outer; // parallelism degree in the outermost operator
+    uint64_t slide_outer; // sliding factor of the outermost operator
+    size_t id_inner; // identifier in the innermost operator
+    size_t n_inner; // parallelism degree in the innermost operator
+    uint64_t slide_inner; // sliding factor of the innermost operator
 
-	// Constructor I
-	PatternConfig(): id_outer(0), n_outer(0), slide_outer(0), id_inner(0),
-		n_inner(0), slide_inner(0)
-	{}
+    // Constructor I
+    WinOperatorConfig():
+                     id_outer(0),
+                     n_outer(0),
+                     slide_outer(0),
+                     id_inner(0),
+                     n_inner(0),
+                     slide_inner(0) {}
 
-	// Constructor II
-	PatternConfig(size_t _id_outer, size_t _n_outer, uint64_t _slide_outer,
-		      size_t _id_inner, size_t _n_inner,
-		      uint64_t _slide_inner): id_outer(_id_outer),
-		n_outer(_n_outer), slide_outer(_slide_outer),
-		id_inner(_id_inner), n_inner(_n_inner),
-		slide_inner(_slide_inner)
-	{}
+    // Constructor II
+    WinOperatorConfig(size_t _id_outer,
+                      size_t _n_outer,
+                      uint64_t _slide_outer,
+                      size_t _id_inner,
+                      size_t _n_inner,
+                      uint64_t _slide_inner):
+                      id_outer(_id_outer),
+                      n_outer(_n_outer),
+                      slide_outer(_slide_outer),
+                      id_inner(_id_inner),
+                      n_inner(_n_inner),
+                      slide_inner(_slide_inner) {}
 };
 
 //@endcond
@@ -152,21 +189,13 @@ struct PatternConfig {
 template<typename tuple_t>
 class Source;
 
+/// forward declaration of the Filter operator
+template<typename tuple_t, typename result_t>
+class Filter;
+
 /// forward declaration of the Map operator
 template<typename tuple_t, typename result_t>
 class Map;
-
-/// forward declaration of the Map operator (GPU version)
-template<typename tuple_t, typename result_t, typename func_t>
-class MapGPU;
-
-/// forward declaration of the Filter operator
-template<typename tuple_t>
-class Filter;
-
-// forward declaration of the Filter operator (GPU version)
-template<typename tuple_t, typename func_t>
-class FilterGPU;
 
 /// forward declaration of the FlatMap operator
 template<typename tuple_t, typename result_t>
@@ -180,13 +209,21 @@ class Accumulator;
 template<typename tuple_t, typename result_t, typename input_t=tuple_t>
 class Win_Seq;
 
+/// forward declaration of the Win_SeqFFAT operator
+template<typename tuple_t, typename result_t>
+class Win_SeqFFAT;
+
 /// forward declaration of the Win_Farm operator
 template<typename tuple_t, typename result_t, typename input_t=tuple_t>
 class Win_Farm;
 
 /// forward declaration of the Key_Farm operator
-template<typename tuple_t, typename result_t>
+template<typename tuple_t, typename result_t, typename input_t=tuple_t>
 class Key_Farm;
+
+/// forward declaration of the Key_FFAT operator
+template<typename tuple_t, typename result_t>
+class Key_FFAT;
 
 /// forward declaration of the Pane_Farm operator
 template<typename tuple_t, typename result_t, typename input_t=tuple_t>
@@ -200,13 +237,21 @@ class Win_MapReduce;
 template<typename tuple_t, typename result_t, typename fun_t, typename input_t=tuple_t>
 class Win_Seq_GPU;
 
+/// forward declaration of the Win_SeqFFAT_GPU operator
+template<typename tuple_t, typename result_t, typename fun_t>
+class Win_SeqFFAT_GPU;
+
 /// forward declaration of the Win_Farm_GPU operator
 template<typename tuple_t, typename result_t, typename fun_t, typename input_t=tuple_t>
 class Win_Farm_GPU;
 
 /// forward declaration of the Key_Farm_GPU operator
-template<typename tuple_t, typename result_t, typename fun_t>
+template<typename tuple_t, typename result_t, typename fun_t, typename input_t=tuple_t>
 class Key_Farm_GPU;
+
+/// forward declaration of the Key_FFAT_GPU operator
+template<typename tuple_t, typename result_t, typename fun_t>
+class Key_FFAT_GPU;
 
 /// forward declaration of the Pane_Farm_GPU operator
 template<typename tuple_t, typename result_t, typename fun_t, typename input_t=tuple_t>
