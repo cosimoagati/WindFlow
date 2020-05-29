@@ -217,8 +217,7 @@ public:
 			auto seq = new node_t {func, name,
 					       tuple_buffer_capacity,
 					       gpu_threads_per_block,
-					       scratchpad_size,
-					       have_gpu_input,
+					       scratchpad_size, have_gpu_input,
 					       have_gpu_output};
 			workers.push_back(seq);
 		}
