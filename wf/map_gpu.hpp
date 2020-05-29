@@ -166,12 +166,13 @@ public:
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 */
-	MapGPU(func_t func, const int pardegree, const std::string name,
+	MapGPU(func_t func, const int pardegree, const std::string &name,
 	       const int tuple_buffer_capacity=default_tuple_buffer_capacity,
 	       const int gpu_threads_per_block=default_gpu_threads_per_block,
 	       const bool have_gpu_input=false,
 	       const bool have_gpu_output=false)
-		: routing_mode {NONE}, have_gpu_input {have_gpu_input},
+		: name {name}, pardegree {pardegree}, routing_mode {NONE},
+		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,
@@ -209,14 +210,15 @@ public:
 	 *  \param have_gpu_output specifies if the operator is sending output directly to the GPU
 	 *  \param is_keyed specifies whether the operator is operating via key-based routing
 	 */
-	MapGPU(func_t func, const int pardegree, const std::string name,
+	MapGPU(func_t func, const int pardegree, const std::string &name,
 	       routing_func_t routing_func,
 	       const int tuple_buffer_capacity=default_tuple_buffer_capacity,
 	       const int gpu_threads_per_block=default_gpu_threads_per_block,
 	       const int scratchpad_size=default_scratchpad_size,
 	       const bool have_gpu_input=false,
 	       const bool have_gpu_output=false)
-		: routing_mode {KEYBY}, have_gpu_input {have_gpu_input},
+		: name {name}, pardegree {pardegree}, routing_mode {KEYBY},
+		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity,

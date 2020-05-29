@@ -110,9 +110,9 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 	bool *cpu_tuple_mask;
 	bool *gpu_tuple_mask;
 
-
 	int current_buffer_capacity {0};
-
+	bool have_gpu_input;
+	bool have_gpu_output;
 
 	/*
 	 *Only used for stateful (keyed) computations.
@@ -289,30 +289,20 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 	}
 
 public:
-	/*
-	 * A single worker allocates both CPU and GPU buffers to store tuples.
-	 * In case the function to be used is NOT in-place, it also allocates
-	 * enough space for the CPU and GPU buffers to store the results.  The
-	 * first constructor is used for keyless (stateless) version, the second is
-	 * for the keyed (stateful) version.
-	 */
-	FilterGPU_Node(const func_t filter_func, const std::string &name,
-		       const int total_buffer_capacity,
-		       const int gpu_threads_per_block)
-		: FilterGPU_Node {filter_func, name, total_buffer_capacity,
-				  gpu_threads_per_block, 0}
-	{}
-
 	FilterGPU_Node(const func_t filter_func, const std::string &name,
 		       const int total_buffer_capacity,
 		       const int gpu_threads_per_block,
-		       const std::size_t scratchpad_size)
+		       const std::size_t scratchpad_size=0,
+		       const bool have_gpu_input=false,
+		       const bool have_gpu_output=false)
 		: filter_func {filter_func}, name {name},
 		  total_buffer_capacity {total_buffer_capacity},
 		  gpu_threads_per_block {gpu_threads_per_block},
 		  gpu_blocks {std::ceil(total_buffer_capacity
 					/ static_cast<float>(gpu_threads_per_block))},
-		  scratchpad_size {scratchpad_size}
+		  scratchpad_size {scratchpad_size},
+		  have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}
 	{
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
 		if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {

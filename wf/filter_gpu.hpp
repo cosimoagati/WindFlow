@@ -59,7 +59,7 @@ namespace wf {
  *  items and dropping out all of them for which the predicate evaluates to false.
  */
 template<typename tuple_t, typename func_t>
-class FilterGPU: public ff::ff_farm {
+class FilterGPU: public ff::ff_farm , public Basic_Emitter {
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
 	using node_t = FilterGPU_Node<tuple_t, func_t>;
@@ -69,8 +69,14 @@ class FilterGPU: public ff::ff_farm {
 	static constexpr auto default_tuple_buffer_capacity = 256;
 	static constexpr auto default_gpu_threads_per_block = 256;
 	static constexpr auto default_scratchpad_size = 64;
-	bool is_used {false}; // Is this FilterGPU used in a MultiPipe?
-	bool is_keyed; // Is this FilterGPU keyed?
+
+	std::string name;
+	std::size_t pardegree;
+	routing_modes_t routing_mode;
+
+	bool is_used {false}; // is the FilterGPU used in a MultiPipe or not?
+	bool have_gpu_input; // is the FilterGPU receiving input from another operator on the GPU?
+	bool have_gpu_output; // is the FilterGPU sending output to another operator on the GPU?
 
 public:
 	/**
@@ -82,10 +88,14 @@ public:
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 */
-	FilterGPU(func_t func, const int pardegree, const std::string name,
+	FilterGPU(func_t func, const int pardegree, const std::string &name,
 		  const int tuple_buffer_capacity=default_tuple_buffer_capacity,
-		  const int gpu_threads_per_block=default_gpu_threads_per_block)
-		: is_keyed {false}
+		  const int gpu_threads_per_block=default_gpu_threads_per_block,
+		  const bool have_gpu_input=false,
+		  const bool have_gpu_output=false)
+		: name {name}, pardegree {pardegree}, routing_mode {NONE},
+		  have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}
 	{
 		if (pardegree == 0) {
 			std::cerr << RED
@@ -98,7 +108,9 @@ public:
 		for (auto i = 0; i < pardegree; ++i) {
 			auto seq = new node_t {func, name,
 					       tuple_buffer_capacity,
-					       gpu_threads_per_block};
+					       gpu_threads_per_block,
+					       0, have_gpu_input,
+					       have_gpu_output};
 			workers.push_back(seq);
 		}
 		// add emitter
@@ -121,12 +133,16 @@ public:
 	 *  \param tuple_buffer_capacity numbers of tuples to buffer on the GPU
 	 *  \param gpu_threads_per_block number of GPU threads per block
 	 */
-	FilterGPU(func_t func, int pardegree, std::string name,
+	FilterGPU(func_t func, const int pardegree, const std::string &name,
 		  routing_func_t routing_func,
 		  const int tuple_buffer_capacity=default_tuple_buffer_capacity,
 		  const int gpu_threads_per_block=default_gpu_threads_per_block,
-		  const int scratchpad_size=default_scratchpad_size)
-		: is_keyed {true}
+		  const int scratchpad_size=default_scratchpad_size,
+		  const bool have_gpu_input=false,
+		  const bool have_gpu_output=false)
+		: name {name}, pardegree {pardegree}, routing_mode {KEYBY},
+		  have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}
 	{
 		// check the validity of the parallelism degree
 		if (pardegree == 0) {
@@ -154,18 +170,49 @@ public:
 	}
 
 	/**
-	 *  \brief Check whether the FilterGPU has been instantiated with a
-	 *  key-based distribution or not
-	 * \return true if the FilterGPU is configured with keyBy
+	 *  \brief Get the name of the operator
+	 *  \return name of the operator
 	 */
-	bool isKeyed() const { return is_keyed; }
+	std::string getName() const { return name; }
 
 	/**
-	 *  \brief Check whether the Filter has been used in a MultiPipe
-	 *  \return true if the Filter has been added/chained to an existing
-	 *  MultiPipe
+	 *  \brief Get the total parallelism within the operator
+	 *  \return total parallelism within the operator
+	 */
+	std::size_t getParallelism() const { return pardegree; }
+
+	/**
+	 *  \brief Return the routing mode of the operator
+	 *  \return routing mode used by the operator
+	 */
+	routing_modes_t getRoutingMode() const { return routing_mode; }
+
+	/**
+	 *  \brief Check whether the MapGPU has been used in a MultiPipe
+	 *  \return true if the MapGPU has been added/chained to an existing MultiPipe
 	 */
 	bool isUsed() const { return is_used; }
+
+	/**
+	 *  \brief Get the Stats_Record of each replica within the operator
+	 *  \return vector of Stats_Record objects
+	 */
+	std::vector<Stats_Record> get_StatsRecords() const {
+		// TODO
+		return {Stats_Record {name, name, true}};
+	}
+
+	/**
+	 *  \brief Check whether the MapGPU has input from another GPU operator
+	 *  \return true if the MapGPU has input on the GPU, false otherwise
+	 */
+	bool HasGPUInput() const { return have_gpu_input; }
+
+	/**
+	 *  \brief Check whether the MapGPU has output to another GPU operator
+	 *  \return true if the MapGPU has output to the GPU, false otherwise
+	 */
+	bool HasGPUOutput() const { return have_gpu_output; }
 
 	/*
 	 * This object may not be copied nor moved.
