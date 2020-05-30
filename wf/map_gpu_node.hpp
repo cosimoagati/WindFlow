@@ -692,7 +692,8 @@ public:
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
-		assert(total_buffer_capacity > 0 && gpu_threads_per_block > 0);
+		assert(total_buffer_capacity > 0 && gpu_threads_per_block > 0
+		       && scratchpad_size >= 0);
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
 		if (!have_gpu_input) {
 			if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
