@@ -256,16 +256,16 @@ class MapGPU_Node: public ff::ff_minode {
 		cudaMemcpy(device_to, host_from, size, cudaMemcpyHostToDevice);
 	}
 
-	template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
-	void setup_gpu_result_buffer() { gpu_result_buffer = gpu_tuple_buffer; }
+	// template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
+	// void setup_gpu_result_buffer() { gpu_result_buffer = gpu_tuple_buffer; }
 
-	template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
-	void setup_gpu_result_buffer() {
-		const auto size = total_buffer_capacity * sizeof(result_t);
-		if (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
-			failwith("MapGPU_Node failed to allocate GPU result buffer");
-		}
-	}
+	// template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
+	// void setup_gpu_result_buffer() {
+	// 	const auto size = total_buffer_capacity * sizeof(result_t);
+	// 	if (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
+	// 		failwith("MapGPU_Node failed to allocate GPU result buffer");
+	// 	}
+	// }
 
 	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
 	void setup_tuple_state_buffers() {}
@@ -707,7 +707,6 @@ public:
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
-		// TODO: We need to correctly allocate initial buffers!
 		assert(total_buffer_capacity > 0 && gpu_threads_per_block > 0);
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
 		if (!have_gpu_input) {
@@ -716,16 +715,25 @@ public:
 			}
 		}
 		const auto result_buffer_size = sizeof(result_t) * total_buffer_capacity;
-		if (cudaMallocHost(&cpu_result_buffer, result_buffer_size) != cudaSuccess) {
-			failwith("MapGPU_Node failed to allocate CPU result buffer");
+		if (!have_gpu_input) {
+			if (cudaMalloc(&gpu_result_buffer, result_buffer_size) != cudaSuccess) {
+				failwith("MapGPU_Node failed to allocate GPU result buffer");
+			}
 		}
-		if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
-			failwith("MapGPU_Node failed to allocate GPU tuple buffer");
+		if (!have_gpu_output) {
+			if (cudaMallocHost(&cpu_result_buffer, result_buffer_size) != cudaSuccess) {
+				failwith("MapGPU_Node failed to allocate CPU result buffer");
+			}
+		}
+		if (!is_in_place<func_t>) { // Should be done at compile time...
+			if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
+				failwith("MapGPU_Node failed to allocate GPU tuple buffer");
+			}
 		}
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
-		setup_gpu_result_buffer();
+		// setup_gpu_result_buffer();
 		setup_tuple_state_buffers();
 	}
 
