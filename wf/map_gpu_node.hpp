@@ -103,8 +103,7 @@ __global__ void run_map_kernel_keyed_ip(const func_t map_func,
 	for (auto i = 0u; i < buffer_capacity; ++i) {
 		auto &state = tuple_state[i];
 		if (state.hash % num_threads == index) {
-			map_func(tuple_buffer[i], state.scratchpad,
-				 scratchpad_size);
+			map_func(tuple_buffer[i], state.scratchpad, scratchpad_size);
 		}
 	}
 }
@@ -151,16 +150,14 @@ class MapGPU_Node: public ff::ff_minode {
 	static constexpr bool is_in_place_keyless = is_invocable<F, tuple_t &>::value;
 
 	template<typename F>
-	static constexpr bool is_not_in_place_keyless =
-		is_invocable<F, const tuple_t &, tuple_t &>::value;
+	static constexpr bool is_not_in_place_keyless = is_invocable<F, const tuple_t &, tuple_t &>::value;
 
 	template<typename F>
-	static constexpr bool is_in_place_keyed =
-		is_invocable<F, tuple_t &, char *, std::size_t>::value;
+	static constexpr bool is_in_place_keyed = is_invocable<F, tuple_t &, char *, std::size_t>::value;
 
 	template<typename F>
-	static constexpr bool is_not_in_place_keyed =
-		is_invocable<F, const tuple_t &, result_t &, char *, std::size_t>::value;
+	static constexpr bool is_not_in_place_keyed = is_invocable<F, const tuple_t &,
+								   result_t &, char *, std::size_t>::value;
 
 	template<typename F>
 	static constexpr bool is_in_place = is_in_place_keyless<F> || is_in_place_keyed<F>;
