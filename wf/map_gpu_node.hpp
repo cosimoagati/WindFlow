@@ -577,6 +577,7 @@ class MapGPU_Node: public ff::ff_minode {
 			for (auto i = 0; i < current_buffer_capacity; ++i) {
 				this->ff_send_out(new result_t {cpu_tuple_buffer[i]});
 			}
+		}
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
