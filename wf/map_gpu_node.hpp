@@ -597,8 +597,8 @@ class MapGPU_Node: public ff::ff_minode {
 		}
 		if (have_gpu_output) {
 			const auto size = current_buffer_capacity * sizeof(result_t);
-			cudaMemcpy(gpu_result_buffer, cpu_result_buffer;
-				   size, cudaMemcpyHostToDevice);
+			cudaMemcpy(gpu_result_buffer, cpu_result_buffer, size,
+				   cudaMemcpyHostToDevice);
 			this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
 									 current_buffer_capacity});
 		} else {
