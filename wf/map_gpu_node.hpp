@@ -810,6 +810,14 @@ public:
 #endif
 	}
 
+	void set_GPUInput(const bool val) {
+		have_gpu_input = val;
+	}
+
+	void set_GPUOutput(const bool val) {
+		have_gpu_output = val;
+	}
+
 	/*
 	 * This object may not be copied nor moved.
 	 */
