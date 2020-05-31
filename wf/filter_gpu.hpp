@@ -93,7 +93,7 @@ public:
 		  const int gpu_threads_per_block=default_gpu_threads_per_block,
 		  const bool have_gpu_input=false,
 		  const bool have_gpu_output=false)
-		: name {name}, pardegree {pardegree}, routing_mode {NONE},
+		: name {name}, pardegree {pardegree}, routing_mode {FORWARD},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
