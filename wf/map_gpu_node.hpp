@@ -295,7 +295,7 @@ class MapGPU_Node: public ff::ff_minode {
 			}
 			gpu_result_buffer = handle->buffer;
 			total_buffer_capacity = handle->size;
-			delete input;
+			delete handle;
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
@@ -345,7 +345,7 @@ class MapGPU_Node: public ff::ff_minode {
 			resize_gpu_buffer(gpu_result_buffer, handle->size);
 			gpu_tuple_buffer = handle->buffer;
 			total_buffer_capacity = handle->size;
-			delete input;
+			delete handle;
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
