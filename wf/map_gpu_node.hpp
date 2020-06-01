@@ -811,10 +811,18 @@ public:
 	}
 
 	void set_GPUInput(const bool val) {
+		if (have_gpu_input == val) {
+			return;
+		}
+		// TODO: Reallocate buffers...
 		have_gpu_input = val;
 	}
 
 	void set_GPUOutput(const bool val) {
+		if (have_gpu_output == val) {
+			return;
+		}
+		// TODO: Reallocate buffers...
 		have_gpu_output = val;
 	}
 
