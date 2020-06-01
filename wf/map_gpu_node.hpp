@@ -205,7 +205,7 @@ class MapGPU_Node: public ff::ff_minode {
 	using key_t = std::remove_reference_t<decltype(std::get<0>(tuple_t {}.getControlFields()))>;
 
 	/*
-	 * Class memebers
+	 * Class memebers.
 	 */
 	func_t map_func;
 	std::string operator_name;
@@ -224,7 +224,7 @@ class MapGPU_Node: public ff::ff_minode {
 	result_t *gpu_result_buffer;
 
 	/*
-	 *Only used for stateful (keyed) computations.
+	 * Only used for stateful (keyed) computations.
 	 */
 	std::unordered_map<key_t, char *> key_scratchpad_map;
 	std::hash<key_t> hash;
@@ -525,8 +525,9 @@ class MapGPU_Node: public ff::ff_minode {
 	}
 
 	/*
-	 * Resizes buffer to new_size. the buffer must be allocated on the host
-	 * via CUDA.
+	 * Resizes the specified buffer to new_size if it's smaller than the
+	 * current buffer capacity. the buffer must be allocated on the host via
+	 * CUDA.
 	 */
 	template<typename T>
 	void resize_cpu_buffer(T *&buffer, const int new_size) {
