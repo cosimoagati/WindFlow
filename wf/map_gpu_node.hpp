@@ -253,6 +253,17 @@ class MapGPU_Node: public ff::ff_minode {
 		cudaMemcpy(device_to, host_from, size, cudaMemcpyHostToDevice);
 	}
 
+	template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
+	void allocate_gpu_tuple_input_buffer() {}
+
+	template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
+	void allocate_gpu_tuple_input_buffer() {
+		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
+		if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
+			failwith("MapGPU_Node failed to allocate GPU tuple buffer");
+		}
+	}
+
 	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
 	void setup_tuple_state_buffers() {}
 
@@ -719,6 +730,7 @@ public:
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
+		allocate_gpu_tuple_input_buffer();
 		setup_tuple_state_buffers();
 	}
 
