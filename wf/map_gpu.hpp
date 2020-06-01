@@ -245,6 +245,20 @@ public:
 		ff::ff_farm::cleanup_all();
 	}
 
+	void set_GPUInput(const bool val) {
+		for (auto worker : this->getWorkers()) {
+			auto worker_casted = static_cast<node_t *>(worker);
+			worker_casted->set_GPUInput(val);
+		}
+	}
+
+	void set_GPUOutput(const bool val) {
+		for (auto worker : this->getWorkers()) {
+			auto worker_casted = static_cast<node_t *>(worker);
+			worker_casted->set_GPUOutput(val);
+		}
+	}
+
 	/**
 	 *  \brief Get the name of the operator
 	 *  \return name of the operator
