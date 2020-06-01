@@ -301,7 +301,6 @@ class MapGPU_Node: public ff::ff_minode {
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
 			delete t;
 			++current_buffer_capacity;
-
 			if (current_buffer_capacity < total_buffer_capacity) {
 				return this->GO_ON;
 			}
