@@ -672,10 +672,10 @@ class MapGPU_Node: public ff::ff_minode {
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
-	void deallocate_gpu_result_buffer() {}
+	void deallocate_gpu_tuple_input_buffer() {}
 
 	template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
-	void deallocate_gpu_result_buffer() { cudaFree(gpu_result_buffer); }
+	void deallocate_gpu_tuple_input_buffer() { cudaFree(gpu_tuple_buffer); }
 
 	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
 	void deallocate_tuple_state_buffers() {}
@@ -733,8 +733,8 @@ public:
 	~MapGPU_Node() {
 		cudaFreeHost(cpu_tuple_buffer);
 		cudaFreeHost(cpu_result_buffer);
-		cudaFree(gpu_tuple_buffer);
-		deallocate_gpu_result_buffer();
+		cudaFree(gpu_result_buffer);
+		deallocate_gpu_tuple_input_buffer();
 		deallocate_tuple_state_buffers();
 		cudaStreamDestroy(cuda_stream);
 	}
