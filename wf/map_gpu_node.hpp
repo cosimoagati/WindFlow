@@ -559,13 +559,14 @@ class MapGPU_Node: public ff::ff_minode {
 
 	/*
 	 * Allocates scratchpad on the device for the respective tuple, if not
-	 * yet present.
+	 * yet present, otherwise it does nothing.
 	 */
 	void allocate_scratchpad(const key_t &key) {
-		if (key_scratchpad_map.find(key) == key_scratchpad_map.end()) {
-			if (cudaMalloc(&key_scratchpad_map[key], scratchpad_size) != cudaSuccess) {
-				failwith("MapGPU_Node failed to allocate GPU scratchpad.");
-			}
+		if (key_scratchpad_map.find(key) != key_scratchpad_map.end()) {
+			return;
+		}
+		if (cudaMalloc(&key_scratchpad_map[key], scratchpad_size) != cudaSuccess) {
+			failwith("MapGPU_Node failed to allocate GPU scratchpad.");
 		}
 	}
 	
@@ -720,11 +721,6 @@ public:
 		if (!have_gpu_output) {
 			if (cudaMallocHost(&cpu_result_buffer, result_buffer_size) != cudaSuccess) {
 				failwith("MapGPU_Node failed to allocate CPU result buffer");
-			}
-		}
-		if (!is_in_place<func_t>) { // Should be done at compile time...
-			if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
-				failwith("MapGPU_Node failed to allocate GPU tuple buffer");
 			}
 		}
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
