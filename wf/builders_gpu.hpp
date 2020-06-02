@@ -689,7 +689,7 @@ public:
 	 */
 	KeyFarmGPU_Builder<T> &withTBWindows(std::chrono::microseconds _win_len,
 					     std::chrono::microseconds _slide_len,
-					     std::chrono::microseconds _triggering_delay=std::chrono::microseconds::zero()) a{
+					     std::chrono::microseconds _triggering_delay=std::chrono::microseconds::zero()) {
 		// check if it is a complex nesting
 		if (isComplex) {
 			std::cerr << RED << "WindFlow Error: nesting does not allow configuring the Key_Farm_GPU parameters" << DEFAULT_COLOR << std::endl;
@@ -1577,10 +1577,10 @@ public:
 	 *  \return a pointer to the created MapGPU operator (to be explicitly deallocated/destroyed).
 	 */
 	mapgpu_t *build_ptr() {
-		if (!is_keyed) {
+		if (routing_mode == FORWARD) {
 			return new mapgpu_t {func, pardegree, name,
 					     tuple_buffer_capacity,
-					     gpu_threads_per_block}
+					     gpu_threads_per_block};
 		}
 		return new mapgpu_t {func, pardegree, name,
 				     routing_func, tuple_buffer_capacity,
@@ -1593,15 +1593,16 @@ public:
 	 *  \return a std::unique_ptr to the newly created MapGPU operator.
 	 */
 	std::unique_ptr<mapgpu_t> build_unique() {
-		return !is_keyed ?
+		if (routing_mode == FORWARD) {
 			std::make_unique<mapgpu_t>(func, pardegree, name,
 						   tuple_buffer_capacity,
-						   gpu_threads_per_block) : std::make_unique<mapgpu_t>(
-							   func, pardegree,
-							   name, routing_func,
-							   tuple_buffer_capacity,
-							   gpu_threads_per_block,
-							   scratchpad_size);
+						   gpu_threads_per_block);
+		}
+		return std::make_unique<mapgpu_t>(func, pardegree, name,
+						  routing_func,
+						  tuple_buffer_capacity,
+						  gpu_threads_per_block,
+						  scratchpad_size);
 	}
 };
 
