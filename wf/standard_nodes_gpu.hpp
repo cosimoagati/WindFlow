@@ -80,7 +80,7 @@ public:
 		return new Standard_EmitterGPU<tuple_t> {*this};
 	}
 
-	int svc_init() { return 0; }
+	int svc_init() const { return 0; }
 
 	void *svc(void *const in) {
 		tuple_t *t = reinterpret_cast<tuple_t *>(in);
@@ -104,7 +104,7 @@ public:
 		return this->GO_ON;
 	}
 
-	void svc_end() {}
+	void svc_end() const {}
 
 	std::size_t getNDestinations() const { return num_of_destinations; }
 
