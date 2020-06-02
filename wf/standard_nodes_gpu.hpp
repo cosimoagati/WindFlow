@@ -30,6 +30,7 @@
 #define STANDARD_GPU_H
 
 #include <cstddef>
+#include <functional>
 #include <vector>
 #include "basic.hpp"
 #include <ff/multinode.hpp>
@@ -39,76 +40,83 @@ namespace wf {
 template<typename tuple_t>
 class Standard_EmitterGPU: public Basic_Emitter {
 private:
-	// type of the function to map the key hashcode onto an identifier starting from zero to pardegree-1
+	// type of the function to map the key hashcode onto an identifier
+	// starting from zero to pardegree-1
 	using routing_func_t = std::function<size_t(size_t, size_t)>;
-	bool isKeyed; // flag stating whether the key-based distribution is used or not
+	using key_t = std::remove_reference_t<decltype(std::get<0>(tuple_t {}.getControlFields()))>;
+
+	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
-	bool isCombined; // true if this node is used within a Tree_Emitter node
+	std::hash<key_t> hash;
 	std::vector<std::pair<void *, int>> output_queue; // used in case of Tree_Emitter mode
-	std::size_t dest_w; // used to select the destination
-	std::size_t n_dest; // number of destinations
-
-
+	std::size_t destination_index;
+	std::size_t num_of_destinations;
+	bool is_combined; // true if this node is used within a Tree_Emitter node
+	bool have_gpu_input;
+	bool have_gpu_output;
 public:
-	Standard_EmitterGPU(const std::size_t n_dest)
-		: isKeyed {false}, isCombined {false}, dest_w(0), n_dest(n_dest)
+	Standard_EmitterGPU(const std::size_t num_of_destinations,
+			    const bool have_gpu_input=false,
+			    const bool have_gpu_output=false)
+		: routing_mode {FORWARD}, is_combined {false}, destination_index {0},
+		  num_of_destinations {num_of_destinations},
+		  have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}
 	{}
 
 	Standard_EmitterGPU(const routing_func_t routing_func,
-			    const std::size_t n_dest)
-		: isKeyed {true}, routing_func {routing_func},
-		  isCombined {false}, dest_w {0}, n_dest {n_dest}
+			    const std::size_t num_of_destinations,
+			    const bool have_gpu_input=false,
+			    const bool have_gpu_output=false)
+		: routing_mode {FORWARD}, routing_func {routing_func},
+		  is_combined {false}, destination_index {0},
+		  num_of_destinations {num_of_destinations},
+		  have_gpu_input {have_gpu_input},
+		  have_gpu_output {have_gpu_output}
 	{}
 
+	// Why does this method exist? Isn't this redundant?
 	Basic_Emitter *clone() const {
-		return new Standard_EmitterGPU<tuple_t>(*this);
+		return new Standard_EmitterGPU<tuple_t> {*this};
 	}
 
 	int svc_init() { return 0; }
 
 	void *svc(void *const in) {
 		tuple_t *t = reinterpret_cast<tuple_t *>(in);
-		if (isKeyed) { // keyed-based distribution enabled
-			// extract the key from the input tuple
-			auto key = std::get<0>(t->getControlFields()); // key
-			auto hashcode = std::hash<decltype(key)>()(key); // compute the hashcode of the key
-			// evaluate the routing function
-			dest_w = routing_func(hashcode, n_dest);
+		if (routing_mode == KEYBY && !have_gpu_input) {
+			auto key = std::get<0>(t->getControlFields());
+			auto hashcode = hash(key);
+			destination_index = routing_func(hashcode, num_of_destinations);
 			// send the tuple
-			if (!isCombined) {
-				this->ff_send_out_to(t, dest_w);
+			if (!is_combined) {
+				this->ff_send_out_to(t, destination_index);
 			} else {
-				output_queue.push_back(std::make_pair(t, dest_w));
+				output_queue.push_back(std::make_pair(t, destination_index));
 			}
 			return this->GO_ON;
 		}
-		if (!isCombined) {
+		if (!is_combined) {
 			return t;
 		}
-		output_queue.push_back(std::make_pair(t, dest_w));
-		dest_w = (dest_w + 1) % n_dest;
+		output_queue.push_back(std::make_pair(t, destination_index));
+		destination_index = (destination_index + 1) % num_of_destinations;
 		return this->GO_ON;
 	}
 
 	void svc_end() {}
 
-	size_t getNDestinations() const { return n_dest; }
+	std::size_t getNDestinations() const { return num_of_destinations; }
 
-	void setTree_EmitterMode(const bool val) { isCombined = val; }
+	void setTree_EmitterMode(const bool val) { is_combined = val; }
 
 	std::vector<std::pair<void *, int>> &getOutputQueue() {
 		return output_queue;
 	}
-
-	// No copying nor moving!
-	Standard_EmitterGPU(const Standard_EmitterGPU &) = delete;
-	Standard_EmitterGPU(Standard_EmitterGPU &&) = delete;
-	Standard_EmitterGPU &operator=(const Standard_EmitterGPU &) = delete;
-	Standard_EmitterGPU &operator=(Standard_EmitterGPU &&) = delete;
 };
 
-// TODO
 // class Standard_Collector
+// FIXME: Is this needed?
 class Standard_CollectorGPU: public ff::ff_minode {
 public:
 	Standard_CollectorGPU(const ordering_mode_t mode=TS) {
