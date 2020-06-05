@@ -48,17 +48,17 @@ private:
 	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
-	std::vector<std::pair<void *, int>> output_queue; // used in case of Tree_Emitter mode
 	std::size_t destination_index;
 	std::size_t num_of_destinations;
-	bool is_combined; // true if this node is used within a Tree_Emitter node
+	// TODO: is it fine for a GPU emitter to be used in a Tree_Emitter?
+	// bool is_combined; // true if this node is used within a Tree_Emitter node
 	bool have_gpu_input;
 	bool have_gpu_output;
 public:
 	Standard_EmitterGPU(const std::size_t num_of_destinations,
 			    const bool have_gpu_input=false,
 			    const bool have_gpu_output=false)
-		: routing_mode {FORWARD}, is_combined {false}, destination_index {0},
+		: routing_mode {FORWARD}, destination_index {0},
 		  num_of_destinations {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
@@ -69,7 +69,7 @@ public:
 			    const bool have_gpu_input=false,
 			    const bool have_gpu_output=false)
 		: routing_mode {FORWARD}, routing_func {routing_func},
-		  is_combined {false}, destination_index {0},
+		  destination_index {0},
 		  num_of_destinations {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
@@ -89,30 +89,14 @@ public:
 			auto hashcode = hash(key);
 			destination_index = routing_func(hashcode, num_of_destinations);
 			// send the tuple
-			if (!is_combined) {
-				this->ff_send_out_to(t, destination_index);
-			} else {
-				output_queue.push_back(std::make_pair(t, destination_index));
-			}
-			return this->GO_ON;
+			this->ff_send_out_to(t, destination_index);
 		}
-		if (!is_combined) {
-			return t;
-		}
-		output_queue.push_back(std::make_pair(t, destination_index));
-		destination_index = (destination_index + 1) % num_of_destinations;
-		return this->GO_ON;
+		return t;
 	}
 
 	void svc_end() const {}
 
 	std::size_t getNDestinations() const { return num_of_destinations; }
-
-	void setTree_EmitterMode(const bool val) { is_combined = val; }
-
-	std::vector<std::pair<void *, int>> &getOutputQueue() {
-		return output_queue;
-	}
 };
 
 // class Standard_Collector
