@@ -37,6 +37,7 @@
 #include "basic_emitter.hpp"
 
 namespace wf {
+
 template<typename tuple_t>
 class Standard_EmitterGPU: public Basic_Emitter {
 private:
@@ -54,6 +55,7 @@ private:
 	// bool is_combined; // true if this node is used within a Tree_Emitter node
 	bool have_gpu_input;
 	bool have_gpu_output;
+
 public:
 	Standard_EmitterGPU(const std::size_t num_of_destinations,
 			    const bool have_gpu_input=false,
@@ -82,16 +84,21 @@ public:
 
 	int svc_init() const { return 0; }
 
-	void *svc(void *const in) {
-		tuple_t *t = reinterpret_cast<tuple_t *>(in);
-		if (routing_mode == KEYBY && !have_gpu_input) {
+	void *svc(void *const input) {
+		if (routing_mode != KEYBY) {
+			return input; // Same thing whether input is a tuple or a GPU batch.
+		}
+		if (have_gpu_input) {
+			// TODO
+		} else {
+			tuple_t *t = reinterpret_cast<tuple_t *>(input);
 			auto key = std::get<0>(t->getControlFields());
 			auto hashcode = hash(key);
 			destination_index = routing_func(hashcode, num_of_destinations);
-			// send the tuple
 			this->ff_send_out_to(t, destination_index);
+			return this->GO_ON;
 		}
-		return t;
+		return nullptr; // Silence potential compiler warnings.
 	}
 
 	void svc_end() const {}
