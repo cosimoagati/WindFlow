@@ -40,6 +40,21 @@
 
 namespace wf {
 
+/*
+ * Used to split a keyed batch to ensure keys always go to the same node.
+ */
+// TODO: Change names to something more self-explainatory.
+template<typename tuple_t>
+__global__ void create_sub_batch(tuple_t *bin, std::size_t batch_size,
+				 std::size_t *index_gpu, std::size_t *scan_0,
+				 std::size_t bout_0, int target_node) {
+	const auto id = blockIdx.x * blockDim.x + threadIdx.x;
+	if (index_gpu[id] == target_node) {
+		bout_0[scan_0[index[id]] - 1] = bin[id];
+	}
+
+}
+
 template<typename tuple_t>
 class Standard_EmitterGPU: public Basic_Emitter {
 private:
@@ -91,7 +106,20 @@ public:
 			return input; // Same thing whether input is a tuple or a GPU batch.
 		}
 		if (have_gpu_input) {
-			linear_keyed_gpu_partition(input);
+			auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+			std::size_t cpu_hash_index[num_of_destinations]; // Stores modulo"d hash values for keys.
+			for (auto i = 0; i < handle->size; ++i) {
+				cpu_hash_index[i]= hash(handle->buffer[i]);
+			}
+			const auto raw_index_size = sizeof(std::size_t) * num_of_destinations;
+			std::size_t *gpu_hash_index;
+			if (cudaMalloc(&gpu_hash_index, raw_index_size) != cudaSuccess) {
+				failwith("Standard_EmitterGPU failed to allocate GPU index");
+			}
+			cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
+			for (auto i = 0; i < num_of_destinations; ++i) {
+				// TODO: Adapt parallel scan!
+			}
 		} else {
 			auto t = reinterpret_cast<tuple_t *>(input);
 			auto key = std::get<0>(t->getControlFields());
@@ -122,12 +150,11 @@ public:
 			const auto &cpu_sub_buffer = kv->second;
 			const auto raw_size = sizeof(tuple_t) * cpu_sub_buffer.size();
 			tuple_t *gpu_sub_buffer;
-			if (cudaMalloc(&cpu_sub_buffer, raw_size) != cudaSuccess) {
+			if (cudaMalloc(&gpu_sub_buffer, raw_size) != cudaSuccess) {
 				failwith("Standard_EmitterGPU failed to allocate GPU sub-buffer");
 			}
-			cudaMemcpy(gpu_sub_buffer, cpu_sub_buffer. size, cudaMemcpyHostToDevice);
-			this->ff_send_out_to(new GPUBufferHandle {gpu_sub_buffer,
-								  cpu_sub_buffer.size()},
+			cudaMemcpy(gpu_sub_buffer, cpu_sub_buffer. raw_size, cudaMemcpyHostToDevice);
+			this->ff_send_out_to(new GPUBufferHandle {gpu_sub_buffer, cpu_sub_buffer.size()},
 					     kv->first);
 		}
 		cudaFree(handle->buffer);
