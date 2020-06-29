@@ -61,8 +61,6 @@ template<typename T>
 struct GPUBufferHandle {
 	T *buffer;
 	int size; // Because making std::size_t unsigned was a mistake.
-
-	~GPUBufferHandle() { cudaFree(buffer); }
 };
 
 inline void failwith(const std::string &err) {
