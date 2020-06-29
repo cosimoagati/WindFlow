@@ -32,9 +32,11 @@
 #include <cstddef>
 #include <functional>
 #include <vector>
-#include "basic.hpp"
+#include <unordered_map>
 #include <ff/multinode.hpp>
+#include "basic.hpp"
 #include "basic_emitter.hpp"
+#include "gpu_utils.hpp"
 
 namespace wf {
 
@@ -89,9 +91,9 @@ public:
 			return input; // Same thing whether input is a tuple or a GPU batch.
 		}
 		if (have_gpu_input) {
-			// TODO
+			linear_keyed_gpu_partition(input);
 		} else {
-			tuple_t *t = reinterpret_cast<tuple_t *>(input);
+			auto t = reinterpret_cast<tuple_t *>(input);
 			auto key = std::get<0>(t->getControlFields());
 			auto hashcode = hash(key);
 			destination_index = routing_func(hashcode, num_of_destinations);
@@ -99,6 +101,37 @@ public:
 			return this->GO_ON;
 		}
 		return nullptr; // Silence potential compiler warnings.
+	}
+
+	/*
+	 * Supposed to be slow, only for performance testing purposes.
+	 */
+	void linear_keyed_gpu_partition(void *const input) {
+		auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+		std::vector<tuple_t> cpu_tuple_buffer (handle->size);
+		cudaMemcpy(cpu_tuple_buffer, handle->buffer,
+			   sizeof(tuple_t) * handle->size, cudaMemcpyDeviceToHost);
+		std::unordered_map<std::size_t, std::vector<tuple_t>> sub_buffer_map;
+
+		for (auto i = 0; i < handle->size; ++i) {
+			const auto &tuple = handle->buffer[i];
+			auto hashcode = hash(tuple) % num_of_destinations;
+			sub_buffer_map[hashcode].push_back(tuple);
+		}
+		for (const auto &kv : sub_buffer_map) {
+			const auto &cpu_sub_buffer = kv->second;
+			const auto raw_size = sizeof(tuple_t) * cpu_sub_buffer.size();
+			tuple_t *gpu_sub_buffer;
+			if (cudaMalloc(&cpu_sub_buffer, raw_size) != cudaSuccess) {
+				failwith("Standard_EmitterGPU failed to allocate GPU sub-buffer");
+			}
+			cudaMemcpy(gpu_sub_buffer, cpu_sub_buffer. size, cudaMemcpyHostToDevice);
+			this->ff_send_out_to(new GPUBufferHandle {gpu_sub_buffer,
+								  cpu_sub_buffer.size()},
+					     kv->first);
+		}
+		cudaFree(handle->buffer);
+		delete handle;
 	}
 
 	void svc_end() const {}
