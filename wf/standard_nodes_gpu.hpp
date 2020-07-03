@@ -137,7 +137,6 @@ public:
 		  have_gpu_output {have_gpu_output}
 	{}
 
-	// Why does this method exist? Isn't this redundant?
 	Basic_Emitter *clone() const {
 		return new Standard_EmitterGPU<tuple_t> {*this};
 	}
