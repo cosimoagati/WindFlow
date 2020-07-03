@@ -46,7 +46,7 @@ namespace wf {
  */
 template <typename T>
 __global__ void prescan(T *const g_odata, T *const g_idata, const int n) {
-	extern __shared__ T temp[];  // allocated on invocation
+	extern __shared__ T temp[]; // allocated on invocation
 	int thid = threadIdx.x;
 	int offset = 1;
 
@@ -62,9 +62,9 @@ __global__ void prescan(T *const g_odata, T *const g_idata, const int n) {
 		offset *= 2;
 	}
 	if (thid == 0) {
-		temp[n - 1] = 0;  // clear the last element
+		temp[n - 1] = 0; // clear the last element
 	}
-	for (int d = 1; d < n; d *= 2) {// traverse down tree & build scan
+	for (int d = 1; d < n; d *= 2) { // traverse down tree & build scan
 		offset >>= 1;
 		__syncthreads();
 		if (thid < d) {
