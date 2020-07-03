@@ -96,6 +96,8 @@ __global__ void create_sub_batch(tuple_t *const bin,
 				 const std::size_t bout,
 				 const int target_node) {
 	const auto id = blockIdx.x * blockDim.x + threadIdx.x;
+	// No need for an explicit cycle: each GPU thread computes this in
+	// parallel.
 	if (id < batch_size && index[id] == target_node) {
 		bout[scan[index[id]] - 1] = bin[id];
 	}
