@@ -44,8 +44,10 @@ namespace wf {
  * the book "GPU Gems 3":
  * https://developer.nvidia.com/gpugems/gpugems3/contributors
  */
+// TODO: Adapt to contain target value! Right now it just performs a sum.
 template <typename T>
-__global__ void prescan(T *const g_odata, T *const g_idata, const int n) {
+__global__ void prescan(T *const g_odata, T *const g_idata, const int n,
+			const int target_value) {
 	extern __shared__ T temp[]; // allocated on invocation
 	int thid = threadIdx.x;
 	int offset = 1;
@@ -161,6 +163,7 @@ public:
 			cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
 			for (auto i = 0; i < num_of_destinations; ++i) {
 				// TODO: Adapt parallel scan!
+
 			}
 		} else {
 			auto t = reinterpret_cast<tuple_t *>(input);
