@@ -178,10 +178,8 @@ public:
 				if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
 					failwith("Standard_EmitterGPU failed to allocate partial output batch.");
 				}
-				create_sub_batch<<<1, 256>>>(handle->buffer,
-							     num_of_destinations,
-							     gpu_hash_index,
-							     scan, bout, i);
+				create_sub_batch<<<1, 256>>>(handle->buffer, num_of_destinations,
+							     gpu_hash_index, scan, bout, i);
 				ff_send_out_to(new GPUBufferHandle {bout, scan[num_of_destinations - 1]}, i);
 			}
 			cudaFree(index);
