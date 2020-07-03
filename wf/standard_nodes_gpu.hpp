@@ -45,6 +45,8 @@ namespace wf {
  * https://developer.nvidia.com/gpugems/gpugems3/contributors
  */
 // TODO: Adapt to contain target value! Right now it just performs a sum.
+// Idea: the binary associative operator is a function of the form:
+// if (target_value) { return x + 1; } else { return x; }
 template <typename T>
 __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 			const int target_value) {
@@ -89,15 +91,14 @@ __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 template<typename tuple_t>
 __global__ void create_sub_batch(tuple_t *const bin,
 				 const std::size_t batch_size,
-				 std::size_t *const index_gpu,
-				 std::size_t *const scan_0,
-				 const std::size_t bout_0,
+				 std::size_t *const index,
+				 std::size_t *const scan,
+				 const std::size_t bout,
 				 const int target_node) {
 	const auto id = blockIdx.x * blockDim.x + threadIdx.x;
-	if (index_gpu[id] == target_node) {
-		bout_0[scan_0[index[id]] - 1] = bin[id];
+	if (id < batch_size && index[id] == target_node) {
+		bout[scan[index[id]] - 1] = bin[id];
 	}
-
 }
 
 template<typename tuple_t>
@@ -126,7 +127,9 @@ public:
 		  num_of_destinations {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
-	{}
+	{
+		assert(num_of_destinations);
+	}
 
 	Standard_EmitterGPU(const routing_func_t routing_func,
 			    const std::size_t num_of_destinations,
@@ -137,7 +140,9 @@ public:
 		  num_of_destinations {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
-	{}
+	{
+		assert(num_of_destinations);
+	}
 
 	Basic_Emitter *clone() const {
 		return new Standard_EmitterGPU<tuple_t> {*this};
@@ -161,10 +166,27 @@ public:
 				failwith("Standard_EmitterGPU failed to allocate GPU index");
 			}
 			cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
-			for (auto i = 0; i < num_of_destinations; ++i) {
-				// TODO: Adapt parallel scan!
 
+			std::size_t *scan;
+			if (cudaMalloc(&scan, num_of_destinations * sizeof(std::size_t))) {
+				failwith("Standard_EmitterGPU failed to allocate scan array.");
 			}
+			for (auto i = 0; i < num_of_destinations; ++i) {
+				prescan<<<1, 256>>>(scan, gpu_hash_index, num_of_destinations, i);
+				const auto bout_raw_size = scan[num_of_destinations - 1] * sizeof(tuple_t);
+				tuple_t *bout;
+				if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
+					failwith("Standard_EmitterGPU failed to allocate partial output batch.");
+				}
+				create_sub_batch<<<1, 256>>>(handle->buffer,
+							     num_of_destinations,
+							     gpu_hash_index,
+							     scan, bout, i);
+				ff_send_out_to(new GPUBufferHandle {bout, scan[num_of_destinations - 1]}, i);
+			}
+			cudaFree(index);
+			cudaFree(scan); // TODO: Can these be class members and
+					// deleted in the constructor instead?
 		} else {
 			auto t = reinterpret_cast<tuple_t *>(input);
 			auto key = std::get<0>(t->getControlFields());
