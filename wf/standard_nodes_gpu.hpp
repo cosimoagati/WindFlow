@@ -40,7 +40,7 @@
 
 namespace wf {
 /*
- * Parallel scan (prefix) implementation on GPU.  Code shamelessly taken from
+ * Parallel scan (prefix) implementation on GPU.  Code shamelessly adapted from
  * the book "GPU Gems 3":
  * https://developer.nvidia.com/gpugems/gpugems3/contributors
  */
