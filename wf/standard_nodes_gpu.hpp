@@ -39,15 +39,58 @@
 #include "gpu_utils.hpp"
 
 namespace wf {
+/*
+ * Parallel scan (prefix) implementation on GPU.  Code shamelessly taken from
+ * the book "GPU Gems 3":
+ * https://developer.nvidia.com/gpugems/gpugems3/contributors
+ */
+template <typename T>
+__global__ void prescan(T *const g_odata, T *const g_idata, const int n) {
+	extern __shared__ T temp[];  // allocated on invocation
+	int thid = threadIdx.x;
+	int offset = 1;
+
+	temp[2 * thid] = g_idata[2 * thid]; // load input into shared memory
+	temp[2 * thid + 1] = g_idata[2 * thid + 1];
+	for (int d = n >> 1; d > 0; d >>= 1) { // build sum in place up the tree
+		__syncthreads();
+		if (thid < d) {
+			int ai = offset * (2 *thid + 1) - 1;
+			int bi = offset*(2 * thid + 2) - 1;
+			temp[bi] += temp[ai];
+		}
+		offset *= 2;
+	}
+	if (thid == 0) {
+		temp[n - 1] = 0;  // clear the last element
+	}
+	for (int d = 1; d < n; d *= 2) {// traverse down tree & build scan
+		offset >>= 1;
+		__syncthreads();
+		if (thid < d) {
+			int ai = offset * (2 * thid + 1) - 1;
+			int bi = offset*(2 * thid + 2) - 1;
+			T t = temp[ai];
+			temp[ai] = temp[bi];
+			temp[bi] += t;
+		}
+	}
+	__syncthreads();
+	g_odata[2 * thid] = temp[2 * thid]; // write results to device memory
+	g_odata[2 * thid + 1] = temp[2 * thid + 1];
+}
 
 /*
  * Used to split a keyed batch to ensure keys always go to the same node.
  */
 // TODO: Change names to something more self-explainatory.
 template<typename tuple_t>
-__global__ void create_sub_batch(tuple_t *bin, std::size_t batch_size,
-				 std::size_t *index_gpu, std::size_t *scan_0,
-				 std::size_t bout_0, int target_node) {
+__global__ void create_sub_batch(tuple_t *const bin,
+				 const std::size_t batch_size,
+				 std::size_t *const index_gpu,
+				 std::size_t *const scan_0,
+				 const std::size_t bout_0,
+				 const int target_node) {
 	const auto id = blockIdx.x * blockDim.x + threadIdx.x;
 	if (index_gpu[id] == target_node) {
 		bout_0[scan_0[index[id]] - 1] = bin[id];
