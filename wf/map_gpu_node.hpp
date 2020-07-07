@@ -406,7 +406,7 @@ class MapGPU_Node: public ff::ff_minode {
 			// Ensure scratchpads are allocated. Could be costly...
 			for (auto i = 0; i < total_buffer_capacity; ++i) {
 				tuple_t dummy_tuple;
-				cudaMemcpy(&dummy_tuple, gpu_result_buffer[i],
+				cudaMemcpy(&dummy_tuple, &gpu_result_buffer[i],
 					   sizeof(tuple_t), cudaMemcpyDeviceToHost);
 				const auto key = std::get<0>(dummy_tuple.getControlFields());
 				allocate_scratchpad_if_not_present(key);
@@ -482,7 +482,7 @@ class MapGPU_Node: public ff::ff_minode {
 			// Ensure scratchpads are allocated. Could be costly...
 			for (auto i = 0; i < total_buffer_capacity; ++i) {
 				tuple_t dummy_tuple;
-				cudaMemcpy(&dummy_tuple, gpu_tuple_buffer[i],
+				cudaMemcpy(&dummy_tuple, &gpu_tuple_buffer[i],
 					   sizeof(tuple_t), cudaMemcpyDeviceToHost);
 				const auto key = std::get<0>(dummy_tuple.getControlFields());
 				allocate_scratchpad_if_not_present(key);
