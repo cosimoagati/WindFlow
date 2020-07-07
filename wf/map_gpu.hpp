@@ -270,31 +270,31 @@ public:
 	 *  \brief Get the name of the operator
 	 *  \return name of the operator
 	 */
-	std::string getName() const { return name; }
+	std::string getName() const override { return name; }
 
 	/**
 	 *  \brief Get the total parallelism within the operator
 	 *  \return total parallelism within the operator
 	 */
-	std::size_t getParallelism() const { return pardegree; }
+	std::size_t getParallelism() const override { return pardegree; }
 
 	/**
 	 *  \brief Return the routing mode of the operator
 	 *  \return routing mode used by the operator
 	 */
-	routing_modes_t getRoutingMode() const { return routing_mode; }
+	routing_modes_t getRoutingMode() const override { return routing_mode; }
 
 	/**
 	 *  \brief Check whether the MapGPU has been used in a MultiPipe
 	 *  \return true if the MapGPU has been added/chained to an existing MultiPipe
 	 */
-	bool isUsed() const { return is_used; }
+	bool isUsed() const override { return is_used; }
 
 	/**
 	 *  \brief Get the Stats_Record of each replica within the operator
 	 *  \return vector of Stats_Record objects
 	 */
-	std::vector<Stats_Record> get_StatsRecords() const {
+	std::vector<Stats_Record> get_StatsRecords() const override {
 		// TODO
 		return {Stats_Record {name, name, true}};
 	}

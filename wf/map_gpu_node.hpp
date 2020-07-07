@@ -757,7 +757,7 @@ public:
 	}
 
 	// svc_init method (utilized by the FastFlow runtime)
-	int svc_init() {
+	int svc_init() override {
 #if defined(TRACE_WINDFLOW)
 		logfile = new std::ofstream();
 		operator_name += "_node_" + std::to_string(get_my_id())
@@ -778,7 +778,7 @@ public:
 	 * auxiliary function based on whether the function is stateless or not
 	 * (keyed).
 	 */
-	void *svc(void *const t) {
+	void *svc(void *const t) override {
 #if defined (TRACE_WINDFLOW)
 		startTS = current_time_nsecs();
 		if (rcvTuples == 0) {
@@ -805,7 +805,7 @@ public:
 	 * simplicity, then sends out any remaining results from the last CUDA
 	 * kernel.
 	 */
-	void eosnotify(ssize_t) {
+	void eosnotify(ssize_t) override  {
 		if (was_batch_started) {
 			cudaStreamSynchronize(cuda_stream);
 			if (have_gpu_output) {
@@ -821,7 +821,7 @@ public:
 	}
 
 	// svc_end method (utilized by the FastFlow runtime)
-	void svc_end() {
+	void svc_end() override {
 #if defined (TRACE_WINDFLOW)
 		std::ostringstream stream;
 		stream << "************************************LOG************************************\n";
