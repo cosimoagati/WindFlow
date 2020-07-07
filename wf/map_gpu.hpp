@@ -247,7 +247,7 @@ public:
 		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
-		// when the MapGPU will be destroyed we need aslo to destroy the
+		// when the MapGPU will be destroyed we need also to destroy the
 		// emitter, workers and collector
 		ff::ff_farm::cleanup_all();
 	}
