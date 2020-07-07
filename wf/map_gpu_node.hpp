@@ -304,6 +304,7 @@ class MapGPU_Node: public ff::ff_minode {
 			if (current_buffer_capacity < total_buffer_capacity) {
 				return this->GO_ON;
 			}
+			assert(current_buffer_capacity == total_buffer_capacity);
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
@@ -317,7 +318,9 @@ class MapGPU_Node: public ff::ff_minode {
 					send_tuples_to_cpu_operator();
 				}
 			}
-			copy_host_buffer_to_device(gpu_result_buffer, cpu_tuple_buffer);
+			// copy_host_buffer_to_device(gpu_result_buffer, cpu_tuple_buffer);
+			cudaMemcpy(gpu_result_buffer, cpu_tuple_buffer,
+				   total_buffer_capacity * sizeof(tuple_t), cudaMemcpyHostToDevice);
 			current_buffer_capacity = 0;
 		}
 		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
@@ -367,7 +370,9 @@ class MapGPU_Node: public ff::ff_minode {
 					send_tuples_to_cpu_operator();
 				}
 			}
-			copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
+			// copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
+			cudaMemcpy(gpu_tuple_buffer, cpu_tuple_buffer,
+				   total_buffer_capacity * sizeof(tuple_t), cudaMemcpyHostToDevice);
 			current_buffer_capacity = 0;
 		}
 		run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
@@ -397,18 +402,21 @@ class MapGPU_Node: public ff::ff_minode {
 			gpu_result_buffer = handle->buffer;
 			total_buffer_capacity = handle->size;
 			delete input;
-			tuple_t dummy_tuple; // Used to get key of the batch.
 
-			cudaMemcpy(&dummy_tuple, gpu_result_buffer,
-				   sizeof(tuple_t), cudaMemcpyDeviceToHost);
-			const auto key = std::get<0>(dummy_tuple.getControlFields());
-			allocate_scratchpad(key);
+			// Ensure scratchpads are allocated. Could be costly...
+			for (auto i = 0; i < total_buffer_capacity; ++i) {
+				tuple_t dummy_tuple;
+				cudaMemcpy(&dummy_tuple, gpu_result_buffer[i],
+					   sizeof(tuple_t), cudaMemcpyDeviceToHost);
+				const auto key = std::get<0>(dummy_tuple.getControlFields());
+				allocate_scratchpad_if_not_present(key);
+			}
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
 			const auto key = std::get<0>(t->getControlFields());
 			delete t;
-			allocate_scratchpad(key);
+			allocate_scratchpad_if_not_present(key);
 
 			cpu_tuple_state_buffer[current_buffer_capacity] =
 				{hash(key), key_scratchpad_map[key]};
@@ -470,6 +478,15 @@ class MapGPU_Node: public ff::ff_minode {
 			}
 			total_buffer_capacity = handle->size;
 			delete input;
+
+			// Ensure scratchpads are allocated. Could be costly...
+			for (auto i = 0; i < total_buffer_capacity; ++i) {
+				tuple_t dummy_tuple;
+				cudaMemcpy(&dummy_tuple, gpu_tuple_buffer[i],
+					   sizeof(tuple_t), cudaMemcpyDeviceToHost);
+				const auto key = std::get<0>(dummy_tuple.getControlFields());
+				allocate_scratchpad_if_not_present(key);
+			}
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
@@ -561,7 +578,7 @@ class MapGPU_Node: public ff::ff_minode {
 	 * Allocates scratchpad on the device for the respective tuple, if not
 	 * yet present, otherwise it does nothing.
 	 */
-	void allocate_scratchpad(const key_t &key) {
+	void allocate_scratchpad_if_not_present(const key_t &key) {
 		if (key_scratchpad_map.find(key) != key_scratchpad_map.end()) {
 			return;
 		}
@@ -818,20 +835,20 @@ public:
 #endif
 	}
 
-	void set_GPUInput(const bool val) {
-		if (have_gpu_input == val) {
+	void set_GPUInput(const bool new_val) {
+		if (have_gpu_input == new_val) {
 			return;
 		}
 		// TODO: Reallocate buffers...
-		have_gpu_input = val;
+		have_gpu_input = new_val;
 	}
 
-	void set_GPUOutput(const bool val) {
-		if (have_gpu_output == val) {
+	void set_GPUOutput(const bool new_val) {
+		if (have_gpu_output == new_val) {
 			return;
 		}
 		// TODO: Reallocate buffers...
-		have_gpu_output = val;
+		have_gpu_output = new_val;
 	}
 
 	/*
