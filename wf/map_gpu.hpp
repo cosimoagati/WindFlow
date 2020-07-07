@@ -47,7 +47,8 @@
 #include "basic.hpp"
 #include "basic_operator.hpp"
 #include "context.hpp"
-#include "standard_emitter.hpp"
+// #include "standard_emitter.hpp"
+#include "standard_nodes_gpu.hpp"
 
 #include "gpu_utils.hpp"
 #include "map_gpu_node.hpp"
@@ -186,8 +187,11 @@ public:
 					       have_gpu_output};
 			workers.push_back(seq);
 		}
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
-					 {pardegree});
+		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
+		// 			 {pardegree});
+		ff::ff_farm::add_emitter(new Standard_EmitterGPU<tuple_t>
+					 {pardegree, have_gpu_input,
+					  have_gpu_output});
 		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
@@ -235,8 +239,11 @@ public:
 					       have_gpu_output};
 			workers.push_back(seq);
 		}
-		ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
-					 {routing_func, pardegree});
+		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
+		// 			 {routing_func, pardegree});
+		ff::ff_farm::add_emitter(new Standard_EmitterGPU<tuple_t>
+					 {routing_func, pardegree,
+					  have_gpu_input, have_gpu_output});
 		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
