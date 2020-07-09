@@ -290,7 +290,7 @@ class MapGPU_Node: public ff::ff_minode {
 				} else {
 					send_tuples_to_cpu_operator();
 					cudaFree(gpu_result_buffer);
-					resize_cpu_buffer(cpu_result_buffer, handle->size);
+					enlarge_cpu_buffer(cpu_result_buffer, handle->size);
 				}
 			}
 			gpu_result_buffer = handle->buffer;
@@ -318,9 +318,7 @@ class MapGPU_Node: public ff::ff_minode {
 					send_tuples_to_cpu_operator();
 				}
 			}
-			// copy_host_buffer_to_device(gpu_result_buffer, cpu_tuple_buffer);
-			cudaMemcpy(gpu_result_buffer, cpu_tuple_buffer,
-				   total_buffer_capacity * sizeof(tuple_t), cudaMemcpyHostToDevice);
+			copy_host_buffer_to_device(gpu_result_buffer, cpu_tuple_buffer);
 			current_buffer_capacity = 0;
 		}
 		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
@@ -341,11 +339,11 @@ class MapGPU_Node: public ff::ff_minode {
 				} else {
 					send_tuples_to_cpu_operator();
 					cudaFree(gpu_result_buffer);
-					resize_cpu_buffer(cpu_result_buffer, handle->size);
+					enlarge_cpu_buffer(cpu_result_buffer, handle->size);
 				}
 			}
 			gpu_result_buffer = reinterpret_cast<result_t *>(gpu_tuple_buffer);
-			resize_gpu_buffer(gpu_result_buffer, handle->size);
+			enlarge_gpu_buffer(gpu_result_buffer, handle->size);
 			gpu_tuple_buffer = handle->buffer;
 			total_buffer_capacity = handle->size;
 			delete handle;
@@ -394,23 +392,24 @@ class MapGPU_Node: public ff::ff_minode {
 				} else {
 					send_tuples_to_cpu_operator();
 					cudaFree(gpu_result_buffer);
-					resize_cpu_buffer(cpu_result_buffer, handle->size);
+					enlarge_cpu_buffer(cpu_result_buffer, handle->size);
 				}
 			}
-			// TODO: The proposed keyed GPU input strategy makes no
-			// Sense, should be reimplemented...
 			gpu_result_buffer = handle->buffer;
 			total_buffer_capacity = handle->size;
-			delete input;
+			delete handle;
+			enlarge_cpu_buffer(cpu_tuple_state_buffer, total_buffer_capacity);
 
-			// Ensure scratchpads are allocated. Could be costly...
+			// Ensure scratchpads are allocated and retrieve keys. Could be costly...
 			for (auto i = 0; i < total_buffer_capacity; ++i) {
 				tuple_t dummy_tuple;
 				cudaMemcpy(&dummy_tuple, &gpu_result_buffer[i],
 					   sizeof(tuple_t), cudaMemcpyDeviceToHost);
 				const auto key = std::get<0>(dummy_tuple.getControlFields());
 				allocate_scratchpad_if_not_present(key);
+				cpu_tuple_state_buffer[i] = {hash(key), key_scratchpad_map[key]};
 			}
+			copy_host_buffer_to_device(gpu_tuple_state_buffer, cpu_tuple_state_buffer);
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
@@ -541,12 +540,11 @@ class MapGPU_Node: public ff::ff_minode {
 	}
 
 	/*
-	 * Resizes the specified buffer to new_size if it's smaller than the
-	 * current buffer capacity. the buffer must be allocated on the host via
-	 * CUDA.
+	 * Resizes buffer to new_size if smaller. the buffer must be allocated
+	 * on the host via CUDA.
 	 */
 	template<typename T>
-	void resize_cpu_buffer(T *&buffer, const int new_size) {
+	void enlarge_cpu_buffer(T *&buffer, const int new_size) {
 		if (total_buffer_capacity >= new_size) {
 			return;
 		}
@@ -559,11 +557,11 @@ class MapGPU_Node: public ff::ff_minode {
 	}
 
 	/*
-	 * Resizes buffer to new_size. the buffer must be allocated on the
-	 * device via CUDA.
+	 * Resizes buffer to new_size if smaller. the buffer must be allocated
+	 * on the device via CUDA.
 	 */
 	template<typename T>
-	void resize_gpu_buffer(T *&buffer, const int new_size) {
+	void enlarge_gpu_buffer(T *&buffer, const int new_size) {
 		if (total_buffer_capacity >= new_size) {
 			return;
 		}
