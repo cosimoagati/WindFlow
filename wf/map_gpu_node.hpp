@@ -469,7 +469,8 @@ class MapGPU_Node: public ff::ff_minode {
 			gpu_tuple_buffer = handle->buffer;
 			total_buffer_capacity = handle->size;
 			delete handle;
-			enlarge_gpu_buffer(gpu_result_buffer);
+			enlarge_cpu_buffer(cpu_result_buffer, total_buffer_capacity);
+			enlarge_gpu_buffer(gpu_result_buffer, total_buffer_capacity);
 
 			// Ensure scratchpads are allocated. Could be costly...
 			for (auto i = 0; i < total_buffer_capacity; ++i) {
