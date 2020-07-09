@@ -468,15 +468,9 @@ class MapGPU_Node: public ff::ff_minode {
 			}
 			const auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
 			gpu_tuple_buffer = handle->buffer;
-			if (total_buffer_capacity < handle->size) {
-				cudaFree(gpu_result_buffer);
-				const auto size = handle->size * sizeof(result_t);
-				while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
-					// Empty loop body.
-				}
-			}
 			total_buffer_capacity = handle->size;
-			delete input;
+			delete handle;
+			enlarge_gpu_buffer(gpu_result_buffer);
 
 			// Ensure scratchpads are allocated. Could be costly...
 			for (auto i = 0; i < total_buffer_capacity; ++i) {
@@ -485,7 +479,9 @@ class MapGPU_Node: public ff::ff_minode {
 					   sizeof(tuple_t), cudaMemcpyDeviceToHost);
 				const auto key = std::get<0>(dummy_tuple.getControlFields());
 				allocate_scratchpad_if_not_present(key);
+				cpu_tuple_state_buffer[i] = {hash(key), key_scratchpad_map[key]};
 			}
+			copy_host_buffer_to_device(gpu_tuple_state_buffer, cpu_tuple_state_buffer);
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
