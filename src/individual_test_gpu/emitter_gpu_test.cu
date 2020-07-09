@@ -81,7 +81,7 @@ public:
 		return 0;
 	}
 	tuple_t *svc(tuple_t *const t) {
-		output_stream << t->value << '\n';
+		output_stream << "Value: " << t->value << ", Key: " << t->key << '\n';
 		delete t;
 		return this->GO_ON;
 	}
@@ -152,9 +152,9 @@ void test_gpu() {
 	// 	.withParallelism(1)
 	// 	.build_ptr();
 	MapGPU<tuple_t, tuple_t, decltype(ip_keyed_func)> first_ip_map {ip_keyed_func, 1,
-		"first", routing_func, 256, 256, sizeof(int)};
-	MapGPU<tuple_t, tuple_t, decltype(ip_keyed_func)> second_ip_map {ip_keyed_func, 1,
-		"second", routing_func, 256, 256, sizeof(int)};
+		"first", routing_func, 256, 256, sizeof(int), false, true};
+	MapGPU<tuple_t, tuple_t, decltype(ip_keyed_func)> second_ip_map {ip_keyed_func, 2,
+		"second", routing_func, 256, 256, sizeof(int), true, false};
 	ip_pipe.add_stage(&first_ip_map);
 	ip_pipe.add_stage(&second_ip_map);
 	ip_pipe.add_stage(::Sink<tuple_t> {});
