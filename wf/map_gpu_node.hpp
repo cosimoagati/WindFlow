@@ -420,7 +420,6 @@ class MapGPU_Node: public ff::ff_minode {
 			cpu_tuple_state_buffer[current_buffer_capacity] =
 				{hash(key), key_scratchpad_map[key]};
 			++current_buffer_capacity;
-
 			if (current_buffer_capacity < total_buffer_capacity) {
 				return this->GO_ON;
 			}
@@ -487,16 +486,11 @@ class MapGPU_Node: public ff::ff_minode {
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
 			const auto key = std::get<0>(t->getControlFields());
 			delete t;
+			allocate_scratchpad_if_not_present(key);
 
-			if (key_scratchpad_map.find(key) == key_scratchpad_map.end()) {
-				if (cudaMalloc(&key_scratchpad_map[key], scratchpad_size) != cudaSuccess) {
-					failwith("MapGPU_Node failed to allocate GPU scratchpad.");
-				}
-			}
 			cpu_tuple_state_buffer[current_buffer_capacity] =
 				{hash(key), key_scratchpad_map[key]};
 			++current_buffer_capacity;
-
 			if (current_buffer_capacity < total_buffer_capacity) {
 				return this->GO_ON;
 			}
@@ -580,7 +574,7 @@ class MapGPU_Node: public ff::ff_minode {
 			failwith("MapGPU_Node failed to allocate GPU scratchpad.");
 		}
 	}
-	
+
 	/*
 	 * In case of input from a host (CPU) operator, we must process any
 	 * remaining tuples in the buffer at the end of the stream.
