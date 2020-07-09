@@ -39,6 +39,7 @@
 #include "gpu_utils.hpp"
 
 namespace wf {
+// TODO: Emitter should have its own stream!
 /*
  * Parallel scan (prefix) implementation on GPU.  Code shamelessly adapted from
  * the book "GPU Gems 3":
@@ -51,37 +52,37 @@ template <typename T>
 __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 			const int target_value) {
 	extern __shared__ T temp[]; // allocated on invocation
-	int thid = threadIdx.x;
+	int thread_id = threadIdx.x;
 	int offset = 1;
 
-	temp[2 * thid] = g_idata[2 * thid]; // load input into shared memory
-	temp[2 * thid + 1] = g_idata[2 * thid + 1];
-	for (int d = n >> 1; d > 0; d >>= 1) { // build sum in place up the tree
+	temp[2 * thread_id] = g_idata[2 * thread_id]; // load input into shared memory
+	temp[2 * thread_id + 1] = g_idata[2 * thread_id + 1];
+	for (auto d = n >> 1; d > 0; d >>= 1) { // build sum in place up the tree
 		__syncthreads();
-		if (thid < d) {
-			int ai = offset * (2 *thid + 1) - 1;
-			int bi = offset*(2 * thid + 2) - 1;
+		if (thread_id < d) {
+			auto ai = offset * (2 * thread_id + 1) - 1;
+			auto bi = offset * (2 * thread_id + 2) - 1;
 			temp[bi] += temp[ai];
 		}
 		offset *= 2;
 	}
-	if (thid == 0) {
+	if (thread_id == 0) {
 		temp[n - 1] = 0; // clear the last element
 	}
-	for (int d = 1; d < n; d *= 2) { // traverse down tree & build scan
+	for (auto d = 1; d < n; d *= 2) { // traverse down tree & build scan
 		offset >>= 1;
 		__syncthreads();
-		if (thid < d) {
-			int ai = offset * (2 * thid + 1) - 1;
-			int bi = offset*(2 * thid + 2) - 1;
+		if (thread_id < d) {
+			auto ai = offset * (2 * thread_id + 1) - 1;
+			auto bi = offset * (2 * thread_id + 2) - 1;
 			T t = temp[ai];
 			temp[ai] = temp[bi];
 			temp[bi] += t;
 		}
 	}
 	__syncthreads();
-	g_odata[2 * thid] = temp[2 * thid]; // write results to device memory
-	g_odata[2 * thid + 1] = temp[2 * thid + 1];
+	g_odata[2 * thread_id] = temp[2 * thread_id]; // write results to device memory
+	g_odata[2 * thread_id + 1] = temp[2 * thread_id + 1];
 }
 
 /*
@@ -93,7 +94,7 @@ __global__ void create_sub_batch(tuple_t *const bin,
 				 const std::size_t batch_size,
 				 std::size_t *const index,
 				 std::size_t *const scan,
-				 const std::size_t bout,
+				 tuple_t * const bout,
 				 const int target_node) {
 	const auto id = blockIdx.x * blockDim.x + threadIdx.x;
 	// No need for an explicit cycle: each GPU thread computes this in
@@ -111,13 +112,14 @@ private:
 	using routing_func_t = std::function<size_t(size_t, size_t)>;
 	using key_t = std::remove_reference_t<decltype(std::get<0>(tuple_t {}.getControlFields()))>;
 
+	cudaStream_t cuda_stream;
 	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
 	std::size_t destination_index;
 	std::size_t num_of_destinations;
 	// TODO: is it fine for a GPU emitter to be used in a Tree_Emitter?
-	// bool is_combined; // true if this node is used within a Tree_Emitter node
+	bool is_combined; // true if this node is used within a Tree_Emitter node
 	bool have_gpu_input;
 	bool have_gpu_output;
 
@@ -131,20 +133,28 @@ public:
 		  have_gpu_output {have_gpu_output}
 	{
 		assert(num_of_destinations);
+		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
+			failwith("cudaStreamCreate() failed in MapGPU_Node");
+		}
 	}
 
 	Standard_EmitterGPU(const routing_func_t routing_func,
 			    const std::size_t num_of_destinations,
 			    const bool have_gpu_input=false,
 			    const bool have_gpu_output=false)
-		: routing_mode {FORWARD}, routing_func {routing_func},
+		: routing_mode {KEYBY}, routing_func {routing_func},
 		  destination_index {0},
 		  num_of_destinations {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
 		assert(num_of_destinations);
+		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
+			failwith("cudaStreamCreate() failed in MapGPU_Node");
+		}
 	}
+
+	~Standard_EmitterGPU() { cudaStreamDestroy(cuda_stream); }
 
 	Basic_Emitter *clone() const {
 		return new Standard_EmitterGPU<tuple_t> {*this};
@@ -154,39 +164,10 @@ public:
 
 	void *svc(void *const input) {
 		if (routing_mode != KEYBY) {
-			return input; // Same thing whether input is a tuple or a GPU batch.
+			return input; // Same whether input is a tuple or batch.
 		}
 		if (have_gpu_input) {
-			auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
-			std::size_t cpu_hash_index[num_of_destinations]; // Stores modulo"d hash values for keys.
-			for (auto i = 0; i < handle->size; ++i) {
-				cpu_hash_index[i]= hash(handle->buffer[i]);
-			}
-			const auto raw_index_size = sizeof(std::size_t) * num_of_destinations;
-			std::size_t *gpu_hash_index;
-			if (cudaMalloc(&gpu_hash_index, raw_index_size) != cudaSuccess) {
-				failwith("Standard_EmitterGPU failed to allocate GPU index");
-			}
-			cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
-
-			std::size_t *scan;
-			if (cudaMalloc(&scan, num_of_destinations * sizeof(std::size_t))) {
-				failwith("Standard_EmitterGPU failed to allocate scan array.");
-			}
-			for (auto i = 0; i < num_of_destinations; ++i) {
-				prescan<<<1, 256>>>(scan, gpu_hash_index, num_of_destinations, i);
-				const auto bout_raw_size = scan[num_of_destinations - 1] * sizeof(tuple_t);
-				tuple_t *bout;
-				if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
-					failwith("Standard_EmitterGPU failed to allocate partial output batch.");
-				}
-				create_sub_batch<<<1, 256>>>(handle->buffer, num_of_destinations,
-							     gpu_hash_index, scan, bout, i);
-				ff_send_out_to(new GPUBufferHandle {bout, scan[num_of_destinations - 1]}, i);
-			}
-			cudaFree(index);
-			cudaFree(scan); // TODO: Can these be class members and
-					// deleted in the constructor instead?
+			linear_keyed_gpu_partition(input);
 		} else {
 			auto t = reinterpret_cast<tuple_t *>(input);
 			auto key = std::get<0>(t->getControlFields());
@@ -203,34 +184,97 @@ public:
 	 */
 	void linear_keyed_gpu_partition(void *const input) {
 		auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
-		std::vector<tuple_t> cpu_tuple_buffer (handle->size);
-		cudaMemcpy(cpu_tuple_buffer, handle->buffer,
-			   sizeof(tuple_t) * handle->size, cudaMemcpyDeviceToHost);
-		std::unordered_map<std::size_t, std::vector<tuple_t>> sub_buffer_map;
+		const auto raw_batch_size = handle->size * sizeof(tuple_t);
+		tuple_t *cpu_tuple_buffer; // TODO: Should this be just a class member?
+		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
+			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
+		}
+		cudaMemcpy(cpu_tuple_buffer, handle->buffer, raw_batch_size, cudaMemcpyDeviceToHost);
+		std::vector<std::vector<tuple_t>> sub_buffers (num_of_destinations);
 
 		for (auto i = 0; i < handle->size; ++i) {
-			const auto &tuple = handle->buffer[i];
-			auto hashcode = hash(tuple) % num_of_destinations;
-			sub_buffer_map[hashcode].push_back(tuple);
+			const auto &tuple = cpu_tuple_buffer[i];
+			const auto hashcode = hash(tuple.key) % num_of_destinations;
+			sub_buffers[hashcode].push_back(tuple);
 		}
-		for (const auto &kv : sub_buffer_map) {
-			const auto &cpu_sub_buffer = kv->second;
+		cudaFreeHost(cpu_tuple_buffer);
+		for (auto i = 0; i < num_of_destinations; ++i) {
+			if (sub_buffers[i].empty()) {
+				continue;
+			}
+			const auto &cpu_sub_buffer = sub_buffers[i];
 			const auto raw_size = sizeof(tuple_t) * cpu_sub_buffer.size();
 			tuple_t *gpu_sub_buffer;
 			if (cudaMalloc(&gpu_sub_buffer, raw_size) != cudaSuccess) {
 				failwith("Standard_EmitterGPU failed to allocate GPU sub-buffer");
 			}
-			cudaMemcpy(gpu_sub_buffer, cpu_sub_buffer. raw_size, cudaMemcpyHostToDevice);
-			this->ff_send_out_to(new GPUBufferHandle {gpu_sub_buffer, cpu_sub_buffer.size()},
-					     kv->first);
+			cudaMemcpy(gpu_sub_buffer, cpu_sub_buffer.data(),
+				   raw_size, cudaMemcpyHostToDevice);
+			this->ff_send_out_to(new GPUBufferHandle<tuple_t>
+					     {gpu_sub_buffer, cpu_sub_buffer.size()},
+					     i);
 		}
 		cudaFree(handle->buffer);
 		delete handle;
 	}
 
+	/*
+	 * Actual partitioning implementation to be eventually used.
+	 */
+	void parallel_keyed_gpu_partition(void *const input) {
+		auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+		const auto raw_batch_size = handle->size * sizeof(tuple_t);
+		tuple_t *cpu_tuple_buffer; // TODO: Should this be just a class member?
+		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
+			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
+		}
+		cudaMemcpy(cpu_tuple_buffer, handle->buffer, raw_batch_size, cudaMemcpyDeviceToHost);
+		std::size_t cpu_hash_index[num_of_destinations]; // Stores modulo"d hash values for keys.
+		for (auto i = 0; i < handle->size; ++i) {
+			cpu_hash_index[i]= hash(cpu_tuple_buffer[i].key);
+		}
+		const auto raw_index_size = sizeof(std::size_t) * num_of_destinations;
+		std::size_t *gpu_hash_index;
+		if (cudaMalloc(&gpu_hash_index, raw_index_size) != cudaSuccess) {
+			failwith("Standard_EmitterGPU failed to allocate GPU index");
+		}
+		cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
+
+		std::size_t *scan;
+		if (cudaMalloc(&scan, num_of_destinations * sizeof(std::size_t))) {
+			failwith("Standard_EmitterGPU failed to allocate scan array.");
+		}
+		for (auto i = 0; i < num_of_destinations; ++i) {
+			prescan<<<1, 256>>>(scan, gpu_hash_index, num_of_destinations, i);
+			// May be inefficient, should probably start all kernels in the loop in parallel.
+			cudaStreamSynchronize(cuda_stream);
+			const auto bout_raw_size = scan[num_of_destinations - 1] * sizeof(tuple_t);
+			tuple_t *bout;
+			if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
+				failwith("Standard_EmitterGPU failed to allocate partial output batch.");
+			}
+			create_sub_batch<<<1, 256>>>(handle->buffer,
+						     num_of_destinations,
+						     gpu_hash_index, scan, bout, i);
+			ff_send_out_to(new GPUBufferHandle<tuple_t>
+				       {bout, scan[num_of_destinations - 1]}, i);
+		}
+		cudaFreeHost(cpu_tuple_buffer);
+		cudaFree(gpu_hash_index);
+		cudaFree(scan);
+	}
+
 	void svc_end() const {}
 
-	std::size_t getNDestinations() const { return num_of_destinations; }
+	std::size_t getNDestinations() const override { return num_of_destinations; }
+
+	// set/unset the Tree_Emitter mode
+	void setTree_EmitterMode(const bool val) override { is_combined = val; }
+
+	// method to get a reference to the internal output queue (used in Tree_Emitter mode)
+	std::vector<std::pair<void *, int>> &getOutputQueue() override {
+		// TODO
+	}
 };
 
 // class Standard_Collector
