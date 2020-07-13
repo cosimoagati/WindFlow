@@ -376,12 +376,10 @@ class MapGPU_Node: public ff::ff_minode {
 			enlarge_cpu_buffer(cpu_tuple_state_buffer, total_buffer_capacity);
 
 			// Ensure scratchpads are allocated and retrieve keys. Could be costly...
-			// TODO: Copy them all to cpu at once!!!
+			cudaMemcpy(cpu_tuple_buffer, &gpu_result_buffer,
+				   total_buffer_capacity * sizeof(tuple_t), cudaMemcpyDeviceToHost);
 			for (auto i = 0; i < total_buffer_capacity; ++i) {
-				tuple_t dummy_tuple;
-				cudaMemcpy(&dummy_tuple, &gpu_result_buffer[i],
-					   sizeof(tuple_t), cudaMemcpyDeviceToHost);
-				const auto key = std::get<0>(dummy_tuple.getControlFields());
+				const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
 				allocate_scratchpad_if_not_present(key);
 				cpu_tuple_state_buffer[i] = {hash(key), key_scratchpad_map[key]};
 			}
@@ -449,11 +447,10 @@ class MapGPU_Node: public ff::ff_minode {
 			enlarge_gpu_buffer(gpu_result_buffer, total_buffer_capacity);
 
 			// Ensure scratchpads are allocated. Could be costly...
+			cudaMemcpy(cpu_tuple_buffer, &gpu_result_buffer,
+				   total_buffer_capacity * sizeof(tuple_t), cudaMemcpyDeviceToHost);
 			for (auto i = 0; i < total_buffer_capacity; ++i) {
-				tuple_t dummy_tuple;
-				cudaMemcpy(&dummy_tuple, &gpu_tuple_buffer[i],
-					   sizeof(tuple_t), cudaMemcpyDeviceToHost);
-				const auto key = std::get<0>(dummy_tuple.getControlFields());
+				const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
 				allocate_scratchpad_if_not_present(key);
 				cpu_tuple_state_buffer[i] = {hash(key), key_scratchpad_map[key]};
 			}
