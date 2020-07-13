@@ -132,7 +132,9 @@ public:
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
-		assert(num_of_destinations);
+		if (num_of_destinations <= 0) {
+			failwith("Standard_EmitterGPU initialized with non-positive number of destinations.");
+		}
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
