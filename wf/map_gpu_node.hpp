@@ -686,23 +686,23 @@ class MapGPU_Node: public ff::ff_minode {
 		}
 	}
 
-	template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
-	void deallocate_gpu_tuple_input_buffer() const {}
+	// template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
+	// void deallocate_gpu_tuple_input_buffer() const {}
 
-	template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
-	void deallocate_gpu_tuple_input_buffer() { cudaFree(gpu_tuple_buffer); }
+	// template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
+	// void deallocate_gpu_tuple_input_buffer() { cudaFree(gpu_tuple_buffer); }
 
-	template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
-	void deallocate_tuple_state_buffers() const {}
+	// template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
+	// void deallocate_tuple_state_buffers() const {}
 
-	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
-	void deallocate_tuple_state_buffers() {
-		for (auto &pair : key_scratchpad_map) {
-			cudaFree(pair.second);
-		}
-		cudaFreeHost(cpu_tuple_state_buffer);
-		cudaFree(gpu_tuple_state_buffer);
-	}
+	// template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
+	// void deallocate_tuple_state_buffers() {
+	// 	for (auto &pair : key_scratchpad_map) {
+	// 		cudaFree(pair.second);
+	// 	}
+	// 	cudaFreeHost(cpu_tuple_state_buffer);
+	// 	cudaFree(gpu_tuple_state_buffer);
+	// }
 public:
 	MapGPU_Node(const func_t map_func, const std::string &name,
 		    const int total_buffer_capacity,
@@ -722,7 +722,7 @@ public:
 		assert(total_buffer_capacity > 0 && gpu_threads_per_block > 0
 		       && scratchpad_size >= 0);
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
-		if (!have_gpu_input || is_keyed<decltype(map_func)>) {
+		if (!have_gpu_input || is_keyed<func_t>) {
 			if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
 				failwith("MapGPU_Node failed to allocate CPU tuple buffer");
 			}
@@ -742,14 +742,14 @@ public:
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
 		// allocate_gpu_tuple_input_buffer();
-		if (!is_in_place<decltype(map_func)>) {
+		if (!is_in_place<func_t>) {
 			const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
 			if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
 				failwith("MapGPU_Node failed to allocate GPU tuple buffer");
 			}
 		}
 		// setup_tuple_state_buffers();
-		if (is_keyed<decltype(map_func)>) {
+		if (is_keyed<func_t>) {
 			const auto size = total_buffer_capacity * sizeof(TupleState);
 			if (cudaMallocHost(&cpu_tuple_state_buffer, size) != cudaSuccess) {
 				failwith("MapGPU_Node failed to allocate CPU tuple state buffer");
@@ -764,8 +764,18 @@ public:
 		cudaFreeHost(cpu_tuple_buffer);
 		cudaFreeHost(cpu_result_buffer);
 		cudaFree(gpu_result_buffer);
-		deallocate_gpu_tuple_input_buffer();
-		deallocate_tuple_state_buffers();
+		// deallocate_gpu_tuple_input_buffer();
+		if (!is_in_place<func_t>) {
+			cudaFree(gpu_tuple_buffer);
+		}
+		// deallocate_tuple_state_buffers();
+		if (is_keyed<func_t>) {
+			for (auto &pair : key_scratchpad_map) {
+				cudaFree(pair.second);
+			}
+			cudaFreeHost(cpu_tuple_state_buffer);
+			cudaFree(gpu_tuple_state_buffer);
+		}
 		cudaStreamDestroy(cuda_stream);
 	}
 
