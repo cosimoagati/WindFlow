@@ -253,39 +253,6 @@ class MapGPU_Node: public ff::ff_minode {
 		cudaMemcpy(device_to, host_from, size, cudaMemcpyHostToDevice);
 	}
 
-
-	/*
-	 * These old functions were used to save a comparison that could be done
-	 * statically.  Unused for now since they bloat the codebase with no
-	 * real gain, since they are seldom executed.  Possibly replace with if
-	 * constexpr once CUDA supports it.
-	 */
-
-	// template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
-	// void allocate_gpu_tuple_input_buffer() {}
-
-	// template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
-	// void allocate_gpu_tuple_input_buffer() {
-	// 	const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
-	// 	if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
-	// 		failwith("MapGPU_Node failed to allocate GPU tuple buffer");
-	// 	}
-	// }
-
-	// template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
-	// void setup_tuple_state_buffers() {}
-
-	// template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
-	// void setup_tuple_state_buffers() {
-	// 	const auto size = total_buffer_capacity * sizeof(TupleState);
-	// 	if (cudaMallocHost(&cpu_tuple_state_buffer, size) != cudaSuccess) {
-	// 		failwith("MapGPU_Node failed to allocate CPU tuple state buffer");
-	// 	}
-	// 	if (cudaMalloc(&gpu_tuple_state_buffer, size) != cudaSuccess) {
-	// 		failwith("MapGPU_Node failed to allocate GPU tuple state buffer");
-	// 	}
-	// }
-
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
 	void *svc_aux(void *const input) {
 		if (have_gpu_input) {
@@ -685,24 +652,6 @@ class MapGPU_Node: public ff::ff_minode {
 			}
 		}
 	}
-
-	// template<typename F=func_t, typename std::enable_if_t<is_in_place<F>, int> = 0>
-	// void deallocate_gpu_tuple_input_buffer() const {}
-
-	// template<typename F=func_t, typename std::enable_if_t<!is_in_place<F>, int> = 0>
-	// void deallocate_gpu_tuple_input_buffer() { cudaFree(gpu_tuple_buffer); }
-
-	// template<typename F=func_t, typename std::enable_if_t<!is_keyed<F>, int> = 0>
-	// void deallocate_tuple_state_buffers() const {}
-
-	// template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
-	// void deallocate_tuple_state_buffers() {
-	// 	for (auto &pair : key_scratchpad_map) {
-	// 		cudaFree(pair.second);
-	// 	}
-	// 	cudaFreeHost(cpu_tuple_state_buffer);
-	// 	cudaFree(gpu_tuple_state_buffer);
-	// }
 public:
 	MapGPU_Node(const func_t map_func, const std::string &name,
 		    const int total_buffer_capacity,
@@ -741,14 +690,12 @@ public:
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
-		// allocate_gpu_tuple_input_buffer();
 		if (!is_in_place<func_t>) {
 			const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
 			if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
 				failwith("MapGPU_Node failed to allocate GPU tuple buffer");
 			}
 		}
-		// setup_tuple_state_buffers();
 		if (is_keyed<func_t>) {
 			const auto size = total_buffer_capacity * sizeof(TupleState);
 			if (cudaMallocHost(&cpu_tuple_state_buffer, size) != cudaSuccess) {
@@ -764,11 +711,9 @@ public:
 		cudaFreeHost(cpu_tuple_buffer);
 		cudaFreeHost(cpu_result_buffer);
 		cudaFree(gpu_result_buffer);
-		// deallocate_gpu_tuple_input_buffer();
 		if (!is_in_place<func_t>) {
 			cudaFree(gpu_tuple_buffer);
 		}
-		// deallocate_tuple_state_buffers();
 		if (is_keyed<func_t>) {
 			for (auto &pair : key_scratchpad_map) {
 				cudaFree(pair.second);
