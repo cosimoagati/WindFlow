@@ -62,7 +62,8 @@ __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 		if (thread_id < d) {
 			auto ai = offset * (2 * thread_id + 1) - 1;
 			auto bi = offset * (2 * thread_id + 2) - 1;
-			temp[bi] += temp[ai];
+			// temp[bi] += temp[ai];
+			temp[bi] += temp[ai] == target_value ? 1 : 0;
 		}
 		offset *= 2;
 	}
@@ -116,6 +117,7 @@ private:
 	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
+	std::size_t *scan {nullptr};
 	std::size_t destination_index;
 	std::size_t num_of_destinations;
 	// TODO: is it fine for a GPU emitter to be used in a Tree_Emitter?
@@ -154,9 +156,17 @@ public:
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
+		if (cudaMalloc(&scan, num_of_destinations * sizeof(std::size_t))) {
+			failwith("Standard_EmitterGPU failed to allocate scan array.");
+		}
 	}
 
-	~Standard_EmitterGPU() { cudaStreamDestroy(cuda_stream); }
+	~Standard_EmitterGPU() {
+		cudaStreamDestroy(cuda_stream);
+		if (scan) {
+			cudaFree(scan);
+		}
+	}
 
 	Basic_Emitter *clone() const {
 		return new Standard_EmitterGPU<tuple_t> {*this};
@@ -235,17 +245,13 @@ public:
 		for (auto i = 0; i < handle->size; ++i) {
 			cpu_hash_index[i]= hash(cpu_tuple_buffer[i].key);
 		}
+		cudaFreeHost(cpu_tuple_buffer);
 		const auto raw_index_size = sizeof(std::size_t) * num_of_destinations;
 		std::size_t *gpu_hash_index;
 		if (cudaMalloc(&gpu_hash_index, raw_index_size) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate GPU index");
 		}
 		cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
-
-		std::size_t *scan;
-		if (cudaMalloc(&scan, num_of_destinations * sizeof(std::size_t))) {
-			failwith("Standard_EmitterGPU failed to allocate scan array.");
-		}
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<1, 256>>>(scan, gpu_hash_index, num_of_destinations, i);
 			// May be inefficient, should probably start all kernels in the loop in parallel.
@@ -261,9 +267,7 @@ public:
 			ff_send_out_to(new GPUBufferHandle<tuple_t>
 				       {bout, scan[num_of_destinations - 1]}, i);
 		}
-		cudaFreeHost(cpu_tuple_buffer);
 		cudaFree(gpu_hash_index);
-		cudaFree(scan);
 	}
 
 	void svc_end() const {}
