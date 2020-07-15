@@ -45,25 +45,33 @@ namespace wf {
  * the book "GPU Gems 3":
  * https://developer.nvidia.com/gpugems/gpugems3/contributors
  */
-// TODO: Adapt to contain target value! Right now it just performs a sum.
-// Idea: the binary associative operator is a function of the form:
-// if (target_value) { return x + 1; } else { return x; }
+// TODO: Adapt to contain target value! Right now it just performs a sum.  Idea:
+// preprocess the array (easily done in parallel) to set each element to 1 if it
+// equals the target value, 0 otherwise.  At this point, performing a "standard"
+// parallel sum will give us precisely what we want: each result is the number
+// of occurrences of target value in the subarray starting from the first
+// location and ending to that position (included).
 template <typename T>
 __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
-			const int target_value) {
+			const T target_value) {
 	extern __shared__ T temp[]; // allocated on invocation
-	int thread_id = threadIdx.x;
-	int offset = 1;
+	extern __shared__ T mapped_idata[];
+	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto stride = blockDim.x * gridDim.x;
+	const auto thread_id = threadIdx.x;
+	auto offset = 1;
 
-	temp[2 * thread_id] = g_idata[2 * thread_id]; // load input into shared memory
-	temp[2 * thread_id + 1] = g_idata[2 * thread_id + 1];
+	for (auto i = index; i < n; i += stride) {
+		mapped_idata[i] = g_idata[i] == target_value;
+	}
+	temp[2 * thread_id] = mapped_idata[2 * thread_id]; // load input into shared memory
+	temp[2 * thread_id + 1] = mapped_idata[2 * thread_id + 1];
 	for (auto d = n >> 1; d > 0; d >>= 1) { // build sum in place up the tree
 		__syncthreads();
 		if (thread_id < d) {
-			auto ai = offset * (2 * thread_id + 1) - 1;
+L			auto ai = offset * (2 * thread_id + 1) - 1;
 			auto bi = offset * (2 * thread_id + 2) - 1;
-			// temp[bi] += temp[ai];
-			temp[bi] += temp[ai] == target_value ? 1 : 0;
+			temp[bi] += temp[ai];
 		}
 		offset *= 2;
 	}
@@ -254,17 +262,19 @@ public:
 		}
 		cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
 		for (auto i = 0; i < num_of_destinations; ++i) {
-			prescan<<<1, 256>>>(scan, gpu_hash_index, num_of_destinations, i);
-			// May be inefficient, should probably start all kernels in the loop in parallel.
+			prescan<<<1, 256, num_of_destinations, cuda_stream>>>
+				(scan, gpu_hash_index, num_of_destinations, i);
+			// May be inefficient, should probably start all kernels
+			// in the loop in parallel.
 			cudaStreamSynchronize(cuda_stream);
 			const auto bout_raw_size = scan[num_of_destinations - 1] * sizeof(tuple_t);
 			tuple_t *bout;
 			if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
 				failwith("Standard_EmitterGPU failed to allocate partial output batch.");
 			}
-			create_sub_batch<<<1, 256>>>(handle->buffer,
-						     num_of_destinations,
-						     gpu_hash_index, scan, bout, i);
+			create_sub_batch<<<1, 256, 0, cuda_stream>>>
+				(handle->buffer, num_of_destinations,
+				 gpu_hash_index, scan, bout, i);
 			ff_send_out_to(new GPUBufferHandle<tuple_t>
 				       {bout, scan[num_of_destinations - 1]}, i);
 		}
