@@ -240,8 +240,9 @@ public:
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
 		}
-		cudaMemcpy(cpu_tuple_buffer, handle->buffer, raw_batch_size, cudaMemcpyDeviceToHost);
-		std::size_t cpu_hash_index[num_of_destinations]; // Stores modulo"d hash values for keys.
+		cudaMemcpy(cpu_tuple_buffer, handle->buffer,
+			   raw_batch_size, cudaMemcpyDeviceToHost);
+		std::size_t cpu_hash_index[num_of_destinations]; // Stores modulo'd hash values for keys.
 		for (auto i = 0; i < handle->size; ++i) {
 			cpu_hash_index[i]= hash(cpu_tuple_buffer[i].key);
 		}
