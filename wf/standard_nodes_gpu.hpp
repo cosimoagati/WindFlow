@@ -49,7 +49,7 @@ template <typename T>
 __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 			const T target_value) {
 	extern __shared__ T temp[]; // allocated on invocation
-	extern __shared__ T mapped_idata[];
+	T *const mapped_idata = temp + n;
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	const auto thread_id = threadIdx.x;
@@ -257,7 +257,7 @@ public:
 		cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<1, 256, num_of_destinations, cuda_stream>>>
-				(scan, gpu_hash_index, num_of_destinations, i);
+				(scan, gpu_hash_index, 2 * num_of_destinations, i);
 			// May be inefficient, should probably start all kernels
 			// in the loop in parallel.
 			cudaStreamSynchronize(cuda_stream);
