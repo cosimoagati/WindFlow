@@ -38,6 +38,8 @@
 #include "basic_emitter.hpp"
 #include "gpu_utils.hpp"
 
+# define PARALLEL_PARTITION
+
 namespace wf {
 // TODO: Emitter should have its own stream!
 /*
@@ -181,7 +183,12 @@ public:
 			return input; // Same whether input is a tuple or batch.
 		}
 		if (have_gpu_input) {
-			linear_keyed_gpu_partition(input);
+			const auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+#ifdef PARALLEL_PARTITION
+			parallel_keyed_gpu_partition(handle);
+#else
+			linear_keyed_gpu_partition(handle);
+#endif
 		} else {
 			auto t = reinterpret_cast<tuple_t *>(input);
 			auto key = std::get<0>(t->getControlFields());
@@ -196,8 +203,7 @@ public:
 	/*
 	 * Supposed to be slow, only for performance testing purposes.
 	 */
-	void linear_keyed_gpu_partition(void *const input) {
-		auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+	void linear_keyed_gpu_partition(GPUBufferHandle<tuple_t> *const handle) {
 		const auto raw_batch_size = handle->size * sizeof(tuple_t);
 		tuple_t *cpu_tuple_buffer; // TODO: Should this be just a class member?
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
@@ -235,8 +241,7 @@ public:
 	/*
 	 * Actual partitioning implementation to be eventually used.
 	 */
-	void parallel_keyed_gpu_partition(void *const input) {
-		auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+	void parallel_keyed_gpu_partition(GPUBufferHandle<tuple_t> *const handle) {
 		const auto raw_batch_size = handle->size * sizeof(tuple_t);
 		tuple_t *cpu_tuple_buffer; // TODO: Should this be just a class member?
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
@@ -256,8 +261,9 @@ public:
 		}
 		cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
 		for (auto i = 0; i < num_of_destinations; ++i) {
-			prescan<<<1, 256, num_of_destinations, cuda_stream>>>
-				(scan, gpu_hash_index, 2 * num_of_destinations, i);
+			prescan<<<1, 256, 2 * num_of_destinations, cuda_stream>>>
+				(scan, gpu_hash_index, num_of_destinations,
+				 static_cast<std::size_t>(i));
 			// May be inefficient, should probably start all kernels
 			// in the loop in parallel.
 			cudaStreamSynchronize(cuda_stream);
