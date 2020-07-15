@@ -122,6 +122,7 @@ private:
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
 	std::size_t *cpu_hash_index {nullptr};  // Stores modulo'd hash values for keys.
+	std::size_t *gpu_hash_index {nullptr};  // Stores modulo'd hash values for keys.
 	std::size_t *scan {nullptr};
 	std::size_t destination_index;
 	std::size_t num_of_destinations;
@@ -157,13 +158,18 @@ public:
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
-		assert(num_of_destinations);
+		if (num_of_destinations <= 0) {
+			failwith("Standard_EmitterGPU initialized with non-positive number of destinations.");
+		}
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
 		if (cudaMallocHost(&cpu_hash_index, num_of_destinations * sizeof(std::size_t)) != cudaSuccess) {
-			failwith("Standard_EmitterGPU failed to allocate hash array.");
+			failwith("Standard_EmitterGPU failed to allocate CPU hash array.");
 
+		}
+		if (cudaMalloc(&gpu_hash_index, num_of_destinations * sizeof(std::size_t)) != cudaSuccess) {
+			failwith("Standard_EmitterGPU failed to allocate GPU hash array.");
 		}
 		if (cudaMalloc(&scan, num_of_destinations * sizeof(std::size_t)) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate scan array.");
@@ -174,6 +180,9 @@ public:
 		cudaStreamDestroy(cuda_stream);
 		if (cpu_hash_index) {
 			cudaFreeHost(cpu_hash_index);
+		}
+		if (gpu_hash_index) {
+			cudaFree(gpu_hash_index);
 		}
 		if (scan) {
 			cudaFree(scan);
@@ -261,11 +270,8 @@ public:
 			cpu_hash_index[i] = hash(cpu_tuple_buffer[i].key);
 		}
 		cudaFreeHost(cpu_tuple_buffer);
+
 		const auto raw_index_size = sizeof(std::size_t) * num_of_destinations;
-		std::size_t *gpu_hash_index;
-		if (cudaMalloc(&gpu_hash_index, raw_index_size) != cudaSuccess) {
-			failwith("Standard_EmitterGPU failed to allocate GPU index");
-		}
 		cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<1, 256, 2 * num_of_destinations, cuda_stream>>>
@@ -285,7 +291,6 @@ public:
 			ff_send_out_to(new GPUBufferHandle<tuple_t>
 				       {bout, scan[num_of_destinations - 1]}, i);
 		}
-		cudaFree(gpu_hash_index);
 	}
 
 	void svc_end() const {}
