@@ -286,9 +286,8 @@ public:
 		const auto raw_index_size = sizeof(std::size_t) * num_of_destinations;
 		cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
 		for (auto i = 0; i < num_of_destinations; ++i) {
-			prescan<<<1, 256, 2 * num_of_destinations, cuda_stream>>>
-				(scan, gpu_hash_index, num_of_destinations,
-				 static_cast<std::size_t>(i));
+			prescan<<<gpu_blocks, gpu_threads_per_block, 2 * num_of_destinations, cuda_stream>>>
+				(scan, gpu_hash_index, num_of_destinations, static_cast<std::size_t>(i));
 			// May be inefficient, should probably start all kernels
 			// in the loop in parallel.
 			cudaStreamSynchronize(cuda_stream);
@@ -307,11 +306,9 @@ public:
 			if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
 				failwith("Standard_EmitterGPU failed to allocate partial output batch.");
 			}
-			create_sub_batch<<<1, 256, 0, cuda_stream>>>
-				(handle->buffer, num_of_destinations,
-				 gpu_hash_index, scan, bout, i);
-			ff_send_out_to(new GPUBufferHandle<tuple_t>
-				       {bout, bout_size}, i);
+			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+				(handle->buffer, num_of_destinations, gpu_hash_index, scan, bout, i);
+			ff_send_out_to(new GPUBufferHandle<tuple_t> {bout, bout_size}, i);
 		}
 	}
 
