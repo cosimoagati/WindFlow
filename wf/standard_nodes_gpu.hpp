@@ -29,6 +29,8 @@
 #ifndef STANDARD_GPU_H
 #define STANDARD_GPU_H
 
+#include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <functional>
 #include <vector>
@@ -126,6 +128,9 @@ private:
 	std::size_t *scan {nullptr};
 	std::size_t destination_index;
 	std::size_t num_of_destinations;
+	int gpu_blocks;
+	int gpu_threads_per_block;
+
 	// TODO: is it fine for a GPU emitter to be used in a Tree_Emitter?
 	bool is_combined; // true if this node is used within a Tree_Emitter node
 	bool have_gpu_input;
@@ -134,11 +139,15 @@ private:
 public:
 	Standard_EmitterGPU(const std::size_t num_of_destinations,
 			    const bool have_gpu_input=false,
-			    const bool have_gpu_output=false)
+			    const bool have_gpu_output=false,
+			    const int gpu_threads_per_block=256)
 		: routing_mode {FORWARD}, destination_index {0},
 		  num_of_destinations {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
-		  have_gpu_output {have_gpu_output}
+		  have_gpu_output {have_gpu_output},
+		  gpu_threads_per_block {gpu_threads_per_block},
+		  gpu_blocks {std::ceil(num_of_destinations
+					/ static_cast<float>(gpu_threads_per_block))}
 	{
 		if (num_of_destinations <= 0) {
 			failwith("Standard_EmitterGPU initialized with non-positive number of destinations.");
@@ -151,12 +160,16 @@ public:
 	Standard_EmitterGPU(const routing_func_t routing_func,
 			    const std::size_t num_of_destinations,
 			    const bool have_gpu_input=false,
-			    const bool have_gpu_output=false)
+			    const bool have_gpu_output=false,
+			    const int gpu_threads_per_block=256)
 		: routing_mode {KEYBY}, routing_func {routing_func},
 		  destination_index {0},
 		  num_of_destinations {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
-		  have_gpu_output {have_gpu_output}
+		  have_gpu_output {have_gpu_output},
+		  gpu_threads_per_block {gpu_threads_per_block},
+		  gpu_blocks {std::ceil(num_of_destinations
+					/ static_cast<float>(gpu_threads_per_block))}
 	{
 		if (num_of_destinations <= 0) {
 			failwith("Standard_EmitterGPU initialized with non-positive number of destinations.");
@@ -264,8 +277,7 @@ public:
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
 		}
-		cudaMemcpy(cpu_tuple_buffer, handle->buffer,
-			   raw_batch_size, cudaMemcpyDeviceToHost);
+		cudaMemcpy(cpu_tuple_buffer, handle->buffer, raw_batch_size, cudaMemcpyDeviceToHost);
 		for (auto i = 0; i < handle->size; ++i) {
 			cpu_hash_index[i] = hash(cpu_tuple_buffer[i].key);
 		}
@@ -280,7 +292,17 @@ public:
 			// May be inefficient, should probably start all kernels
 			// in the loop in parallel.
 			cudaStreamSynchronize(cuda_stream);
-			const auto bout_raw_size = scan[num_of_destinations - 1] * sizeof(tuple_t);
+
+			// used for debugging
+			// std::size_t cpu_scan[num_of_destinations];
+			// cudaMemcpy(cpu_scan, scan,
+			// 	   num_of_destinations * sizeof(std::size_t),
+			// 	   cudaMemcpyHostToDevice);
+
+			std::size_t bout_size;
+			cudaMemcpy(&bout_size, &scan[num_of_destinations - 1],
+				   sizeof(std::size_t), cudaMemcpyHostToDevice);
+			const auto bout_raw_size = bout_size * sizeof(tuple_t);
 			tuple_t *bout;
 			if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
 				failwith("Standard_EmitterGPU failed to allocate partial output batch.");
@@ -289,7 +311,7 @@ public:
 				(handle->buffer, num_of_destinations,
 				 gpu_hash_index, scan, bout, i);
 			ff_send_out_to(new GPUBufferHandle<tuple_t>
-				       {bout, scan[num_of_destinations - 1]}, i);
+				       {bout, bout_size}, i);
 		}
 	}
 
