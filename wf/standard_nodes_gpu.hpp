@@ -45,12 +45,6 @@ namespace wf {
  * the book "GPU Gems 3":
  * https://developer.nvidia.com/gpugems/gpugems3/contributors
  */
-// TODO: Adapt to contain target value! Right now it just performs a sum.  Idea:
-// preprocess the array (easily done in parallel) to set each element to 1 if it
-// equals the target value, 0 otherwise.  At this point, performing a "standard"
-// parallel sum will give us precisely what we want: each result is the number
-// of occurrences of target value in the subarray starting from the first
-// location and ending to that position (included).
 template <typename T>
 __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 			const T target_value) {
@@ -69,7 +63,7 @@ __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 	for (auto d = n >> 1; d > 0; d >>= 1) { // build sum in place up the tree
 		__syncthreads();
 		if (thread_id < d) {
-L			auto ai = offset * (2 * thread_id + 1) - 1;
+			auto ai = offset * (2 * thread_id + 1) - 1;
 			auto bi = offset * (2 * thread_id + 2) - 1;
 			temp[bi] += temp[ai];
 		}
