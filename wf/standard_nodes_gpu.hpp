@@ -121,6 +121,7 @@ private:
 	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
+	std::size_t *cpu_hash_index {nullptr};  // Stores modulo'd hash values for keys.
 	std::size_t *scan {nullptr};
 	std::size_t destination_index;
 	std::size_t num_of_destinations;
@@ -160,13 +161,20 @@ public:
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
-		if (cudaMalloc(&scan, num_of_destinations * sizeof(std::size_t))) {
+		if (cudaMallocHost(&cpu_hash_index, num_of_destinations * sizeof(std::size_t)) != cudaSuccess) {
+			failwith("Standard_EmitterGPU failed to allocate hash array.");
+
+		}
+		if (cudaMalloc(&scan, num_of_destinations * sizeof(std::size_t)) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate scan array.");
 		}
 	}
 
 	~Standard_EmitterGPU() {
 		cudaStreamDestroy(cuda_stream);
+		if (cpu_hash_index) {
+			cudaFreeHost(cpu_hash_index);
+		}
 		if (scan) {
 			cudaFree(scan);
 		}
@@ -243,13 +251,12 @@ public:
 	 */
 	void parallel_keyed_gpu_partition(GPUBufferHandle<tuple_t> *const handle) {
 		const auto raw_batch_size = handle->size * sizeof(tuple_t);
-		tuple_t *cpu_tuple_buffer; // TODO: Should this be just a class member?
+		tuple_t *cpu_tuple_buffer;
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
 		}
 		cudaMemcpy(cpu_tuple_buffer, handle->buffer,
 			   raw_batch_size, cudaMemcpyDeviceToHost);
-		std::size_t cpu_hash_index[num_of_destinations]; // Stores modulo'd hash values for keys.
 		for (auto i = 0; i < handle->size; ++i) {
 			cpu_hash_index[i]= hash(cpu_tuple_buffer[i].key);
 		}
