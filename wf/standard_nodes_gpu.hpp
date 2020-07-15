@@ -258,7 +258,7 @@ public:
 		cudaMemcpy(cpu_tuple_buffer, handle->buffer,
 			   raw_batch_size, cudaMemcpyDeviceToHost);
 		for (auto i = 0; i < handle->size; ++i) {
-			cpu_hash_index[i]= hash(cpu_tuple_buffer[i].key);
+			cpu_hash_index[i] = hash(cpu_tuple_buffer[i].key);
 		}
 		cudaFreeHost(cpu_tuple_buffer);
 		const auto raw_index_size = sizeof(std::size_t) * num_of_destinations;
