@@ -1,5 +1,7 @@
 #include <iostream>
 
+using namespace std;
+
 template <typename T>
 __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 			const T target_value) {
@@ -33,39 +35,30 @@ __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 	for (auto i = index; i < n; i += stride) {
 		g_odata[i] = mapped_idata[i];
 	}
-
-	// Old exclusive scan implementation, to be removed...
-	// auto offset = 1;
-	// temp[2 * thread_id] = mapped_idata[2 * thread_id]; // load input into shared memory
-	// temp[2 * thread_id + 1] = mapped_idata[2 * thread_id + 1];
-	// for (auto d = n >> 1; d > 0; d >>= 1) { // build sum in place up the tree
-	// 	__syncthreads();
-	// 	if (thread_id < d) {
-	// 		auto ai = offset * (2 * thread_id + 1) - 1;
-	// 		auto bi = offset * (2 * thread_id + 2) - 1;
-	// 		temp[bi] += temp[ai];
-	// 	}
-	// 	offset *= 2;
-	// }
-	// if (thread_id == 0) {
-	// 	temp[n - 1] = 0; // clear the last element
-	// }
-	// for (auto d = 1; d < n; d *= 2) { // traverse down tree & build scan
-	// 	offset >>= 1;
-	// 	__syncthreads();
-	// 	if (thread_id < d) {
-	// 		auto ai = offset * (2 * thread_id + 1) - 1;
-	// 		auto bi = offset * (2 * thread_id + 2) - 1;
-	// 		T t = temp[ai];
-	// 		temp[ai] = temp[bi];
-	// 		temp[bi] += t;
-	// 	}
-	// }
-	// __syncthreads();
-	// g_odata[2 * thread_id] = temp[2 * thread_id]; // write results to device memory
-	// g_odata[2 * thread_id + 1] = temp[2 * thread_id + 1];
 }
 
 int main() {
+	constexpr auto n = 8;
+	constexpr auto target_value = 0;
+	int cpu_index[n] = {0, 1, 1, 2, 0, 3, 3, 0};
+	int cpu_scan[n];
+	int *gpu_index;
+	int *gpu_scan;
+
+	if (cudaMalloc(&gpu_scan, n * sizeof *gpu_scan) != cudaSuccess) {
+		cerr << "Error allocating gpu_scan.\n";
+		return -1;
+	}
+	if (cudaMalloc(&gpu_index, n * sizeof *gpu_index) != cudaSuccess) {
+		cerr << "Error allocating gpu_index.\n";
+		return -1;
+	}
+	cudaMemcpy(gpu_index, cpu_index, n * sizeof *cpu_index, cudaMemcpyHostToDevice);
+	prescan<<<1, 8, 2 * n>>>(gpu_scan, gpu_index, n, target_value);
+	cudaMemcpy(cpu_scan, gpu_scan, n * sizeof *gpu_scan, cudaMemcpyDeviceToHost);
+	for (const auto &x : cpu_scan) {
+		cout << x << ' ';
+	}
+	cout << "\n";
 	return 0;
 }
