@@ -141,7 +141,7 @@ private:
 	// starting from zero to pardegree-1
 	using routing_func_t = std::function<size_t(size_t, size_t)>;
 	using key_t = std::remove_reference_t<decltype(std::get<0>(tuple_t {}.getControlFields()))>;
-	using buffer_handle_t = GPUBufferHandle<tuple_t, key_t>;
+	using buffer_handle_t = GPUBufferHandle<tuple_t>;
 
 	cudaStream_t cuda_stream;
 	routing_modes_t routing_mode;

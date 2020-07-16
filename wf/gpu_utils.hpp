@@ -58,8 +58,10 @@ struct TupleState {
  * This struct is useful to pass a tuple buffer allocated on GPU memory directly
  * to another GPU operator, in order to avoid re-buffering.
  */
-template<typename tuple_t, typename key_t>
+template<typename tuple_t>
 struct GPUBufferHandle {
+	using key_t = std::remove_reference_t<decltype(std::get<0>(tuple_t {}.getControlFields()))>;
+
 	tuple_t *buffer;
 	std::size_t size;
 	key_t *key_buffer;

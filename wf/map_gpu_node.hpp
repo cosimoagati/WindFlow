@@ -202,9 +202,8 @@ class MapGPU_Node: public ff::ff_minode {
 	 * Type aliases.
 	 */
 	using key_t = std::remove_reference_t<decltype(std::get<0>(tuple_t {}.getControlFields()))>;
-	using result_key_t = std::remove_reference_t<decltype(std::get<0>(result_t {}.getControlFields()))>;
-	using tuple_buffer_handle_t = GPUBufferHandle<tuple_t, key_t>;
-	using result_buffer_handle_t = GPUBufferHandle<result_t, result_key_t>;
+	using tuple_buffer_handle_t = GPUBufferHandle<tuple_t>;
+	using result_buffer_handle_t = GPUBufferHandle<result_t>;
 
 	/*
 	 * Class memebers.
