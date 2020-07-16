@@ -141,6 +141,7 @@ private:
 	// starting from zero to pardegree-1
 	using routing_func_t = std::function<size_t(size_t, size_t)>;
 	using key_t = std::remove_reference_t<decltype(std::get<0>(tuple_t {}.getControlFields()))>;
+	using buffer_handle_t = GPUBufferHandle<tuple_t, key_t>;
 
 	cudaStream_t cuda_stream;
 	routing_modes_t routing_mode;
@@ -236,7 +237,7 @@ public:
 			return input; // Same whether input is a tuple or batch.
 		}
 		if (have_gpu_input) {
-			const auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+			const auto handle = reinterpret_cast<buffer_handle_t *>(input);
 #ifdef PARALLEL_PARTITION
 			parallel_keyed_gpu_partition(handle);
 #else
@@ -256,7 +257,7 @@ public:
 	/*
 	 * Supposed to be slow, only for performance testing purposes.
 	 */
-	void linear_keyed_gpu_partition(GPUBufferHandle<tuple_t> *const handle) {
+	void linear_keyed_gpu_partition(buffer_handle_t *const handle) {
 		const auto raw_batch_size = handle->size * sizeof(tuple_t);
 		tuple_t *cpu_tuple_buffer; // TODO: Should this be just a class member?
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
@@ -283,7 +284,7 @@ public:
 			}
 			cudaMemcpy(gpu_sub_buffer, cpu_sub_buffer.data(),
 				   raw_size, cudaMemcpyHostToDevice);
-			this->ff_send_out_to(new GPUBufferHandle<tuple_t>
+			this->ff_send_out_to(new buffer_handle_t
 					     {gpu_sub_buffer, cpu_sub_buffer.size()},
 					     i);
 		}
@@ -294,7 +295,7 @@ public:
 	/*
 	 * Actual partitioning implementation to be eventually used.
 	 */
-	void parallel_keyed_gpu_partition(GPUBufferHandle<tuple_t> *const handle) {
+	void parallel_keyed_gpu_partition(buffer_handle_t *const handle) {
 		const auto raw_batch_size = handle->size * sizeof(tuple_t);
 		tuple_t *cpu_tuple_buffer;
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
@@ -330,7 +331,7 @@ public:
 			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(handle->buffer, num_of_destinations, gpu_hash_index, scan, bout, i);
 			cudaStreamSynchronize(cuda_stream);
-			ff_send_out_to(new GPUBufferHandle<tuple_t> {bout, bout_size}, i);
+			ff_send_out_to(new buffer_handle_t {bout, bout_size}, i);
 		}
 	}
 

@@ -199,10 +199,12 @@ class MapGPU_Node: public ff::ff_minode {
 		      "function, the input type and the output type must match.");
 
 	/*
-	 * Type of the tuple key for keyed computations, obtained by getting the
-	 * respective value from a temporary tuple.
+	 * Type aliases.
 	 */
 	using key_t = std::remove_reference_t<decltype(std::get<0>(tuple_t {}.getControlFields()))>;
+	using result_key_t = std::remove_reference_t<decltype(std::get<0>(result_t {}.getControlFields()))>;
+	using tuple_buffer_handle_t = GPUBufferHandle<tuple_t, key_t>;
+	using result_buffer_handle_t = GPUBufferHandle<result_t, result_key_t>;
 
 	/*
 	 * Class memebers.
@@ -256,12 +258,12 @@ class MapGPU_Node: public ff::ff_minode {
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
 	void *svc_aux(void *const input) {
 		if (have_gpu_input) {
-			const auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+			const auto handle = reinterpret_cast<tuple_buffer_handle_t *>(input);
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
-					this->ff_send_out(new GPUBufferHandle<tuple_t> {gpu_result_buffer,
-											total_buffer_capacity});
+					this->ff_send_out(new tuple_buffer_handle_t {gpu_result_buffer,
+									       total_buffer_capacity});
 				} else {
 					send_tuples_to_cpu_operator();
 					cudaFree(gpu_result_buffer);
@@ -283,7 +285,7 @@ class MapGPU_Node: public ff::ff_minode {
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
-					this->ff_send_out(new GPUBufferHandle<tuple_t> {gpu_result_buffer,
+					this->ff_send_out(new tuple_buffer_handle_t {gpu_result_buffer,
 											total_buffer_capacity});
 					const auto size = total_buffer_capacity * sizeof(tuple_t);
 					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
@@ -305,11 +307,11 @@ class MapGPU_Node: public ff::ff_minode {
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
 	void *svc_aux(void *const input) {
 		if (have_gpu_input) {
-			const auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+			const auto handle = reinterpret_cast<tuple_buffer_handle_t *>(input);
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
-					this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
+					this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
 											 total_buffer_capacity});
 				} else {
 					send_tuples_to_cpu_operator();
@@ -333,7 +335,7 @@ class MapGPU_Node: public ff::ff_minode {
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
-					this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
+					this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
 											 total_buffer_capacity});
 					const auto size = total_buffer_capacity * sizeof(result_t);
 					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
@@ -358,11 +360,11 @@ class MapGPU_Node: public ff::ff_minode {
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
 	void *svc_aux(void *const input) {
 		if (have_gpu_input) {
-			const auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+			const auto handle = reinterpret_cast<tuple_buffer_handle_t *>(input);
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
-					this->ff_send_out(new GPUBufferHandle<tuple_t> {gpu_result_buffer,
+					this->ff_send_out(new tuple_buffer_handle_t {gpu_result_buffer,
 											total_buffer_capacity});
 				} else {
 					send_tuples_to_cpu_operator();
@@ -400,7 +402,7 @@ class MapGPU_Node: public ff::ff_minode {
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
-					this->ff_send_out(new GPUBufferHandle<tuple_t> {gpu_result_buffer,
+					this->ff_send_out(new tuple_buffer_handle_t {gpu_result_buffer,
 											total_buffer_capacity});
 					const auto size = total_buffer_capacity * sizeof(tuple_t);
 					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
@@ -429,7 +431,7 @@ class MapGPU_Node: public ff::ff_minode {
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
-					this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
+					this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
 											 total_buffer_capacity});
 					const auto size = total_buffer_capacity * sizeof(result_t);
 					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
@@ -439,7 +441,7 @@ class MapGPU_Node: public ff::ff_minode {
 					send_tuples_to_cpu_operator();
 				}
 			}
-			const auto handle = reinterpret_cast<GPUBufferHandle<tuple_t> *>(input);
+			const auto handle = reinterpret_cast<tuple_buffer_handle_t *>(input);
 			gpu_tuple_buffer = handle->buffer;
 			total_buffer_capacity = handle->size;
 			delete handle;
@@ -471,7 +473,7 @@ class MapGPU_Node: public ff::ff_minode {
 			if (was_batch_started) {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
-					this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
+					this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
 											 total_buffer_capacity});
 					const auto size = total_buffer_capacity * sizeof(result_t);
 					while (cudaMalloc(&gpu_result_buffer, size) != cudaSuccess) {
@@ -562,7 +564,7 @@ class MapGPU_Node: public ff::ff_minode {
 			const auto size = current_buffer_capacity * sizeof(result_t);
 			cudaMemcpy(gpu_result_buffer, cpu_tuple_buffer, size,
 				   cudaMemcpyHostToDevice);
-			this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
+			this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
 									 current_buffer_capacity});
 		} else {
 			for (auto i = 0; i < current_buffer_capacity; ++i) {
@@ -580,7 +582,7 @@ class MapGPU_Node: public ff::ff_minode {
 			const auto size = current_buffer_capacity * sizeof(result_t);
 			cudaMemcpy(gpu_result_buffer, cpu_result_buffer, size,
 				   cudaMemcpyHostToDevice);
-			this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
+			this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
 									 current_buffer_capacity});
 		} else {
 			for (auto i = 0; i < current_buffer_capacity; ++i) {
@@ -610,7 +612,7 @@ class MapGPU_Node: public ff::ff_minode {
 			const auto size = current_buffer_capacity * sizeof(result_t);
 			cudaMemcpy(gpu_result_buffer, cpu_tuple_buffer,
 				   size, cudaMemcpyHostToDevice);
-			this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
+			this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
 									 current_buffer_capacity});
 		} else {
 			for (auto i = 0; i < current_buffer_capacity; ++i) {
@@ -641,7 +643,7 @@ class MapGPU_Node: public ff::ff_minode {
 			const auto size = current_buffer_capacity * sizeof(result_t);
 			cudaMemcpy(gpu_result_buffer, cpu_result_buffer, size,
 				   cudaMemcpyHostToDevice);
-			this->ff_send_out(new GPUBufferHandle<result_t> {gpu_result_buffer,
+			this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
 									 current_buffer_capacity});
 		} else {
 			for (auto i = 0; i < current_buffer_capacity; ++i) {
@@ -774,8 +776,8 @@ public:
 		if (was_batch_started) {
 			cudaStreamSynchronize(cuda_stream);
 			if (have_gpu_output) {
-				this->ff_send_out(new GPUBufferHandle<result_t>{gpu_result_buffer,
-										total_buffer_capacity});
+				this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
+									      total_buffer_capacity});
 			} else {
 				send_tuples_to_cpu_operator();
 			}
