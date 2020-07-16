@@ -201,14 +201,14 @@ public:
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
-		if (cudaMallocHost(&cpu_hash_index, num_of_destinations * sizeof(std::size_t)) != cudaSuccess) {
+		if (cudaMallocHost(&cpu_hash_index, num_of_destinations * sizeof *cpu_hash_index) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate CPU hash array.");
 
 		}
-		if (cudaMalloc(&gpu_hash_index, num_of_destinations * sizeof(std::size_t)) != cudaSuccess) {
+		if (cudaMalloc(&gpu_hash_index, num_of_destinations * sizeof *gpu_hash_index) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate GPU hash array.");
 		}
-		if (cudaMalloc(&scan, num_of_destinations * sizeof(std::size_t)) != cudaSuccess) {
+		if (cudaMalloc(&scan, num_of_destinations * sizeof *scan) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate scan array.");
 		}
 	}
@@ -258,7 +258,7 @@ public:
 	 * Supposed to be slow, only for performance testing purposes.
 	 */
 	void linear_keyed_gpu_partition(buffer_handle_t *const handle) {
-		const auto raw_batch_size = handle->size * sizeof(tuple_t);
+		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
 		tuple_t *cpu_tuple_buffer; // TODO: Should this be just a class member?
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
@@ -277,13 +277,12 @@ public:
 				continue;
 			}
 			const auto &cpu_sub_buffer = sub_buffers[i];
-			const auto raw_size = sizeof(tuple_t) * cpu_sub_buffer.size();
+			const auto raw_size = sizeof *cpu_sub_buffer.data() * cpu_sub_buffer.size();
 			tuple_t *gpu_sub_buffer;
 			if (cudaMalloc(&gpu_sub_buffer, raw_size) != cudaSuccess) {
 				failwith("Standard_EmitterGPU failed to allocate GPU sub-buffer");
 			}
-			cudaMemcpy(gpu_sub_buffer, cpu_sub_buffer.data(),
-				   raw_size, cudaMemcpyHostToDevice);
+			cudaMemcpy(gpu_sub_buffer, cpu_sub_buffer.data(), raw_size, cudaMemcpyHostToDevice);
 			this->ff_send_out_to(new buffer_handle_t
 					     {gpu_sub_buffer, cpu_sub_buffer.size()},
 					     i);
@@ -296,7 +295,7 @@ public:
 	 * Actual partitioning implementation to be eventually used.
 	 */
 	void parallel_keyed_gpu_partition(buffer_handle_t *const handle) {
-		const auto raw_batch_size = handle->size * sizeof(tuple_t);
+		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
 		tuple_t *cpu_tuple_buffer;
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
@@ -308,7 +307,7 @@ public:
 		}
 		cudaFreeHost(cpu_tuple_buffer);
 
-		const auto raw_index_size = sizeof(std::size_t) * num_of_destinations;
+		const auto raw_index_size = sizeof *cpu_hash_index * num_of_destinations;
 		cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<gpu_blocks, gpu_threads_per_block, 2 * num_of_destinations, cuda_stream>>>
@@ -317,12 +316,12 @@ public:
 			// used for debugging
 			// std::size_t cpu_scan[num_of_destinations];
 			// cudaMemcpy(cpu_scan, scan,
-			// 	   num_of_destinations * sizeof(std::size_t),
+			// 	   num_of_destinations * sizeof *cpu_scan,
 			// 	   cudaMemcpyHostToDevice);
 
 			std::size_t bout_size;
 			cudaMemcpy(&bout_size, &scan[num_of_destinations - 1],
-				   sizeof(std::size_t), cudaMemcpyDeviceToHost);
+				   sizeof bout_size, cudaMemcpyDeviceToHost);
 			const auto bout_raw_size = bout_size * sizeof(tuple_t);
 			tuple_t *bout;
 			if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
