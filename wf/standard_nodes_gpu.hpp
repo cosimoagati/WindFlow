@@ -52,44 +52,67 @@ namespace wf {
 template <typename T>
 __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 			const T target_value) {
-	extern __shared__ T temp[]; // allocated on invocation
-	T *const mapped_idata = temp + n;
+	// extern __shared__ T temp[]; // allocated on invocation
+	// T *const mapped_idata = temp + n;
+	extern __shared__ T mapped_idata[];
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	const auto thread_id = threadIdx.x;
-	auto offset = 1;
 
 	for (auto i = index; i < n; i += stride) {
 		mapped_idata[i] = g_idata[i] == target_value;
 	}
-	temp[2 * thread_id] = mapped_idata[2 * thread_id]; // load input into shared memory
-	temp[2 * thread_id + 1] = mapped_idata[2 * thread_id + 1];
-	for (auto d = n >> 1; d > 0; d >>= 1) { // build sum in place up the tree
+	// TODO: bit shifts should be more efficient...
+	for (auto stride = 1; stride <= n; stride *= 2) {
 		__syncthreads();
-		if (thread_id < d) {
-			auto ai = offset * (2 * thread_id + 1) - 1;
-			auto bi = offset * (2 * thread_id + 2) - 1;
-			temp[bi] += temp[ai];
-		}
-		offset *= 2;
-	}
-	if (thread_id == 0) {
-		temp[n - 1] = 0; // clear the last element
-	}
-	for (auto d = 1; d < n; d *= 2) { // traverse down tree & build scan
-		offset >>= 1;
-		__syncthreads();
-		if (thread_id < d) {
-			auto ai = offset * (2 * thread_id + 1) - 1;
-			auto bi = offset * (2 * thread_id + 2) - 1;
-			T t = temp[ai];
-			temp[ai] = temp[bi];
-			temp[bi] += t;
+		const auto index = (thread_id + 1) * stride * 2 - 1;
+		if (index < 2 * n) {
+			mapped_idata[index] += mapped_idata[index - stride];
 		}
 	}
+	for (auto stride = n / 2; stride > 0; stride /= 2) {
+		__syncthreads();
+		const auto index = (thread_id + 1) * stride * 2 - 1;
+		if ((index + stride) < 2 * n) {
+			mapped_idata[index + stride] += mapped_idata[index];
+		}
+	}
+	// Simple, but probably inefficient and redundant: write data to output.
 	__syncthreads();
-	g_odata[2 * thread_id] = temp[2 * thread_id]; // write results to device memory
-	g_odata[2 * thread_id + 1] = temp[2 * thread_id + 1];
+	for (auto i = index; i < n; i += stride) {
+		g_odata[i] = mapped_idata[i];
+	}
+
+	// Old exclusive scan implementation, to be removed...
+	// auto offset = 1;
+	// temp[2 * thread_id] = mapped_idata[2 * thread_id]; // load input into shared memory
+	// temp[2 * thread_id + 1] = mapped_idata[2 * thread_id + 1];
+	// for (auto d = n >> 1; d > 0; d >>= 1) { // build sum in place up the tree
+	// 	__syncthreads();
+	// 	if (thread_id < d) {
+	// 		auto ai = offset * (2 * thread_id + 1) - 1;
+	// 		auto bi = offset * (2 * thread_id + 2) - 1;
+	// 		temp[bi] += temp[ai];
+	// 	}
+	// 	offset *= 2;
+	// }
+	// if (thread_id == 0) {
+	// 	temp[n - 1] = 0; // clear the last element
+	// }
+	// for (auto d = 1; d < n; d *= 2) { // traverse down tree & build scan
+	// 	offset >>= 1;
+	// 	__syncthreads();
+	// 	if (thread_id < d) {
+	// 		auto ai = offset * (2 * thread_id + 1) - 1;
+	// 		auto bi = offset * (2 * thread_id + 2) - 1;
+	// 		T t = temp[ai];
+	// 		temp[ai] = temp[bi];
+	// 		temp[bi] += t;
+	// 	}
+	// }
+	// __syncthreads();
+	// g_odata[2 * thread_id] = temp[2 * thread_id]; // write results to device memory
+	// g_odata[2 * thread_id + 1] = temp[2 * thread_id + 1];
 }
 
 /*
@@ -277,9 +300,10 @@ public:
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
 		}
+		// TODO: Can we avoid this copy on cpu?
 		cudaMemcpy(cpu_tuple_buffer, handle->buffer, raw_batch_size, cudaMemcpyDeviceToHost);
 		for (auto i = 0; i < handle->size; ++i) {
-			cpu_hash_index[i] = hash(cpu_tuple_buffer[i].key);
+			cpu_hash_index[i] = hash(cpu_tuple_buffer[i].key) % num_of_destinations;
 		}
 		cudaFreeHost(cpu_tuple_buffer);
 
@@ -288,9 +312,6 @@ public:
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<gpu_blocks, gpu_threads_per_block, 2 * num_of_destinations, cuda_stream>>>
 				(scan, gpu_hash_index, num_of_destinations, static_cast<std::size_t>(i));
-			// May be inefficient, should probably start all kernels
-			// in the loop in parallel.
-			cudaStreamSynchronize(cuda_stream);
 
 			// used for debugging
 			// std::size_t cpu_scan[num_of_destinations];
@@ -300,7 +321,7 @@ public:
 
 			std::size_t bout_size;
 			cudaMemcpy(&bout_size, &scan[num_of_destinations - 1],
-				   sizeof(std::size_t), cudaMemcpyHostToDevice);
+				   sizeof(std::size_t), cudaMemcpyDeviceToHost);
 			const auto bout_raw_size = bout_size * sizeof(tuple_t);
 			tuple_t *bout;
 			if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
@@ -308,6 +329,7 @@ public:
 			}
 			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(handle->buffer, num_of_destinations, gpu_hash_index, scan, bout, i);
+			cudaStreamSynchronize(cuda_stream);
 			ff_send_out_to(new GPUBufferHandle<tuple_t> {bout, bout_size}, i);
 		}
 	}
