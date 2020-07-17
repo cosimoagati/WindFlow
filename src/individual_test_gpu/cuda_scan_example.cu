@@ -1,4 +1,6 @@
+#include <cstdlib>
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
@@ -37,14 +39,22 @@ __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 	}
 }
 
-int main() {
-	constexpr auto n = 8;
+int main(const int argc, char *const argv[]) {
+	if (argc <= 1) {
+		cerr << "Use as " << argv[0] << " <space-separated elements>\n";
+		return -1;
+	}
 	constexpr auto target_value = 0;
-	int cpu_index[n] = {0, 1, 1, 2, 0, 3, 3, 0};
-	int cpu_scan[n];
+	const auto n = argc - 1;
+	vector<int> cpu_index;
+	vector<int> cpu_scan;
 	int *gpu_index;
 	int *gpu_scan;
 
+	cpu_scan.resize(n);
+	for (auto i = 1; i < argc; ++i) {
+		cpu_index.push_back(std::atoi(argv[i]));
+	}
 	if (cudaMalloc(&gpu_scan, n * sizeof *gpu_scan) != cudaSuccess) {
 		cerr << "Error allocating gpu_scan.\n";
 		return -1;
@@ -53,9 +63,9 @@ int main() {
 		cerr << "Error allocating gpu_index.\n";
 		return -1;
 	}
-	cudaMemcpy(gpu_index, cpu_index, n * sizeof *cpu_index, cudaMemcpyHostToDevice);
+	cudaMemcpy(gpu_index, cpu_index.data(), n * sizeof *gpu_index, cudaMemcpyHostToDevice);
 	prescan<<<1, 8, 2 * n>>>(gpu_scan, gpu_index, n, target_value);
-	cudaMemcpy(cpu_scan, gpu_scan, n * sizeof *gpu_scan, cudaMemcpyDeviceToHost);
+	cudaMemcpy(cpu_scan.data(), gpu_scan, n * sizeof *gpu_scan, cudaMemcpyDeviceToHost);
 	for (const auto &x : cpu_scan) {
 		cout << x << ' ';
 	}
