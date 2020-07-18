@@ -39,6 +39,21 @@ __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 	}
 }
 
+template<typename tuple_t>
+__global__ void create_sub_batch(tuple_t *const bin,
+				 const std::size_t batch_size,
+				 std::size_t *const index,
+				 std::size_t *const scan,
+				 tuple_t *const bout,
+				 const int target_node) {
+	const auto id = blockIdx.x * blockDim.x + threadIdx.x;
+	// No need for an explicit cycle: each GPU thread computes this in
+	// parallel.
+	if (id < batch_size && index[id] == target_node) {
+		bout[scan[index[id]] - 1] = bin[id];
+	}
+}
+
 int main(const int argc, char *const argv[]) {
 	if (argc <= 1) {
 		cerr << "Use as " << argv[0] << " <space-separated elements>\n";
@@ -66,6 +81,7 @@ int main(const int argc, char *const argv[]) {
 	cudaMemcpy(gpu_index, cpu_index.data(), n * sizeof *gpu_index, cudaMemcpyHostToDevice);
 	prescan<<<1, 8, 2 * n>>>(gpu_scan, gpu_index, n, target_value);
 	cudaMemcpy(cpu_scan.data(), gpu_scan, n * sizeof *gpu_scan, cudaMemcpyDeviceToHost);
+	cout << "Result of scan: "
 	for (const auto &x : cpu_scan) {
 		cout << x << ' ';
 	}
