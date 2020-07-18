@@ -40,7 +40,7 @@
 #include "basic_emitter.hpp"
 #include "gpu_utils.hpp"
 
-# define PARALLEL_PARTITION
+// # define PARALLEL_PARTITION
 
 namespace wf {
 // TODO: Emitter should have its own stream!
@@ -231,12 +231,14 @@ public:
 		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
 		}
-		cudaMemcpy(cpu_tuple_buffer, handle->buffer, raw_batch_size, cudaMemcpyDeviceToHost);
+		cudaMemcpyAsync(cpu_tuple_buffer, handle->buffer,
+				raw_batch_size, cudaMemcpyDeviceToHost, cuda_stream);
 		std::vector<std::vector<tuple_t>> sub_buffers (num_of_destinations);
 
+		cudaStreamSynchronize(cuda_stream);
 		for (auto i = 0; i < handle->size; ++i) {
 			const auto &tuple = cpu_tuple_buffer[i];
-			const auto key = std::get<0>(tuple->getControlFields());
+			const auto key = std::get<0>(tuple.getControlFields());
 			const auto hashcode = hash(key) % num_of_destinations;
 			sub_buffers[hashcode].push_back(tuple);
 		}
@@ -251,7 +253,9 @@ public:
 			if (cudaMalloc(&gpu_sub_buffer, raw_size) != cudaSuccess) {
 				failwith("Standard_EmitterGPU failed to allocate GPU sub-buffer");
 			}
-			cudaMemcpy(gpu_sub_buffer, cpu_sub_buffer.data(), raw_size, cudaMemcpyHostToDevice);
+			cudaMemcpyAsync(gpu_sub_buffer, cpu_sub_buffer.data(),
+					raw_size, cudaMemcpyHostToDevice, cuda_stream);
+			cudaStreamSynchronize(cuda_stream);
 			this->ff_send_out_to(new buffer_handle_t
 					     {gpu_sub_buffer, cpu_sub_buffer.size()},
 					     i);
@@ -270,14 +274,17 @@ public:
 			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
 		}
 		// TODO: Can we avoid this copy on cpu?
-		cudaMemcpy(cpu_tuple_buffer, handle->buffer, raw_batch_size, cudaMemcpyDeviceToHost);
+		cudaMemcpyAsync(cpu_tuple_buffer, handle->buffer, raw_batch_size,
+				cudaMemcpyDeviceToHost, cuda_stream);
+		cudaStreamSynchronize(cuda_stream);
 		for (auto i = 0; i < handle->size; ++i) {
 			cpu_hash_index[i] = hash(cpu_tuple_buffer[i].key) % num_of_destinations;
 		}
 		cudaFreeHost(cpu_tuple_buffer);
 
 		const auto raw_index_size = sizeof *cpu_hash_index * num_of_destinations;
-		cudaMemcpy(gpu_hash_index, cpu_hash_index, raw_index_size, cudaMemcpyHostToDevice);
+		cudaMemcpyAsync(gpu_hash_index, cpu_hash_index,
+				raw_index_size, cudaMemcpyHostToDevice, cuda_stream);
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<gpu_blocks, gpu_threads_per_block, 2 * num_of_destinations, cuda_stream>>>
 				(scan, gpu_hash_index, num_of_destinations, static_cast<std::size_t>(i));
@@ -289,8 +296,10 @@ public:
 			// 	   cudaMemcpyHostToDevice);
 
 			std::size_t bout_size;
-			cudaMemcpy(&bout_size, &scan[num_of_destinations - 1],
-				   sizeof bout_size, cudaMemcpyDeviceToHost);
+			cudaMemcpyAsync(&bout_size, &scan[num_of_destinations - 1],
+					sizeof bout_size, cudaMemcpyDeviceToHost,
+					cuda_stream);
+			cudaStreamSynchronize(cuda_stream);
 			const auto bout_raw_size = bout_size * sizeof(tuple_t);
 			tuple_t *bout;
 			if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
