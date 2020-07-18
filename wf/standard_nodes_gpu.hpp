@@ -172,7 +172,6 @@ public:
 		}
 		if (cudaMallocHost(&cpu_hash_index, num_of_destinations * sizeof *cpu_hash_index) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate CPU hash array.");
-
 		}
 		if (cudaMalloc(&gpu_hash_index, num_of_destinations * sizeof *gpu_hash_index) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate GPU hash array.");
