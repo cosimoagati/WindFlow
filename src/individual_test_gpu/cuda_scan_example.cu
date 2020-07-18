@@ -79,12 +79,19 @@ int main(const int argc, char *const argv[]) {
 		return -1;
 	}
 	cudaMemcpy(gpu_index, cpu_index.data(), n * sizeof *gpu_index, cudaMemcpyHostToDevice);
-	prescan<<<1, 8, 2 * n>>>(gpu_scan, gpu_index, n, target_value);
+	prescan<<<1, n, 2 * n>>>(gpu_scan, gpu_index, n, target_value);
 	cudaMemcpy(cpu_scan.data(), gpu_scan, n * sizeof *gpu_scan, cudaMemcpyDeviceToHost);
-	cout << "Result of scan: "
+	cout << "Size is " << n << '\n';
+	cout << "Result of scan: ";
 	for (const auto &x : cpu_scan) {
 		cout << x << ' ';
 	}
 	cout << "\n";
+	std::size_t bout_size = cpu_scan[n - 1];
+	const auto bout_raw_size = bout_size * sizeof(int);
+	tuple_t *bout;
+	if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
+		failwith("Failed to allocate partial output batch.");
+	}
 	return 0;
 }
