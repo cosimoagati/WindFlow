@@ -244,9 +244,9 @@ public:
 			linear_keyed_gpu_partition(handle);
 #endif
 		} else {
-			auto t = reinterpret_cast<tuple_t *>(input);
-			auto key = std::get<0>(t->getControlFields());
-			auto hashcode = hash(key);
+			const auto t = reinterpret_cast<tuple_t *>(input);
+			const auto key = std::get<0>(t->getControlFields());
+			const auto hashcode = hash(key);
 			destination_index = routing_func(hashcode, num_of_destinations);
 			this->ff_send_out_to(t, destination_index);
 			return this->GO_ON;
@@ -268,7 +268,8 @@ public:
 
 		for (auto i = 0; i < handle->size; ++i) {
 			const auto &tuple = cpu_tuple_buffer[i];
-			const auto hashcode = hash(tuple.key) % num_of_destinations;
+			const auto key = std::get<0>(t->getControlFields());
+			const auto hashcode = hash(key) % num_of_destinations;
 			sub_buffers[hashcode].push_back(tuple);
 		}
 		cudaFreeHost(cpu_tuple_buffer);
