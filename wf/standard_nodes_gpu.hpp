@@ -236,7 +236,7 @@ public:
 
 		for (auto i = 0; i < handle->size; ++i) {
 			const auto &tuple = cpu_tuple_buffer[i];
-			const auto key = std::get<0>(t->getControlFields());
+			const auto key = std::get<0>(tuple->getControlFields());
 			const auto hashcode = hash(key) % num_of_destinations;
 			sub_buffers[hashcode].push_back(tuple);
 		}
