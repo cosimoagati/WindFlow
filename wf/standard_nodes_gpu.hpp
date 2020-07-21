@@ -291,7 +291,8 @@ public:
 				cudaMemcpyDeviceToHost, cuda_stream);
 		cudaStreamSynchronize(cuda_stream);
 		for (auto i = 0; i < handle->size; ++i) {
-			cpu_hash_index[i] = hash(cpu_tuple_buffer[i].key) % num_of_destinations;
+			const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
+			cpu_hash_index[i] = hash(key) % num_of_destinations;
 		}
 		cudaFreeHost(cpu_tuple_buffer);
 
@@ -304,6 +305,7 @@ public:
 				(scan, gpu_hash_index, num_of_destinations,
 				 static_cast<std::size_t>(i), dest_power_of_two);
 
+			// Used for debugging.
 			std::size_t cpu_scan[num_of_destinations];
 			cudaMemcpy(cpu_scan, scan,
 				   num_of_destinations * sizeof *cpu_scan,
