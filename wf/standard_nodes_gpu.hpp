@@ -40,40 +40,41 @@
 #include "basic_emitter.hpp"
 #include "gpu_utils.hpp"
 
-// # define PARALLEL_PARTITION
+# define PARALLEL_PARTITION
 
 namespace wf {
-// TODO: Emitter should have its own stream!
-/*
- * Parallel scan (prefix) implementation on GPU.  Code shamelessly adapted from
- * the book "GPU Gems 3":
- * https://developer.nvidia.com/gpugems/gpugems3/contributors
- */
-template <typename T>
-__global__ void prescan(T *const g_odata, T *const g_idata, const int n,
-			const T target_value) {
-	// extern __shared__ T temp[]; // allocated on invocation
-	// T *const mapped_idata = temp + n;
+// Use int instead of std::size_t since it's smaller and faster.  Beware
+// truncating!
+template<typename T>
+__global__ void prescan(T *const g_odata, T *const g_idata, const T n,
+			const T target_value, const T power_of_two) {
+	// extern __shared__ int temp[]; // allocated on invocation
+	// int *const mapped_idata = temp + n;
 	extern __shared__ T mapped_idata[];
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
-	const auto thread_id = threadIdx.x;
+	// const auto thread_id = threadIdx.x;
+	const auto thread_id = threadIdx.x; // Assumes a single block.
 
 	for (auto i = index; i < n; i += stride) {
 		mapped_idata[i] = g_idata[i] == target_value;
 	}
+	// TODO: zero-out the rest of the array?
+	for (auto i = n; i < power_of_two; i += stride) {
+		mapped_idata[i] = 0;
+	}
 	// TODO: bit shifts should be more efficient...
-	for (auto stride = 1; stride <= n; stride *= 2) {
+	for (auto stride = 1; stride <= power_of_two; stride *= 2) {
 		__syncthreads();
 		const auto index = (thread_id + 1) * stride * 2 - 1;
-		if (index < 2 * n) {
+		if (index < 2 * power_of_two) {
 			mapped_idata[index] += mapped_idata[index - stride];
 		}
 	}
-	for (auto stride = n / 2; stride > 0; stride /= 2) {
+	for (auto stride = power_of_two / 2; stride > 0; stride /= 2) {
 		__syncthreads();
 		const auto index = (thread_id + 1) * stride * 2 - 1;
-		if ((index + stride) < 2 * n) {
+		if ((index + stride) < 2 * power_of_two) {
 			mapped_idata[index + stride] += mapped_idata[index];
 		}
 	}
@@ -82,6 +83,15 @@ __global__ void prescan(T *const g_odata, T *const g_idata, const int n,
 	for (auto i = index; i < n; i += stride) {
 		g_odata[i] = mapped_idata[i];
 	}
+}
+
+template<typename T>
+T get_closest_power_of_two(const T n) {
+	auto i = 1;
+	while (i < n) {
+		i *= 2;
+	}
+	return i;
 }
 
 /*
@@ -121,6 +131,7 @@ private:
 	std::size_t *scan {nullptr};
 	std::size_t destination_index;
 	std::size_t num_of_destinations;
+	std::size_t dest_power_of_two;
 	int gpu_blocks;
 	int gpu_threads_per_block;
 
@@ -136,6 +147,7 @@ public:
 			    const int gpu_threads_per_block=256)
 		: routing_mode {FORWARD}, destination_index {0},
 		  num_of_destinations {num_of_destinations},
+		  dest_power_of_two {get_closest_power_of_two(num_of_destinations)},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output},
 		  gpu_threads_per_block {gpu_threads_per_block},
@@ -158,6 +170,7 @@ public:
 		: routing_mode {KEYBY}, routing_func {routing_func},
 		  destination_index {0},
 		  num_of_destinations {num_of_destinations},
+		  dest_power_of_two {get_closest_power_of_two(num_of_destinations)},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output},
 		  gpu_threads_per_block {gpu_threads_per_block},
@@ -286,10 +299,10 @@ public:
 		cudaMemcpyAsync(gpu_hash_index, cpu_hash_index,
 				raw_index_size, cudaMemcpyHostToDevice, cuda_stream);
 		for (auto i = 0; i < num_of_destinations; ++i) {
-			prescan<<<gpu_blocks, gpu_threads_per_block, 2 * num_of_destinations, cuda_stream>>>
-				(scan, gpu_hash_index, num_of_destinations, static_cast<std::size_t>(i));
+			prescan<<<gpu_blocks, gpu_threads_per_block, 2 * dest_power_of_two, cuda_stream>>>
+				(scan, gpu_hash_index, num_of_destinations,
+				 static_cast<std::size_t>(i), dest_power_of_two);
 
-			// used for debugging
 			// std::size_t cpu_scan[num_of_destinations];
 			// cudaMemcpy(cpu_scan, scan,
 			// 	   num_of_destinations * sizeof *cpu_scan,
