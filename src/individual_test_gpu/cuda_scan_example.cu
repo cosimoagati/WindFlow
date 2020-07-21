@@ -92,7 +92,7 @@ int main(const int argc, char *const argv[]) {
 	}
 	cudaMemcpy(gpu_index, cpu_index.data(), n * sizeof *gpu_index, cudaMemcpyHostToDevice);
 	const auto pow = get_closest_power_of_two(n);
-	prescan<<<1, 256, 2 * pow>>>(gpu_scan, gpu_index, n, target_value, pow);
+	prescan<<<1, pow, 2 * pow * sizeof *gpu_scan>>>(gpu_scan, gpu_index, n, target_value, pow);
 	cudaDeviceSynchronize();
 	cudaMemcpy(cpu_scan.data(), gpu_scan, n * sizeof *gpu_scan, cudaMemcpyDeviceToHost);
 	cout << "Size is " << n << '\n';

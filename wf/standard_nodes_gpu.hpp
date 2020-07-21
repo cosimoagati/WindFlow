@@ -299,14 +299,15 @@ public:
 		cudaMemcpyAsync(gpu_hash_index, cpu_hash_index,
 				raw_index_size, cudaMemcpyHostToDevice, cuda_stream);
 		for (auto i = 0; i < num_of_destinations; ++i) {
-			prescan<<<gpu_blocks, gpu_threads_per_block, 2 * dest_power_of_two, cuda_stream>>>
+			prescan<<<gpu_blocks, gpu_threads_per_block,
+				2 * dest_power_of_two * sizeof *scan, cuda_stream>>>
 				(scan, gpu_hash_index, num_of_destinations,
 				 static_cast<std::size_t>(i), dest_power_of_two);
 
-			// std::size_t cpu_scan[num_of_destinations];
-			// cudaMemcpy(cpu_scan, scan,
-			// 	   num_of_destinations * sizeof *cpu_scan,
-			// 	   cudaMemcpyHostToDevice);
+			std::size_t cpu_scan[num_of_destinations];
+			cudaMemcpy(cpu_scan, scan,
+				   num_of_destinations * sizeof *cpu_scan,
+				   cudaMemcpyDeviceToHost);
 
 			std::size_t bout_size;
 			cudaMemcpyAsync(&bout_size, &scan[num_of_destinations - 1],
