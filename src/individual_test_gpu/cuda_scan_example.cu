@@ -4,31 +4,36 @@
 
 using namespace std;
 
-template <typename T>
-__global__ void prescan(T *const g_odata, T *const g_idata, const int n,
-			const T target_value) {
-	// extern __shared__ T temp[]; // allocated on invocation
-	// T *const mapped_idata = temp + n;
-	extern __shared__ T mapped_idata[];
+// Assumes n >= 2;
+__global__ void prescan(int *const g_odata, int *const g_idata, const int n,
+			const int target_value, const int power_of_two) {
+	// extern __shared__ int temp[]; // allocated on invocation
+	// int *const mapped_idata = temp + n;
+	extern __shared__ int mapped_idata[];
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
-	const auto thread_id = threadIdx.x;
+	// const auto thread_id = threadIdx.x;
+	const auto thread_id = threadIdx.x; // Assumes a single block.
 
 	for (auto i = index; i < n; i += stride) {
 		mapped_idata[i] = g_idata[i] == target_value;
 	}
+	// TODO: zero-out the rest of the array?
+	for (auto i = n; i < power_of_two; i += stride) {
+		mapped_idata[i] = 0;
+	}
 	// TODO: bit shifts should be more efficient...
-	for (auto stride = 1; stride <= n; stride *= 2) {
+	for (auto stride = 1; stride <= power_of_two; stride *= 2) {
 		__syncthreads();
 		const auto index = (thread_id + 1) * stride * 2 - 1;
-		if (index < 2 * n) {
+		if (index < 2 * power_of_two) {
 			mapped_idata[index] += mapped_idata[index - stride];
 		}
 	}
-	for (auto stride = n / 2; stride > 0; stride /= 2) {
+	for (auto stride = power_of_two / 2; stride > 0; stride /= 2) {
 		__syncthreads();
 		const auto index = (thread_id + 1) * stride * 2 - 1;
-		if ((index + stride) < 2 * n) {
+		if ((index + stride) < 2 * power_of_two) {
 			mapped_idata[index + stride] += mapped_idata[index];
 		}
 	}
@@ -52,6 +57,14 @@ __global__ void create_sub_batch(tuple_t *const bin,
 	if (id < batch_size && index[id] == target_node) {
 		bout[scan[index[id]] - 1] = bin[id];
 	}
+}
+
+int get_closest_power_of_two(const int n) {
+	auto i = 1;
+	while (i < n) {
+		i *= 2;
+	}
+	return i;
 }
 
 int main(const int argc, char *const argv[]) {
@@ -79,7 +92,9 @@ int main(const int argc, char *const argv[]) {
 		return -1;
 	}
 	cudaMemcpy(gpu_index, cpu_index.data(), n * sizeof *gpu_index, cudaMemcpyHostToDevice);
-	prescan<<<1, n, 2 * n>>>(gpu_scan, gpu_index, n, target_value);
+	const auto pow = get_closest_power_of_two(n);
+	prescan<<<1, 256, 2 * pow>>>(gpu_scan, gpu_index, n, target_value, pow);
+	cudaDeviceSynchronize();
 	cudaMemcpy(cpu_scan.data(), gpu_scan, n * sizeof *gpu_scan, cudaMemcpyDeviceToHost);
 	cout << "Size is " << n << '\n';
 	cout << "Result of scan: ";
@@ -89,9 +104,10 @@ int main(const int argc, char *const argv[]) {
 	cout << "\n";
 	std::size_t bout_size = cpu_scan[n - 1];
 	const auto bout_raw_size = bout_size * sizeof(int);
-	tuple_t *bout;
+	int *bout;
 	if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
-		failwith("Failed to allocate partial output batch.");
+		cerr << "Failed to allocate partial output batch.";
+		return -1;
 	}
 	return 0;
 }
