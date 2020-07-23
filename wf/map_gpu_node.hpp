@@ -263,7 +263,7 @@ class MapGPU_Node: public ff::ff_minode {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
 					this->ff_send_out(new tuple_buffer_handle_t {gpu_result_buffer,
-									       total_buffer_capacity});
+										     total_buffer_capacity});
 				} else {
 					send_tuples_to_cpu_operator();
 					cudaFree(gpu_result_buffer);
@@ -286,7 +286,7 @@ class MapGPU_Node: public ff::ff_minode {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
 					this->ff_send_out(new tuple_buffer_handle_t {gpu_result_buffer,
-											total_buffer_capacity});
+										     total_buffer_capacity});
 					const auto raw_size = total_buffer_capacity * sizeof *gpu_result_buffer;
 					while (cudaMalloc(&gpu_result_buffer, raw_size) != cudaSuccess) {
 						// Empty loop body.
@@ -312,7 +312,7 @@ class MapGPU_Node: public ff::ff_minode {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
 					this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
-											 total_buffer_capacity});
+										      total_buffer_capacity});
 				} else {
 					send_tuples_to_cpu_operator();
 					cudaFree(gpu_result_buffer);
@@ -336,7 +336,7 @@ class MapGPU_Node: public ff::ff_minode {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
 					this->ff_send_out(new result_buffer_handle_t {gpu_result_buffer,
-											 total_buffer_capacity});
+										      total_buffer_capacity});
 					const auto raw_size = total_buffer_capacity * sizeof *gpu_result_buffer;
 					while (cudaMalloc(&gpu_result_buffer, raw_size) != cudaSuccess) {
 						// Empty loop body.
@@ -521,7 +521,7 @@ class MapGPU_Node: public ff::ff_minode {
 		while (cudaMallocHost(&buffer, new_size * sizeof *buffer) != cudaSuccess) {
 			// Empty loop body.
 		}
-
+		total_buffer_capacity = new_size;
 	}
 
 	/*
@@ -537,6 +537,7 @@ class MapGPU_Node: public ff::ff_minode {
 		while (cudaMalloc(&buffer, new_size * sizeof *buffer) != cudaSuccess) {
 			// Empty loop body.
 		}
+		total_buffer_capacity = new_size;
 	}
 
 	/*
@@ -690,15 +691,16 @@ public:
 				failwith("MapGPU_Node failed to allocate GPU result buffer");
 			}
 		}
-		if (!have_gpu_output) {
-			if (cudaMallocHost(&cpu_result_buffer, result_buffer_size) != cudaSuccess) {
-				failwith("MapGPU_Node failed to allocate CPU result buffer");
-			}
+		if (cudaMallocHost(&cpu_result_buffer, result_buffer_size) != cudaSuccess) {
+			failwith("MapGPU_Node failed to allocate CPU result buffer");
 		}
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
 		if (!is_in_place<func_t>) {
+			if (cudaMallocHost(&cpu_result_buffer, result_buffer_size) != cudaSuccess) {
+				failwith("MapGPU_Node failed to allocate CPU result buffer");
+			}
 			const auto raw_size = sizeof *gpu_tuple_buffer * total_buffer_capacity;
 			if (cudaMalloc(&gpu_tuple_buffer, raw_size) != cudaSuccess) {
 				failwith("MapGPU_Node failed to allocate GPU tuple buffer");
