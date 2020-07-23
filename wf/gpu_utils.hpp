@@ -65,8 +65,48 @@ struct GPUBufferHandle {
 	tuple_t *buffer;
 	std::size_t size;
 	key_t *key_buffer;
-	std::size_t key_size;
+	std::size_t keys_size;
 };
+
+/*
+ * Resizes buffer to new_size if it's larger than old_size. the buffer must be
+ * allocated on the host via CUDA.
+ * Returns true on successful operation, false otherwise.
+ */
+template<typename T>
+inline bool enlarge_cpu_buffer(T *&buffer, const int new_size,
+			       const int old_size) {
+	if (old_size >= new_size) {
+		return true;
+	}
+	T *tmp;
+	if (cudaMallocHost(&tmp, new_size * sizeof *buffer) != cudaSuccess) {
+		return false;
+	}
+	cudaFreeHost(buffer);
+	buffer = tmp;
+	return true;
+}
+
+/*
+ * Resizes buffer to new_size if it's larger than old_size. the buffer must be
+ * allocated on the device via CUDA.
+ * Returns true on successful operation, false otherwise.
+ */
+template<typename T>
+inline bool enlarge_gpu_buffer(T *&buffer, const int new_size,
+			       const int old_size) {
+	if (old_size >= new_size) {
+		return true;
+	}
+	T *tmp;
+	while (cudaMalloc(&tmp, new_size * sizeof *buffer) != cudaSuccess) {
+		return false;
+	}
+	cudaFree(buffer);
+	buffer = tmp;
+	return true;
+}
 
 inline void failwith(const std::string &err) {
 	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
