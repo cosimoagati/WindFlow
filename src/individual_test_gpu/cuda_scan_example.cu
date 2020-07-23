@@ -6,8 +6,6 @@ using namespace std;
 
 __global__ void prescan(int *const g_odata, int *const g_idata, const int n,
 			const int target_value, const int power_of_two) {
-	// extern __shared__ int temp[]; // allocated on invocation
-	// int *const mapped_idata = temp + n;
 	extern __shared__ int mapped_idata[];
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
