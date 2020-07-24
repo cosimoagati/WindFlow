@@ -37,6 +37,12 @@
 #include "basic.hpp"
 
 namespace wf {
+inline void failwith(const std::string &err) {
+	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
+		  << std::endl;
+	std::exit(EXIT_FAILURE);
+}
+
 template<typename F, typename... Args>
 struct is_invocable :
 		std::is_constructible<std::function<void(Args ...)>,
@@ -66,6 +72,102 @@ struct GPUBufferHandle {
 	std::size_t size;
 	key_t *key_buffer;
 	std::size_t keys_size;
+};
+
+/*
+ * GPU buffer abstraction, managing allocation, resize and deletion.
+ */
+template<typename T>
+class GPUBuffer {
+	T *buffer_ptr;
+	std::size_t buffer_size;
+	std::size_t allocated_size;
+public:
+	GPUBuffer(const std::size_t size) {
+		if (cudaMalloc(&buffer_ptr, size * sizeof *buffer_ptr) != cudaSuccess) {
+			failwith("Failed to allocate GPU buffer");
+		}
+		this->buffer_size = this->allocated_size = size;
+	}
+	GPUBuffer() : buffer_ptr {nullptr}, buffer_size {0}, allocated_size {0} {}
+
+	~GPUBuffer() {
+		if (buffer_ptr) {
+			cudaFree(buffer_ptr);
+		}
+	}
+	GPUBuffer(const GPUBuffer &) = delete;
+	GPUBuffer &operator=(const GPUBuffer &) = delete;
+
+	T *data() const { return buffer_ptr; }
+	std::size_t size() const { return buffer_size; }
+
+	bool enlarge(const std::size_t new_size) {
+		if (new_size >= allocated_size) {
+			return true;
+		}
+		T *tmp;
+		if (cudaMalloc(&tmp, new_size * sizeof *tmp) != cudaSuccess) {
+			return false;
+		}
+		cudaFree(buffer_ptr);
+		buffer_ptr = tmp;
+		return true;
+	}
+};
+
+template<typename T>
+class PinnedCPUBuffer {
+	T *buffer_ptr;
+	std::size_t buffer_size;
+	std::size_t allocated_size;
+public:
+	PinnedCPUBuffer(const std::size_t size) {
+		if (size == 0) {
+			failwith("Error: allocating pinned CPU buffer with size equal to zero");
+		}
+		if (cudaMallocHost(&buffer_ptr, size * sizeof *buffer_ptr) != cudaSuccess) {
+			failwith("Failed to allocate pinned CPU buffer");
+		}
+		this->buffer_size = this->allocated_size = size;
+	}
+	PinnedCPUBuffer() : buffer_ptr {nullptr}, buffer_size {0}, allocated_size {0} {}
+
+	~PinnedCPUBuffer() {
+		if (buffer_ptr) {
+			cudaFreeHost(buffer_ptr);
+		}
+	}
+	PinnedCPUBuffer(const PinnedCPUBuffer &) = delete;
+	PinnedCPUBuffer &operator=(const PinnedCPUBuffer &) = delete;
+
+	PinnedCPUBuffer &operator=(PinnedCPUBuffer &&other) {
+		buffer_ptr = other.buffer_ptr;
+		buffer_size = other.buffer_size;
+		allocated_size = other.allocated_size;
+		if (other.buffer_ptr) {
+			cudaFreeHost(other.buffer_ptr);
+			other.buffer_ptr = nullptr;
+		}
+	}
+
+	T *data() const { return buffer_ptr; }
+	std::size_t size() const { return buffer_size; }
+	T &operator[](std::size_t i) { return buffer_ptr[i]; }
+	const T &operator[](std::size_t i) const { return buffer_ptr[i]; }
+
+	bool enlarge(const std::size_t new_size) {
+		if (new_size >= allocated_size) {
+			return true;
+		}
+		T *tmp;
+		if (cudaMallocHost(&tmp, new_size * sizeof *tmp) != cudaSuccess) {
+			return false;
+		}
+		cudaFree(buffer_ptr);
+		buffer_ptr = tmp;
+		return true;
+	}
 };
 
 /*
@@ -100,18 +202,12 @@ inline bool enlarge_gpu_buffer(T *&buffer, const int new_size,
 		return true;
 	}
 	T *tmp;
-	while (cudaMalloc(&tmp, new_size * sizeof *buffer) != cudaSuccess) {
+	if (cudaMalloc(&tmp, new_size * sizeof *buffer) != cudaSuccess) {
 		return false;
 	}
 	cudaFree(buffer);
 	buffer = tmp;
 	return true;
-}
-
-inline void failwith(const std::string &err) {
-	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
-		  << std::endl;
-	std::exit(EXIT_FAILURE);
 }
 } // namespace wf
 
