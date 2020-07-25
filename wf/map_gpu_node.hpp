@@ -308,6 +308,7 @@ class MapGPU_Node: public ff::ff_minode {
 		}
 		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_result_buffer, total_buffer_capacity);
+		assert(cudaGetLastError() == cudaSuccess);
 		was_batch_started = true;
 		return this->GO_ON;
 	}
@@ -362,6 +363,7 @@ class MapGPU_Node: public ff::ff_minode {
 		run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_tuple_buffer, gpu_result_buffer,
 			 total_buffer_capacity);
+		assert(cudaGetLastError() == cudaSuccess);
 		was_batch_started = true;
 		return this->GO_ON;
 	}
@@ -434,6 +436,7 @@ class MapGPU_Node: public ff::ff_minode {
 		run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 			(map_func, gpu_result_buffer, gpu_tuple_state_buffer,
 			 scratchpad_size, total_buffer_capacity);
+		assert(cudaGetLastError() == cudaSuccess);
 		was_batch_started = true;
 		return this->GO_ON;
 	}
@@ -510,6 +513,7 @@ class MapGPU_Node: public ff::ff_minode {
 			(map_func, gpu_tuple_buffer, gpu_result_buffer,
 			 gpu_tuple_state_buffer, scratchpad_size,
 			 total_buffer_capacity);
+		assert(cudaGetLastError() == cudaSuccess);
 		was_batch_started = true;
 		return this->GO_ON;
 	}
