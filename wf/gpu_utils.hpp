@@ -129,7 +129,7 @@ class PinnedCPUBuffer {
 	std::size_t allocated_size;
 public:
 	PinnedCPUBuffer(const std::size_t size) {
-		assert(size);
+		assert(size != 0);
 		if (cudaMallocHost(&buffer_ptr, size * sizeof *buffer_ptr) != cudaSuccess) {
 			failwith("Failed to allocate pinned CPU buffer");
 		}
@@ -138,7 +138,7 @@ public:
 	PinnedCPUBuffer() : buffer_ptr {nullptr}, buffer_size {0}, allocated_size {0} {}
 
 	~PinnedCPUBuffer() {
-		if (buffer_ptr) {
+		if (buffer_ptr != nullptr) {
 			const auto status = cudaFreeHost(buffer_ptr);
 			std::cerr << cudaGetErrorString(status) << '\n';
 			assert(status == cudaSuccess);
