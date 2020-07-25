@@ -94,7 +94,7 @@ public:
 	GPUBuffer() : buffer_ptr {nullptr}, buffer_size {0}, allocated_size {0} {}
 
 	~GPUBuffer() {
-		if (buffer_ptr) {
+		if (buffer_ptr != nullptr) {
 			const auto status = cudaFree(buffer_ptr);
 			assert(status == cudaSuccess);
 		}
