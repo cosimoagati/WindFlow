@@ -40,7 +40,7 @@
 #include "basic_emitter.hpp"
 #include "gpu_utils.hpp"
 
-# define PARALLEL_PARTITION
+// # define PARALLEL_PARTITION
 
 namespace wf {
 // Use int instead of std::size_t since it's smaller and faster.  Beware
@@ -48,9 +48,7 @@ namespace wf {
 template<typename T>
 __global__ void prescan(T *const g_odata, T *const g_idata, const T n,
 			const T target_value, const T power_of_two) {
-	// extern __shared__ int temp[]; // allocated on invocation
-	// int *const mapped_idata = temp + n;
-	extern __shared__ T mapped_idata[];
+	extern __shared__ int mapped_idata[];
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
 	// const auto thread_id = threadIdx.x;
@@ -86,7 +84,7 @@ __global__ void prescan(T *const g_odata, T *const g_idata, const T n,
 }
 
 template<typename T>
-T get_closest_power_of_two(const T n) {
+constexpr T get_closest_power_of_two(const T n) {
 	auto i = 1;
 	while (i < n) {
 		i *= 2;
@@ -126,12 +124,13 @@ private:
 	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
-	std::size_t *cpu_hash_index {nullptr};  // Stores modulo'd hash values for keys.
-	std::size_t *gpu_hash_index {nullptr};  // Stores modulo'd hash values for keys.
+	std::vector<tuple_t> cpu_tuple_buffer;
+	std::vector<std::size_t> cpu_hash_index;  // Stores modulo'd hash values for keys.
+	std::size_t *gpu_hash_index {nullptr};    // Stores modulo'd hash values for keys.
 	std::size_t *scan {nullptr};
-	std::size_t destination_index;
+	std::size_t destination_index {0};
 	std::size_t num_of_destinations;
-	std::size_t dest_power_of_two;
+	std::size_t current_allocated_size;
 	int gpu_blocks;
 	int gpu_threads_per_block;
 
@@ -145,9 +144,9 @@ public:
 			    const bool have_gpu_input=false,
 			    const bool have_gpu_output=false,
 			    const int gpu_threads_per_block=256)
-		: routing_mode {FORWARD}, destination_index {0},
+		: routing_mode {FORWARD},
 		  num_of_destinations {num_of_destinations},
-		  dest_power_of_two {get_closest_power_of_two(num_of_destinations)},
+		  current_allocated_size {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output},
 		  gpu_threads_per_block {gpu_threads_per_block},
@@ -168,9 +167,9 @@ public:
 			    const bool have_gpu_output=false,
 			    const int gpu_threads_per_block=256)
 		: routing_mode {KEYBY}, routing_func {routing_func},
-		  destination_index {0},
 		  num_of_destinations {num_of_destinations},
-		  dest_power_of_two {get_closest_power_of_two(num_of_destinations)},
+		  cpu_tuple_buffer (num_of_destinations),
+		  cpu_hash_index (num_of_destinations),
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output},
 		  gpu_threads_per_block {gpu_threads_per_block},
@@ -183,9 +182,6 @@ public:
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
-		if (cudaMallocHost(&cpu_hash_index, num_of_destinations * sizeof *cpu_hash_index) != cudaSuccess) {
-			failwith("Standard_EmitterGPU failed to allocate CPU hash array.");
-		}
 		if (cudaMalloc(&gpu_hash_index, num_of_destinations * sizeof *gpu_hash_index) != cudaSuccess) {
 			failwith("Standard_EmitterGPU failed to allocate GPU hash array.");
 		}
@@ -196,9 +192,12 @@ public:
 
 	~Standard_EmitterGPU() {
 		cudaStreamDestroy(cuda_stream);
-		if (cpu_hash_index) {
-			cudaFreeHost(cpu_hash_index);
-		}
+		// if (cpu_tuple_buffer) {
+		// 	cudaFreeHost(cpu_tuple_buffer);
+		// }
+		// if (cpu_hash_index) {
+		// 	cudaFreeHost(cpu_hash_index);
+		// }
 		if (gpu_hash_index) {
 			cudaFree(gpu_hash_index);
 		}
@@ -240,11 +239,8 @@ public:
 	 */
 	void linear_keyed_gpu_partition(buffer_handle_t *const handle) {
 		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
-		tuple_t *cpu_tuple_buffer; // TODO: Should this be just a class member?
-		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
-			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
-		}
-		cudaMemcpyAsync(cpu_tuple_buffer, handle->buffer,
+		cpu_tuple_buffer.resize(handle->size);
+		cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer,
 				raw_batch_size, cudaMemcpyDeviceToHost, cuda_stream);
 		std::vector<std::vector<tuple_t>> sub_buffers (num_of_destinations);
 
@@ -255,7 +251,6 @@ public:
 			const auto hashcode = hash(key) % num_of_destinations;
 			sub_buffers[hashcode].push_back(tuple);
 		}
-		cudaFreeHost(cpu_tuple_buffer);
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			if (sub_buffers[i].empty()) {
 				continue;
@@ -281,38 +276,50 @@ public:
 	 * Actual partitioning implementation to be eventually used.
 	 */
 	void parallel_keyed_gpu_partition(buffer_handle_t *const handle) {
-		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
-		tuple_t *cpu_tuple_buffer;
-		if (cudaMallocHost(&cpu_tuple_buffer, raw_batch_size) != cudaSuccess) {
-			failwith("Standard_EmitterGPU failed to allocate CPU buffer");
+		cpu_tuple_buffer.resize(handle->size);
+		cpu_hash_index.resize(handle->size);
+		// if (!enlarge_cpu_buffer(cpu_tuple_buffer, handle->size, current_allocated_size)) {
+		// 	failwith("Standard_EmitterGPU failed to resize CPU tuple buffer");
+		// }
+		// if (!enlarge_cpu_buffer(cpu_hash_index, handle->size, current_allocated_size)) {
+		// 	failwith("Standard_EmitterGPU failed to resize CPU hash index");
+		// }
+		if (!enlarge_gpu_buffer(gpu_hash_index, handle->size, current_allocated_size)) {
+			failwith("Standard_EmitterGPU failed to resize GPU hash index");
 		}
+		if (!enlarge_gpu_buffer(scan, handle->size, current_allocated_size)) {
+			failwith("Standard_EmitterGPU failed to resize scan buffer");
+		}
+		if (handle->size > current_allocated_size) {
+			current_allocated_size = handle->size;
+		}
+		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
 		// TODO: Can we avoid this copy on cpu?
-		cudaMemcpyAsync(cpu_tuple_buffer, handle->buffer, raw_batch_size,
+		cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer, raw_batch_size,
 				cudaMemcpyDeviceToHost, cuda_stream);
 		cudaStreamSynchronize(cuda_stream);
 		for (auto i = 0; i < handle->size; ++i) {
 			const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
 			cpu_hash_index[i] = hash(key) % num_of_destinations;
 		}
-		cudaFreeHost(cpu_tuple_buffer);
-
-		const auto raw_index_size = sizeof *cpu_hash_index * num_of_destinations;
-		cudaMemcpyAsync(gpu_hash_index, cpu_hash_index,
+		const auto raw_index_size = sizeof *cpu_hash_index.data() * handle->size;
+		cudaMemcpyAsync(gpu_hash_index, cpu_hash_index.data(),
 				raw_index_size, cudaMemcpyHostToDevice, cuda_stream);
+		const auto pow = get_closest_power_of_two(handle->size);
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<gpu_blocks, gpu_threads_per_block,
-				2 * dest_power_of_two * sizeof *scan, cuda_stream>>>
-				(scan, gpu_hash_index, num_of_destinations,
-				 static_cast<std::size_t>(i), dest_power_of_two);
+				2 * pow * sizeof(int), cuda_stream>>>
+				(scan, gpu_hash_index, handle->size,
+				 static_cast<std::size_t>(i), pow);
 
 			// Used for debugging.
-			std::size_t cpu_scan[num_of_destinations];
-			cudaMemcpy(cpu_scan, scan,
-				   num_of_destinations * sizeof *cpu_scan,
-				   cudaMemcpyDeviceToHost);
+			// std::size_t cpu_scan[handle->size];
+			// cudaStreamSynchronize(cuda_stream);
+			// cudaMemcpy(cpu_scan, scan, handle->size * sizeof *cpu_scan,
+			// 	   cudaMemcpyDeviceToHost);
 
 			std::size_t bout_size;
-			cudaMemcpyAsync(&bout_size, &scan[num_of_destinations - 1],
+			cudaMemcpyAsync(&bout_size, &scan[handle->size - 1],
 					sizeof bout_size, cudaMemcpyDeviceToHost,
 					cuda_stream);
 			cudaStreamSynchronize(cuda_stream);
@@ -326,6 +333,8 @@ public:
 			cudaStreamSynchronize(cuda_stream);
 			ff_send_out_to(new buffer_handle_t {bout, bout_size}, i);
 		}
+		cudaFree(handle->buffer);
+		delete handle;
 	}
 
 	void svc_end() const {}
