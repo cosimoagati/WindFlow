@@ -121,6 +121,7 @@ private:
 	using buffer_handle_t = GPUBufferHandle<tuple_t>;
 
 	cudaStream_t cuda_stream;
+	cudaError_t cuda_error; // Used to store and catch CUDA errors;
 	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
@@ -191,7 +192,8 @@ public:
 	}
 
 	~Standard_EmitterGPU() {
-		cudaStreamDestroy(cuda_stream);
+		cuda_error = cudaStreamDestroy(cuda_stream);
+		assert(cuda_error == cudaSuccess);
 		// if (cpu_tuple_buffer) {
 		// 	cudaFreeHost(cpu_tuple_buffer);
 		// }
@@ -199,10 +201,12 @@ public:
 		// 	cudaFreeHost(cpu_hash_index);
 		// }
 		if (gpu_hash_index) {
-			cudaFree(gpu_hash_index);
+			cuda_error = cudaFree(gpu_hash_index);
+			assert(cuda_error == cudaSuccess);
 		}
 		if (scan) {
-			cudaFree(scan);
+			cuda_error = cudaFree(scan);
+			assert(cuda_error == cudaSuccess);
 		}
 	}
 
@@ -240,11 +244,13 @@ public:
 	void linear_keyed_gpu_partition(buffer_handle_t *const handle) {
 		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
 		cpu_tuple_buffer.resize(handle->size);
-		cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer,
-				raw_batch_size, cudaMemcpyDeviceToHost, cuda_stream);
+		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer,
+					     raw_batch_size, cudaMemcpyDeviceToHost, cuda_stream);
+		assert(cuda_error == cudaSuccess);
 		std::vector<std::vector<tuple_t>> sub_buffers (num_of_destinations);
 
-		cudaStreamSynchronize(cuda_stream);
+		cuda_error = cudaStreamSynchronize(cuda_stream);
+		assert(cuda_error == cudaSuccess);
 		for (auto i = 0; i < handle->size; ++i) {
 			const auto &tuple = cpu_tuple_buffer[i];
 			const auto key = std::get<0>(tuple.getControlFields());
@@ -261,14 +267,18 @@ public:
 			if (cudaMalloc(&gpu_sub_buffer, raw_size) != cudaSuccess) {
 				failwith("Standard_EmitterGPU failed to allocate GPU sub-buffer");
 			}
-			cudaMemcpyAsync(gpu_sub_buffer, cpu_sub_buffer.data(),
-					raw_size, cudaMemcpyHostToDevice, cuda_stream);
-			cudaStreamSynchronize(cuda_stream);
+			cuda_error = cudaMemcpyAsync(gpu_sub_buffer, cpu_sub_buffer.data(),
+						     raw_size, cudaMemcpyHostToDevice, cuda_stream);
+			assert(cuda_error == cudaSuccess);
+
+			cuda_error = cudaStreamSynchronize(cuda_stream);
+			assert(cuda_error == cudaSuccess);
 			this->ff_send_out_to(new buffer_handle_t
 					     {gpu_sub_buffer, cpu_sub_buffer.size()},
 					     i);
 		}
-		cudaFree(handle->buffer);
+		cuda_error = cudaFree(handle->buffer);
+		assert(cuda_error == cudaSuccess);
 		delete handle;
 	}
 
@@ -295,22 +305,26 @@ public:
 		}
 		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
 		// TODO: Can we avoid this copy on cpu?
-		cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer, raw_batch_size,
-				cudaMemcpyDeviceToHost, cuda_stream);
+		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer, raw_batch_size,
+					     cudaMemcpyDeviceToHost, cuda_stream);
+		assert(cuda_error == cudaSuccess);
 		cudaStreamSynchronize(cuda_stream);
 		for (auto i = 0; i < handle->size; ++i) {
 			const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
 			cpu_hash_index[i] = hash(key) % num_of_destinations;
 		}
 		const auto raw_index_size = sizeof *cpu_hash_index.data() * handle->size;
-		cudaMemcpyAsync(gpu_hash_index, cpu_hash_index.data(),
-				raw_index_size, cudaMemcpyHostToDevice, cuda_stream);
+		cuda_error = cudaMemcpyAsync(gpu_hash_index, cpu_hash_index.data(),
+					     raw_index_size, cudaMemcpyHostToDevice, cuda_stream);
+		assert(cuda_error == cudaSuccess);
+
 		const auto pow = get_closest_power_of_two(handle->size);
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<gpu_blocks, gpu_threads_per_block,
 				2 * pow * sizeof(int), cuda_stream>>>
 				(scan, gpu_hash_index, handle->size,
 				 static_cast<std::size_t>(i), pow);
+			assert(cudaGetLastError() == cudaSuccess);
 
 			// Used for debugging.
 			// std::size_t cpu_scan[handle->size];
@@ -319,10 +333,13 @@ public:
 			// 	   cudaMemcpyDeviceToHost);
 
 			std::size_t bout_size;
-			cudaMemcpyAsync(&bout_size, &scan[handle->size - 1],
-					sizeof bout_size, cudaMemcpyDeviceToHost,
-					cuda_stream);
-			cudaStreamSynchronize(cuda_stream);
+			cuda_error = cudaMemcpyAsync(&bout_size, &scan[handle->size - 1],
+						     sizeof bout_size, cudaMemcpyDeviceToHost,
+						     cuda_stream);
+			assert(cuda_error == cudaSuccess);
+			cuda_error = cudaStreamSynchronize(cuda_stream);
+			assert(cuda_error == cudaSuccess);
+
 			const auto bout_raw_size = bout_size * sizeof(tuple_t);
 			tuple_t *bout;
 			if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
@@ -330,10 +347,13 @@ public:
 			}
 			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
 				(handle->buffer, num_of_destinations, gpu_hash_index, scan, bout, i);
-			cudaStreamSynchronize(cuda_stream);
+			assert(cudaGetLastError() == cudaSuccess);
+			cuda_error = cudaStreamSynchronize(cuda_stream);
+			assert(cuda_error == cudaSuccess);
 			ff_send_out_to(new buffer_handle_t {bout, bout_size}, i);
 		}
-		cudaFree(handle->buffer);
+		cuda_error = cudaFree(handle->buffer);
+		assert(cuda_error);
 		delete handle;
 	}
 
