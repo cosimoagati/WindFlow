@@ -254,8 +254,10 @@ class MapGPU_Node: public ff::ff_minode {
 	template<typename T>
 	void copy_host_buffer_to_device(T *device_to, T *host_from) {
 		const auto size = total_buffer_capacity * sizeof *device_to;
+		assert(cudaGetLastError() == cudaSuccess);
 		cudaMemcpyAsync(device_to, host_from, size,
 				cudaMemcpyHostToDevice, cuda_stream);
+		assert(cudaGetLastError() == cudaSuccess);
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
@@ -372,7 +374,7 @@ class MapGPU_Node: public ff::ff_minode {
 				cudaStreamSynchronize(cuda_stream);
 				if (have_gpu_output) {
 					this->ff_send_out(new tuple_buffer_handle_t {gpu_result_buffer,
-											total_buffer_capacity});
+										     total_buffer_capacity});
 				} else {
 					send_tuples_to_cpu_operator();
 					cudaFree(gpu_result_buffer);
@@ -382,7 +384,6 @@ class MapGPU_Node: public ff::ff_minode {
 			gpu_result_buffer = handle->buffer;
 			total_buffer_capacity = handle->size;
 			cpu_tuple_state_buffer.enlarge(handle->size);
-			// enlarge_cpu_buffer(cpu_tuple_state_buffer, handle->size);
 			if (total_allocated_capacity < handle->size) {
 				total_allocated_capacity = handle->size;
 			}
@@ -515,9 +516,12 @@ class MapGPU_Node: public ff::ff_minode {
 
 	void send_tuples_to_cpu_operator() {
 		const auto size = total_buffer_capacity * sizeof *cpu_result_buffer.data();
+		assert(cudaGetLastError() == cudaSuccess);
 		cudaMemcpyAsync(cpu_result_buffer.data(), gpu_result_buffer, size,
 				cudaMemcpyDeviceToHost, cuda_stream);
 		cudaStreamSynchronize(cuda_stream);
+
+		assert(cudaGetLastError() == cudaSuccess);
 		for (auto i = 0; i < total_buffer_capacity; ++i) {
 			this->ff_send_out(new result_t {cpu_result_buffer[i]});
 		}
@@ -694,7 +698,6 @@ public:
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
 		if (!is_in_place<func_t>) {
-			cpu_result_buffer = PinnedCPUBuffer<result_t> {total_buffer_capacity};
 			const auto raw_size = sizeof *gpu_tuple_buffer * total_buffer_capacity;
 			if (cudaMalloc(&gpu_tuple_buffer, raw_size) != cudaSuccess) {
 				failwith("MapGPU_Node failed to allocate GPU tuple buffer");
@@ -746,6 +749,7 @@ public:
 	 * (keyed).
 	 */
 	void *svc(void *const t) override {
+		assert(cudaGetLastError() == cudaSuccess);
 #if defined (TRACE_WINDFLOW)
 		startTS = current_time_nsecs();
 		if (rcvTuples == 0) {
@@ -773,6 +777,7 @@ public:
 	 * kernel.
 	 */
 	void eosnotify(ssize_t) override  {
+		assert(cudaGetLastError() == cudaSuccess);
 		if (was_batch_started) {
 			cudaStreamSynchronize(cuda_stream);
 			if (have_gpu_output) {
@@ -789,6 +794,7 @@ public:
 
 	// svc_end method (utilized by the FastFlow runtime)
 	void svc_end() override {
+		assert(cudaGetLastError() == cudaSuccess);
 #if defined (TRACE_WINDFLOW)
 		std::ostringstream stream;
 		stream << "************************************LOG************************************\n";
