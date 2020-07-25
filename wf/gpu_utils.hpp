@@ -28,6 +28,7 @@
 #ifndef GPU_UTILS_H
 #define GPU_UTILS_H
 
+#include <algorithm>
 #include <cstddef>
 #include <functional>
 #include <iostream>
@@ -103,15 +104,19 @@ public:
 	std::size_t size() const { return buffer_size; }
 
 	bool enlarge(const std::size_t new_size) {
-		if (new_size >= allocated_size) {
+		if (new_size < allocated_size) {
+			buffer_size = new_size;
 			return true;
 		}
 		T *tmp;
-		if (cudaMalloc(&tmp, new_size * sizeof *tmp) != cudaSuccess) {
+		const auto code = cudaMallocHost(&tmp, new_size * sizeof *tmp);
+		if (code != cudaSuccess) {
+			std::cerr << cudaGetErrorString(code) << '\n';
 			return false;
 		}
 		cudaFree(buffer_ptr);
 		buffer_ptr = tmp;
+		allocated_size = buffer_size = new_size;
 		return true;
 	}
 };
@@ -123,9 +128,6 @@ class PinnedCPUBuffer {
 	std::size_t allocated_size;
 public:
 	PinnedCPUBuffer(const std::size_t size) {
-		if (size == 0) {
-			failwith("Error: allocating pinned CPU buffer with size equal to zero");
-		}
 		if (cudaMallocHost(&buffer_ptr, size * sizeof *buffer_ptr) != cudaSuccess) {
 			failwith("Failed to allocate pinned CPU buffer");
 		}
@@ -138,7 +140,14 @@ public:
 			cudaFreeHost(buffer_ptr);
 		}
 	}
-	PinnedCPUBuffer(const PinnedCPUBuffer &) = delete;
+	PinnedCPUBuffer(const PinnedCPUBuffer &other)
+		: buffer_size {other.buffer_size}, allocated_size {other.allocated_size}
+	{
+		if (cudaMallocHost(&buffer_ptr, buffer_size * sizeof *buffer_ptr) != cudaSuccess) {
+			failwith("Failed to allocate pinned CPU buffer");
+		}
+		std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
+	}
 	PinnedCPUBuffer &operator=(const PinnedCPUBuffer &) = delete;
 
 	PinnedCPUBuffer &operator=(PinnedCPUBuffer &&other) {
@@ -157,15 +166,19 @@ public:
 	const T &operator[](std::size_t i) const { return buffer_ptr[i]; }
 
 	bool enlarge(const std::size_t new_size) {
-		if (new_size >= allocated_size) {
+		if (new_size < allocated_size) {
+			buffer_size = new_size;
 			return true;
 		}
 		T *tmp;
-		if (cudaMallocHost(&tmp, new_size * sizeof *tmp) != cudaSuccess) {
+		const auto code = cudaMallocHost(&tmp, new_size * sizeof *tmp);
+		if (code != cudaSuccess) {
+			std::cerr << cudaGetErrorString(code) << '\n';
 			return false;
 		}
-		cudaFree(buffer_ptr);
+		cudaFreeHost(buffer_ptr);
 		buffer_ptr = tmp;
+		allocated_size = buffer_size = new_size;
 		return true;
 	}
 };
@@ -178,15 +191,21 @@ public:
 template<typename T>
 inline bool enlarge_cpu_buffer(T *&buffer, const int new_size,
 			       const int old_size) {
-	if (old_size >= new_size) {
+	if (new_size < old_size) {
 		return true;
 	}
-	T *tmp;
-	if (cudaMallocHost(&tmp, new_size * sizeof *buffer) != cudaSuccess) {
+	// T *tmp;
+	cudaFreeHost(buffer);
+	buffer = nullptr;
+	const auto code = cudaMallocHost(&buffer, new_size * sizeof *buffer);
+	if (code != cudaSuccess) {
+		std::cerr << cudaGetErrorString(code) << '\n';
 		return false;
 	}
-	cudaFreeHost(buffer);
-	buffer = tmp;
+	// if (cudaMallocHost(&tmp, new_size * sizeof *buffer) != cudaSuccess) {
+	// 	return false;
+	// }
+
 	return true;
 }
 
@@ -198,7 +217,7 @@ inline bool enlarge_cpu_buffer(T *&buffer, const int new_size,
 template<typename T>
 inline bool enlarge_gpu_buffer(T *&buffer, const int new_size,
 			       const int old_size) {
-	if (old_size >= new_size) {
+	if (new_size < old_size) {
 		return true;
 	}
 	T *tmp;
