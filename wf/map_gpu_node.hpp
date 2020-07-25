@@ -210,6 +210,7 @@ class MapGPU_Node: public ff::ff_minode {
 	 */
 	func_t map_func;
 	std::string operator_name;
+	cudaStream_t cuda_stream;
 	cudaError_t cuda_error; // Used to store and catch CUDA errors;
 	int total_buffer_capacity;
 	int total_allocated_capacity;
@@ -220,7 +221,7 @@ class MapGPU_Node: public ff::ff_minode {
 
 	int current_buffer_capacity {0};
 
-	cudaStream_t cuda_stream;
+
 	// tuple_t *cpu_tuple_buffer;
 	PinnedCPUBuffer<tuple_t> cpu_tuple_buffer;
 	tuple_t *gpu_tuple_buffer;
