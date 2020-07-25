@@ -145,20 +145,20 @@ void test_gpu() {
 	};
 #endif
 	// TODO: Update builder.
-	ff_pipeline ip_pipe;
-	ip_pipe.add_stage(::Source<tuple_t> {});
-	MapGPU<tuple_t, tuple_t, decltype(ip_keyless_func)> first_ip_map {ip_keyless_func, 1,
-		"first_ip_map", 256, 256, false, true};
-	MapGPU<tuple_t, tuple_t, decltype(ip_keyless_func)> second_ip_map {ip_keyless_func, 1,
-		"second_ip_map", 256, 256, true, false};
+	// ff_pipeline ip_pipe;
+	// ip_pipe.add_stage(::Source<tuple_t> {});
+	// MapGPU<tuple_t, tuple_t, decltype(ip_keyless_func)> first_ip_map {ip_keyless_func, 1,
+	// 	"first_ip_map", 256, 256, false, true};
+	// MapGPU<tuple_t, tuple_t, decltype(ip_keyless_func)> second_ip_map {ip_keyless_func, 1,
+	// 	"second_ip_map", 256, 256, true, false};
 
-	ip_pipe.add_stage(&first_ip_map);
-	ip_pipe.add_stage(&second_ip_map);
-	ip_pipe.add_stage(::Sink<tuple_t> {});
-	if (ip_pipe.run_and_wait_end() < 0) {
-		error("Error while running pipeline.");
-		std::exit(EXIT_FAILURE);
-	}
+	// ip_pipe.add_stage(&first_ip_map);
+	// ip_pipe.add_stage(&second_ip_map);
+	// ip_pipe.add_stage(::Sink<tuple_t> {});
+	// if (ip_pipe.run_and_wait_end() < 0) {
+	// 	error("Error while running pipeline.");
+	// 	std::exit(EXIT_FAILURE);
+	// }
 	// cout << "Now testing non-in-place keyless version..." << endl;
 	// ff_pipeline nip_pipe;
 	// nip_pipe.add_stage(::Source<tuple_t> {});
@@ -175,22 +175,22 @@ void test_gpu() {
 	// 	error("Error while running pipeline.");
 	// 	std::exit(EXIT_FAILURE);
 	// }
-	// cout << "Now testing in-place keyed pipe..." << endl;
-	// ff_pipeline keyed_ip_pipe;
-	// keyed_ip_pipe.add_stage(::Source<tuple_t> {});
-	// MapGPU<tuple_t, tuple_t, decltype(ip_keyed_func)> first_keyed_ip_map {ip_keyed_func, 1,
-	// 	"first", routing_func, 256, 256, sizeof(int), false, true};
-	// MapGPU<tuple_t, tuple_t, decltype(ip_keyed_func)> second_keyed_ip_map {ip_keyed_func, 2,
-	// 	"second", routing_func, 256, 256, sizeof(int), true, false};
+	cout << "Now testing in-place keyed pipe..." << endl;
+	ff_pipeline keyed_ip_pipe;
+	keyed_ip_pipe.add_stage(::Source<tuple_t> {});
+	MapGPU<tuple_t, tuple_t, decltype(ip_keyed_func)> first_keyed_ip_map {ip_keyed_func, 1,
+		"first", routing_func, 256, 256, sizeof(int), false, true};
+	MapGPU<tuple_t, tuple_t, decltype(ip_keyed_func)> second_keyed_ip_map {ip_keyed_func, 2,
+		"second", routing_func, 256, 256, sizeof(int), true, false};
 
-	// keyed_ip_pipe.add_stage(&first_keyed_ip_map);
-	// keyed_ip_pipe.add_stage(&second_keyed_ip_map);
-	// keyed_ip_pipe.add_stage(::Sink<tuple_t> {});
+	keyed_ip_pipe.add_stage(&first_keyed_ip_map);
+	keyed_ip_pipe.add_stage(&second_keyed_ip_map);
+	keyed_ip_pipe.add_stage(::Sink<tuple_t> {});
 
-	// if (keyed_ip_pipe.run_and_wait_end() < 0) {
-	// 	error("Error while running pipeline.");
-	// 	std::exit(EXIT_FAILURE);
-	// }
+	if (keyed_ip_pipe.run_and_wait_end() < 0) {
+		error("Error while running pipeline.");
+		std::exit(EXIT_FAILURE);
+	}
 }
 
 #ifdef PERFORMANCE_TEST
