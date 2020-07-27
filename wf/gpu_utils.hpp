@@ -86,9 +86,11 @@ class GPUBuffer {
 	std::size_t allocated_size;
 public:
 	GPUBuffer(const std::size_t size) {
-		assert(size != 0);
-		if (cudaMalloc(&buffer_ptr, size * sizeof *buffer_ptr) != cudaSuccess) {
-			failwith("Failed to allocate pinned CPU buffer");
+		if (size > 0) {
+			const auto status = cudaMalloc(&buffer_ptr, size * sizeof *buffer_ptr);
+			assert(status == cudaSuccess);
+		} else {
+			buffer_ptr = nullptr;
 		}
 		this->buffer_size = this->allocated_size = size;
 	}
@@ -120,20 +122,20 @@ public:
 	T *data() const { return buffer_ptr; }
 	std::size_t size() const { return buffer_size; }
 
-	bool enlarge(const std::size_t new_size) {
+	void enlarge(const std::size_t new_size) {
 		if (new_size < allocated_size) {
 			buffer_size = new_size;
-			return true;
+			return;
 		}
 		T *tmp;
 		auto status = cudaMalloc(&tmp, new_size * sizeof *tmp);
 		assert(status == cudaSuccess);
-		status = cudaFree(buffer_ptr);
-		assert(status == cudaSuccess);
-
+		if (buffer_ptr != nullptr) {
+			status = cudaFree(buffer_ptr);
+			assert(status == cudaSuccess);
+		}
 		buffer_ptr = tmp;
 		allocated_size = buffer_size = new_size;
-		return true;
 	}
 };
 
@@ -161,9 +163,11 @@ class PinnedCPUBuffer {
 	std::size_t allocated_size;
 public:
 	PinnedCPUBuffer(const std::size_t size) {
-		assert(size != 0);
-		if (cudaMallocHost(&buffer_ptr, size * sizeof *buffer_ptr) != cudaSuccess) {
-			failwith("Failed to allocate pinned CPU buffer");
+		if (size > 0) {
+			const auto status = cudaMallocHost(&buffer_ptr, size * sizeof *buffer_ptr);
+			assert(status == cudaSuccess);
+		} else {
+			buffer_ptr = nullptr;
 		}
 		this->buffer_size = this->allocated_size = size;
 	}
@@ -197,19 +201,20 @@ public:
 	T &operator[](std::size_t i) { return buffer_ptr[i]; }
 	const T &operator[](std::size_t i) const { return buffer_ptr[i]; }
 
-	bool enlarge(const std::size_t new_size) {
+	void enlarge(const std::size_t new_size) {
 		if (new_size < allocated_size) {
 			buffer_size = new_size;
-			return true;
+			return;
 		}
 		T *tmp;
 		auto status = cudaMallocHost(&tmp, new_size * sizeof *tmp);
 		assert(status == cudaSuccess);
-		status = cudaFreeHost(buffer_ptr);
-		assert(status == cudaSuccess);
+		if (buffer_ptr != nullptr) {
+			status = cudaFreeHost(buffer_ptr);
+			assert(status == cudaSuccess);
+		}
 		buffer_ptr = tmp;
 		allocated_size = buffer_size = new_size;
-		return true;
 	}
 };
 
