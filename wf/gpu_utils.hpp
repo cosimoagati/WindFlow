@@ -108,7 +108,7 @@ public:
 	GPUBuffer(const GPUBuffer &other)
 		: buffer_size {other.buffer_size}, allocated_size {other.allocated_size}
 	{
-		if (other.buffer_ptr != nullptr && other.size > 0) {
+		if (other.buffer_ptr != nullptr && other.buffer_size > 0) {
 			const auto status = cudaMalloc(&buffer_ptr, buffer_size * sizeof *buffer_ptr);
 			assert(status == cudaSuccess);
 			std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
@@ -193,7 +193,7 @@ public:
 	PinnedCPUBuffer(const PinnedCPUBuffer &other)
 		: buffer_size {other.buffer_size}, allocated_size {other.allocated_size}
 	{
-		if (other.buffer_ptr != nullptr && other.size > 0) {
+		if (other.buffer_ptr != nullptr && other.buffer_size > 0) {
 			const auto status = cudaMallocHost(&buffer_ptr, buffer_size * sizeof *buffer_ptr);
 			assert(status == cudaSuccess);
 			std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
