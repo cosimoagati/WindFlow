@@ -85,15 +85,17 @@ class GPUBuffer {
 	std::size_t buffer_size;
 	std::size_t allocated_size;
 public:
-	GPUBuffer(const std::size_t size) {
+	GPUBuffer(const std::size_t size)
+		: buffer_size {size}, allocated_size {size}
+	{
 		if (size > 0) {
 			const auto status = cudaMalloc(&buffer_ptr, size * sizeof *buffer_ptr);
 			assert(status == cudaSuccess);
 		} else {
 			buffer_ptr = nullptr;
 		}
-		this->buffer_size = this->allocated_size = size;
 	}
+
 	GPUBuffer() : buffer_ptr {nullptr}, buffer_size {0}, allocated_size {0} {}
 
 	~GPUBuffer() {
@@ -102,6 +104,7 @@ public:
 			assert(status == cudaSuccess);
 		}
 	}
+
 	GPUBuffer(const GPUBuffer &other)
 		: buffer_size {other.buffer_size}, allocated_size {other.allocated_size}
 	{
@@ -110,7 +113,26 @@ public:
 		}
 		std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
 	}
-	GPUBuffer &operator=(const GPUBuffer &) = delete;
+
+	GPUBuffer(GPUBuffer &&other)
+		: buffer_ptr {other.buffer_ptr}, buffer_size {other.buffer_size},
+		  allocated_size {other.allocated_size}
+	{
+		other.buffer_ptr = nullptr;
+	}
+
+	GPUBuffer &operator=(const GPUBuffer &other) {
+		if (buffer_ptr != nullptr) {
+			const auto status = cudaFree(buffer_ptr);
+			assert(status == cudaSuccess);
+		}
+		 // Only copies the relevant elements, even if allocated size of
+		 // other is greater.
+		allocated_size = buffer_size = other.buffer_size;
+		const auto status = cudaMalloc(&buffer_ptr, buffer_size * sizeof *buffer_ptr) ;
+		assert(status == cudaSuccess);
+		std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
+	}
 
 	GPUBuffer &operator=(GPUBuffer &&other) {
 		buffer_ptr = other.buffer_ptr;
@@ -139,38 +161,23 @@ public:
 	}
 };
 
-// class Stream {
-// 	cudaStream_t stream;
-// public:
-// 	Stream() {
-// 		const auto status = cudaStreamCreate();
-// 		assert(status == cudaSuccess);
-// 	}
-// 	~Stream() {
-// 		const auto status = cudaStreamDestroy();
-// 		assert(status == cudaSuccess);
-// 	}
-// 	void synchronize() {
-// 		const auto status = cudaStreamSynchronize();
-// 		assert(status == cudaSuccess);
-// 	}
-// };
-
 template<typename T>
 class PinnedCPUBuffer {
 	T *buffer_ptr;
 	std::size_t buffer_size;
 	std::size_t allocated_size;
 public:
-	PinnedCPUBuffer(const std::size_t size) {
+	PinnedCPUBuffer(const std::size_t size)
+		: buffer_size {size}, allocated_size {size}
+	{
 		if (size > 0) {
 			const auto status = cudaMallocHost(&buffer_ptr, size * sizeof *buffer_ptr);
 			assert(status == cudaSuccess);
 		} else {
 			buffer_ptr = nullptr;
 		}
-		this->buffer_size = this->allocated_size = size;
 	}
+
 	PinnedCPUBuffer() : buffer_ptr {nullptr}, buffer_size {0}, allocated_size {0} {}
 
 	~PinnedCPUBuffer() {
@@ -179,6 +186,7 @@ public:
 			assert(status == cudaSuccess);
 		}
 	}
+
 	PinnedCPUBuffer(const PinnedCPUBuffer &other)
 		: buffer_size {other.buffer_size}, allocated_size {other.allocated_size}
 	{
@@ -187,7 +195,26 @@ public:
 		}
 		std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
 	}
-	PinnedCPUBuffer &operator=(const PinnedCPUBuffer &) = delete;
+
+	PinnedCPUBuffer(PinnedCPUBuffer &&other)
+		: buffer_ptr {other.buffer_ptr}, buffer_size {other.buffer_size},
+		  allocated_size {other.allocated_size}
+	{
+		other.buffer_ptr = nullptr;
+	}
+
+	PinnedCPUBuffer &operator=(const PinnedCPUBuffer &other) {
+		if (buffer_ptr != nullptr) {
+			const auto status = cudaFreeHost(buffer_ptr);
+			assert(status == cudaSuccess);
+		}
+		// Only copies the relevant elements, even if allocated size of
+		 // other is greater.
+		allocated_size = buffer_size = other.buffer_size;
+		const auto status = cudaMallocHost(&buffer_ptr, buffer_size * sizeof *buffer_ptr) ;
+		assert(status == cudaSuccess);
+		std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
+	}
 
 	PinnedCPUBuffer &operator=(PinnedCPUBuffer &&other) {
 		buffer_ptr = other.buffer_ptr;
@@ -236,14 +263,6 @@ inline bool enlarge_cpu_buffer(T *&buffer, const int new_size,
 
 	status = cudaMallocHost(&buffer, new_size * sizeof *buffer);
 	assert(status == cudaSuccess);
-	// if (code != cudaSuccess) {
-	// 	std::cerr << cudaGetErrorString(code) << '\n';
-	// 	return false;
-	// }
-	// if (cudaMallocHost(&tmp, new_size * sizeof *buffer) != cudaSuccess) {
-	// 	return false;
-	// }
-
 	return true;
 }
 
