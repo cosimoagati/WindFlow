@@ -86,8 +86,9 @@ class GPUBuffer {
 	std::size_t allocated_size;
 public:
 	GPUBuffer(const std::size_t size) {
+		assert(size != 0);
 		if (cudaMalloc(&buffer_ptr, size * sizeof *buffer_ptr) != cudaSuccess) {
-			failwith("Failed to allocate GPU buffer");
+			failwith("Failed to allocate pinned CPU buffer");
 		}
 		this->buffer_size = this->allocated_size = size;
 	}
@@ -99,11 +100,27 @@ public:
 			assert(status == cudaSuccess);
 		}
 	}
-	GPUBuffer(const GPUBuffer &) = delete;
+	GPUBuffer(const GPUBuffer &other)
+		: buffer_size {other.buffer_size}, allocated_size {other.allocated_size}
+	{
+		if (cudaMalloc(&buffer_ptr, buffer_size * sizeof *buffer_ptr) != cudaSuccess) {
+			failwith("Failed to allocate pinned CPU buffer");
+		}
+		std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
+	}
 	GPUBuffer &operator=(const GPUBuffer &) = delete;
+
+	GPUBuffer &operator=(GPUBuffer &&other) {
+		buffer_ptr = other.buffer_ptr;
+		buffer_size = other.buffer_size;
+		allocated_size = other.allocated_size;
+		other.buffer_ptr = nullptr;
+	}
 
 	T *data() const { return buffer_ptr; }
 	std::size_t size() const { return buffer_size; }
+	T &operator[](std::size_t i) { return buffer_ptr[i]; }
+	const T &operator[](std::size_t i) const { return buffer_ptr[i]; }
 
 	bool enlarge(const std::size_t new_size) {
 		if (new_size < allocated_size) {
@@ -111,16 +128,32 @@ public:
 			return true;
 		}
 		T *tmp;
-		auto status = cudaMallocHost(&tmp, new_size * sizeof *tmp);
+		auto status = cudaMalloc(&tmp, new_size * sizeof *tmp);
 		assert(status == cudaSuccess);
 		status = cudaFree(buffer_ptr);
 		assert(status == cudaSuccess);
-
 		buffer_ptr = tmp;
 		allocated_size = buffer_size = new_size;
 		return true;
 	}
 };
+
+// class Stream {
+// 	cudaStream_t stream;
+// public:
+// 	Stream() {
+// 		const auto status = cudaStreamCreate();
+// 		assert(status == cudaSuccess);
+// 	}
+// 	~Stream() {
+// 		const auto status = cudaStreamDestroy();
+// 		assert(status == cudaSuccess);
+// 	}
+// 	void synchronize() {
+// 		const auto status = cudaStreamSynchronize();
+// 		assert(status == cudaSuccess);
+// 	}
+// };
 
 template<typename T>
 class PinnedCPUBuffer {
@@ -140,7 +173,6 @@ public:
 	~PinnedCPUBuffer() {
 		if (buffer_ptr != nullptr) {
 			const auto status = cudaFreeHost(buffer_ptr);
-			std::cerr << cudaGetErrorString(status) << '\n';
 			assert(status == cudaSuccess);
 		}
 	}
@@ -158,11 +190,7 @@ public:
 		buffer_ptr = other.buffer_ptr;
 		buffer_size = other.buffer_size;
 		allocated_size = other.allocated_size;
-		if (other.buffer_ptr) {
-			const auto status = cudaFreeHost(other.buffer_ptr);
-			assert(status == cudaSuccess);
-			other.buffer_ptr = nullptr;
-		}
+		other.buffer_ptr = nullptr;
 	}
 
 	T *data() const { return buffer_ptr; }
@@ -178,10 +206,6 @@ public:
 		T *tmp;
 		auto status = cudaMallocHost(&tmp, new_size * sizeof *tmp);
 		assert(status == cudaSuccess);
-		// if (code != cudaSuccess) {
-		// 	std::cerr << cudaGetErrorString(code) << '\n';
-		// 	return false;
-		// }
 		status = cudaFreeHost(buffer_ptr);
 		assert(status == cudaSuccess);
 		buffer_ptr = tmp;
