@@ -125,7 +125,8 @@ private:
 	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
-	std::vector<tuple_t> cpu_tuple_buffer;
+	// std::vector<tuple_t> cpu_tuple_buffer;
+	PinnedCPUBuffer<tuple_t> cpu_tuple_buffer;
 	std::vector<std::size_t> cpu_hash_index;  // Stores modulo'd hash values for keys.
 	std::size_t *gpu_hash_index {nullptr};    // Stores modulo'd hash values for keys.
 	std::size_t *scan {nullptr};
@@ -243,7 +244,7 @@ public:
 	 */
 	void linear_keyed_gpu_partition(buffer_handle_t *const handle) {
 		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
-		cpu_tuple_buffer.resize(handle->size);
+		cpu_tuple_buffer.enlarge(handle->size);
 		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer,
 					     raw_batch_size, cudaMemcpyDeviceToHost, cuda_stream);
 		assert(cuda_error == cudaSuccess);
@@ -286,7 +287,7 @@ public:
 	 * Actual partitioning implementation to be eventually used.
 	 */
 	void parallel_keyed_gpu_partition(buffer_handle_t *const handle) {
-		cpu_tuple_buffer.resize(handle->size);
+		cpu_tuple_buffer.enlarge(handle->size);
 		cpu_hash_index.resize(handle->size);
 		// if (!enlarge_cpu_buffer(cpu_tuple_buffer, handle->size, current_allocated_size)) {
 		// 	failwith("Standard_EmitterGPU failed to resize CPU tuple buffer");
