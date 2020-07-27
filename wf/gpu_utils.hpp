@@ -247,27 +247,6 @@ public:
 
 /*
  * Resizes buffer to new_size if it's larger than old_size. the buffer must be
- * allocated on the host via CUDA.
- * Returns true on successful operation, false otherwise.
- */
-template<typename T>
-inline bool enlarge_cpu_buffer(T *&buffer, const int new_size,
-			       const int old_size) {
-	if (new_size < old_size) {
-		return true;
-	}
-	// T *tmp;
-	auto status = cudaFreeHost(buffer);
-	assert(status == cudaSuccess);
-	buffer = nullptr;
-
-	status = cudaMallocHost(&buffer, new_size * sizeof *buffer);
-	assert(status == cudaSuccess);
-	return true;
-}
-
-/*
- * Resizes buffer to new_size if it's larger than old_size. the buffer must be
  * allocated on the device via CUDA.
  * Returns true on successful operation, false otherwise.
  */
