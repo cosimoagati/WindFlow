@@ -737,7 +737,6 @@ public:
 				failwith("MapGPU_Node failed to allocate GPU tuple state buffer");
 			}
 		}
-		assert(cudaGetLastError() == cudaSuccess);
 	}
 
 	~MapGPU_Node() {
