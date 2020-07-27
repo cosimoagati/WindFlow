@@ -127,12 +127,13 @@ private:
 	std::hash<key_t> hash;
 	// std::vector<tuple_t> cpu_tuple_buffer;
 	PinnedCPUBuffer<tuple_t> cpu_tuple_buffer;
-	std::vector<std::size_t> cpu_hash_index;  // Stores modulo'd hash values for keys.
-	std::size_t *gpu_hash_index {nullptr};    // Stores modulo'd hash values for keys.
-	std::size_t *scan {nullptr};
+	PinnedCPUBuffer<std::size_t> cpu_hash_index;
+	GPUBuffer<std::size_t> gpu_hash_index; // Stores modulo'd hash values for keys.
+	// std::size_t *scan {nullptr};
+	GPUBuffer<std::size_t> scan;
 	std::size_t destination_index {0};
 	std::size_t num_of_destinations;
-	std::size_t current_allocated_size;
+	// std::size_t current_allocated_size;
 	int gpu_blocks;
 	int gpu_threads_per_block;
 
@@ -148,7 +149,7 @@ public:
 			    const int gpu_threads_per_block=256)
 		: routing_mode {FORWARD},
 		  num_of_destinations {num_of_destinations},
-		  current_allocated_size {num_of_destinations},
+		  // current_allocated_size {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output},
 		  gpu_threads_per_block {gpu_threads_per_block},
@@ -172,7 +173,8 @@ public:
 		  num_of_destinations {num_of_destinations},
 		  cpu_tuple_buffer (num_of_destinations),
 		  cpu_hash_index (num_of_destinations),
-		  have_gpu_input {have_gpu_input},
+		  gpu_hash_index {num_of_destinations},
+		  scan {num_of_destinations}, have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output},
 		  gpu_threads_per_block {gpu_threads_per_block},
 		  gpu_blocks {std::ceil(num_of_destinations
@@ -184,31 +186,25 @@ public:
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
-		if (cudaMalloc(&gpu_hash_index, num_of_destinations * sizeof *gpu_hash_index) != cudaSuccess) {
-			failwith("Standard_EmitterGPU failed to allocate GPU hash array.");
-		}
-		if (cudaMalloc(&scan, num_of_destinations * sizeof *scan) != cudaSuccess) {
-			failwith("Standard_EmitterGPU failed to allocate scan array.");
-		}
+		// if (cudaMalloc(&gpu_hash_index, num_of_destinations * sizeof *gpu_hash_index) != cudaSuccess) {
+		// 	failwith("Standard_EmitterGPU failed to allocate GPU hash array.");
+		// }
+		// if (cudaMalloc(&scan, num_of_destinations * sizeof *scan) != cudaSuccess) {
+		// 	failwith("Standard_EmitterGPU failed to allocate scan array.");
+		// }
 	}
 
 	~Standard_EmitterGPU() {
 		cuda_error = cudaStreamDestroy(cuda_stream);
 		assert(cuda_error == cudaSuccess);
-		// if (cpu_tuple_buffer) {
-		// 	cudaFreeHost(cpu_tuple_buffer);
+		// if (gpu_hash_index) {
+		// 	cuda_error = cudaFree(gpu_hash_index);
+		// 	assert(cuda_error == cudaSuccess);
 		// }
-		// if (cpu_hash_index) {
-		// 	cudaFreeHost(cpu_hash_index);
+		// if (scan) {
+		// 	cuda_error = cudaFree(scan);
+		// 	assert(cuda_error == cudaSuccess);
 		// }
-		if (gpu_hash_index) {
-			cuda_error = cudaFree(gpu_hash_index);
-			assert(cuda_error == cudaSuccess);
-		}
-		if (scan) {
-			cuda_error = cudaFree(scan);
-			assert(cuda_error == cudaSuccess);
-		}
 	}
 
 	Basic_Emitter *clone() const {
@@ -288,22 +284,18 @@ public:
 	 */
 	void parallel_keyed_gpu_partition(buffer_handle_t *const handle) {
 		cpu_tuple_buffer.enlarge(handle->size);
-		cpu_hash_index.resize(handle->size);
-		// if (!enlarge_cpu_buffer(cpu_tuple_buffer, handle->size, current_allocated_size)) {
-		// 	failwith("Standard_EmitterGPU failed to resize CPU tuple buffer");
+		cpu_hash_index.enlarge(handle->size);
+		gpu_hash_index.enlarge(handle->size);
+		scan.enlarge(handle->size);
+		// if (!enlarge_gpu_buffer(gpu_hash_index, handle->size, current_allocated_size)) {
+		// 	failwith("Standard_EmitterGPU failed to resize GPU hash index");
 		// }
-		// if (!enlarge_cpu_buffer(cpu_hash_index, handle->size, current_allocated_size)) {
-		// 	failwith("Standard_EmitterGPU failed to resize CPU hash index");
+		// if (!enlarge_gpu_buffer(scan, handle->size, current_allocated_size)) {
+		// 	failwith("Standard_EmitterGPU failed to resize scan buffer");
 		// }
-		if (!enlarge_gpu_buffer(gpu_hash_index, handle->size, current_allocated_size)) {
-			failwith("Standard_EmitterGPU failed to resize GPU hash index");
-		}
-		if (!enlarge_gpu_buffer(scan, handle->size, current_allocated_size)) {
-			failwith("Standard_EmitterGPU failed to resize scan buffer");
-		}
-		if (handle->size > current_allocated_size) {
-			current_allocated_size = handle->size;
-		}
+		// if (handle->size > current_allocated_size) {
+		// 	current_allocated_size = handle->size;
+		// }
 		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
 		// TODO: Can we avoid this copy on cpu?
 		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer, raw_batch_size,
@@ -315,7 +307,7 @@ public:
 			cpu_hash_index[i] = hash(key) % num_of_destinations;
 		}
 		const auto raw_index_size = sizeof *cpu_hash_index.data() * handle->size;
-		cuda_error = cudaMemcpyAsync(gpu_hash_index, cpu_hash_index.data(),
+		cuda_error = cudaMemcpyAsync(gpu_hash_index.data(), cpu_hash_index.data(),
 					     raw_index_size, cudaMemcpyHostToDevice, cuda_stream);
 		assert(cuda_error == cudaSuccess);
 
@@ -323,7 +315,7 @@ public:
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<gpu_blocks, gpu_threads_per_block,
 				2 * pow * sizeof(int), cuda_stream>>>
-				(scan, gpu_hash_index, handle->size,
+				(scan.data(), gpu_hash_index.data(), handle->size,
 				 static_cast<std::size_t>(i), pow);
 			assert(cudaGetLastError() == cudaSuccess);
 
@@ -347,7 +339,8 @@ public:
 				failwith("Standard_EmitterGPU failed to allocate partial output batch.");
 			}
 			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
-				(handle->buffer, num_of_destinations, gpu_hash_index, scan, bout, i);
+				(handle->buffer, num_of_destinations,
+				 gpu_hash_index.data(), scan.data(), bout, i);
 			assert(cudaGetLastError() == cudaSuccess);
 			cuda_error = cudaStreamSynchronize(cuda_stream);
 			assert(cuda_error == cudaSuccess);

@@ -130,6 +130,7 @@ public:
 		assert(status == cudaSuccess);
 		status = cudaFree(buffer_ptr);
 		assert(status == cudaSuccess);
+
 		buffer_ptr = tmp;
 		allocated_size = buffer_size = new_size;
 		return true;
