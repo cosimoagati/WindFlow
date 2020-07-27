@@ -4,136 +4,85 @@
 #include "../../wf/gpu_utils.hpp"
 
 using namespace std;
+using wf::GPUBuffer;
 
-__global__ void prescan_large(int *const output, int *const input,
-			      int *const sums, const int end,
-			      const int target_value,
-			      const int power_of_two) {
-	extern __shared__ int mapped_idata[];
-	const auto absolute_thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto stride = blockDim.x * gridDim.x;
-	const auto block_thread_id = threadIdx.x;
+static constexpr auto threads_per_block = 512;
 
-	for (auto i = block_thread_id; i < power_of_two; i += stride) {
-		mapped_idata[i] = input[i] == target_value;
-	}
-	// TODO: zero-out the rest of the array?
-	// if (absolute_thread_id / power_of_two < 1) {
-	// 	for (auto i = block_thread_id; i < power_of_two; i += stride) {
-	// 		mapped_idata[i] = 0;
-	// 	}
-	// }
-	// TODO: bit shifts should be more efficient...
-	for (auto stride = 1; stride <= power_of_two; stride *= 2) {
-		__syncthreads();
-		const auto index = (block_thread_id + 1) * stride * 2 - 1;
-		if (index < 2 * power_of_two) {
-			mapped_idata[index] += mapped_idata[index - stride];
-		}
-	}
-	for (auto stride = power_of_two / 2; stride > 0; stride /= 2) {
-		__syncthreads();
-		const auto index = (block_thread_id + 1) * stride * 2 - 1;
-		if ((index + stride) < 2 * power_of_two) {
-			mapped_idata[index + stride] += mapped_idata[index];
-		}
-	}
-	__syncthreads();
-	if (block_thread_id == 0) {
-		sums[blockIdx.x] = mapped_idata[end - 1];
-	}
-	__syncthreads();
-	// Perform a parallel prefix sum on the partial sum array.
-	if (blockIdx.x == 0) {
-		for (auto stride = 1; stride <= power_of_two; stride *= 2) {
-			__syncthreads();
-			const auto index = (block_thread_id + 1) * stride * 2 - 1;
-			if (index < 2 * power_of_two) {
-				sums[index] += sums[index - stride];
-			}
-		}
-		for (auto stride = power_of_two / 2; stride > 0; stride /= 2) {
-			__syncthreads();
-			const auto index = (block_thread_id + 1) * stride * 2 - 1;
-			if ((index + stride) < 2 * power_of_two) {
-				sums[index + stride] += sums[index];
-			}
-		}
-		// Sum partial values to the sum of the preceding block.
-		if (blockIdx.x > 0) {
-			for (auto i = block_thread_id; i < power_of_two; i += stride) {
-				mapped_idata[i] += sums[blockIdx.x - 1];
-			}
-		}
-	}
-	// Simple, but probably inefficient and redundant: write data to output.
-	__syncthreads();
-	for (auto i = absolute_thread_id; i < end; i += stride) {
-		output[i] = mapped_idata[i];
+__global__ void map_to_target(int *const output, int *const input,
+			      const int n, const int target_value) {
+	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
+	if (absolute_id < n) {
+		output[absolute_id] = input[absolute_id] == target_value;
 	}
 }
 
-__global__ void unmapped_scan(int *const )
+__global__ void prescan(int *const output, int *const input,
+			int *const partial_sums, const int n) {
+	extern __shared__ int temp[];
+	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
+	const auto block_thread_id = threadIdx.x;
 
-
-__global__ void prescan(int *const g_odata, int *const g_idata,
-			const int n, const int target_value, const int pow) {
-	extern __shared__ int mapped_idata[];
-	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto stride = blockDim.x * gridDim.x;
-	// const auto thread_id = threadIdx.x;
-	const auto thread_id = threadIdx.x; // Assumes a single block.
-
-	for (auto i = index; i < n; i += stride) {
-		mapped_idata[i] = g_idata[i] == target_value;
+	if (absolute_id < n) {
+		temp[block_thread_id] = input[absolute_id];
 	}
-	// TODO: zero-out the rest of the array? Is this necessary?
-	// for (auto i = n; i < pow; i += stride) {
-	// 	mapped_idata[i] = 0;
-	// }
 	// TODO: bit shifts should be more efficient...
-	for (auto stride = 1; stride <= pow; stride *= 2) {
+	for (auto stride = 1; stride <= n; stride *= 2) {
 		__syncthreads();
-		const auto index = (thread_id + 1) * stride * 2 - 1;
-		if (index < 2 * pow) {
-			mapped_idata[index] += mapped_idata[index - stride];
+		const auto index = (block_thread_id + 1) * stride * 2 - 1;
+		if (index < 2 * n) {
+			temp[index] += temp[index - stride];
 		}
 	}
-	for (auto stride = pow / 2; stride > 0; stride /= 2) {
+	for (auto stride = n / 2; stride > 0; stride /= 2) {
 		__syncthreads();
-		const auto index = (thread_id + 1) * stride * 2 - 1;
-		if ((index + stride) < 2 * pow) {
-			mapped_idata[index + stride] += mapped_idata[index];
+		const auto index = (block_thread_id + 1) * stride * 2 - 1;
+		if ((index + stride) < 2 * n) {
+			temp[index + stride] += temp[index];
 		}
+	}
+	__syncthreads();
+	if (block_thread_id == 0 && blockIdx.x > 0) {
+		partial_sums[blockIdx.x - 1] = temp[n - 1];
 	}
 	// Simple, but probably inefficient and redundant: write data to output.
-	__syncthreads();
-	for (auto i = index; i < n; i += stride) {
-		g_odata[i] = mapped_idata[i];
+	if (absolute_id < n) {
+		output[absolute_id] = temp[block_thread_id];
 	}
+}
+
+__global__ void gather_sums(int *const array, int const *partial_sums) {
+	if (blockIdx.x > 0) {
+		array[threadIdx.x] += partial_sums[blockIdx.x - 1];
+	}
+}
+
+void prefix_recursive(int *const output, int *const input, const int size) {
+	const auto num_of_blocks = size / threads_per_block + 1;
+	auto pow = 1;
+	while (pow < threads_per_block) {
+		pow *= 2;
+	}
+	GPUBuffer<int> partial_sums {num_of_blocks - 1};
+	prescan<<<num_of_blocks, threads_per_block, 2 * threads_per_block>>>
+		(output, input, partial_sums.data(), size);
+	assert(cudaGetLastError() == cudaSuccess);
+	if (num_of_blocks <= 1) {
+		return;
+	}
+	auto cuda_status = cudaDeviceSynchronize();
+	assert(cuda_status == cudaSuccess);
+	prefix_recursive(partial_sums.data(), partial_sums.data(), partial_sums.size());
+	gather_sums<<<num_of_blocks, threads_per_block>>>(output, partial_sums.data());
+	assert(cudaGetLastError() == cudaSuccess);
 }
 
 void mapped_scan(int *const output, int *const input, const int size,
 		 const int target_value) {
-	static constexpr auto threads_per_block = 512;
-	auto pow = 1;
-	if (size <= threads_per_block) {
-		while (pow < size) { // Get closest power of two above or equal to size.
-			pow *= 2;
-		}
-		prescan<<<1, pow, 2 * pow * sizeof(int)>>>(output, input, size, target_value, pow);
-	} else {
-		const auto num_of_blocks = size / threads_per_block + 1;
-		while (pow < threads_per_block) {
-			pow *= 2;
-		}
-		GPUBuffer<int> partial_sums {num_of_blocks - 1};
-		prescan_large<<<num_of_blocks, 2 * pow * sizeof(int)>>>
-			(output, input, partial_sums.data(), size, target_value, pow);
-		int cpu_partial_sums[num_of_blocks - 1];
-		cudaMemcpy(cpu_partial_sums, partial_sums.data(), partial_sums.size() * sizeof(int). cudaMemcpyDeviceToHost);
-		cout << "a" << endl;
-	}
+	const auto num_of_blocks = size / threads_per_block + 1;
+	map_to_target<<<num_of_blocks, threads_per_block>>>(output, input, size,
+							    target_value);
+	assert(cudaGetLastError() == cudaSuccess);
+	prefix_recursive(output, input, size);
 }
 
 template<typename tuple_t>
@@ -167,12 +116,17 @@ int main(const int argc, char *const argv[]) {
 	GPUBuffer<int> gpu_scan {n};
 	GPUBuffer<int> gpu_index {n};
 
-	cudaMemcpy(gpu_index.data(), cpu_index.data(),
-		   n * sizeof *gpu_index.data(), cudaMemcpyHostToDevice);
+	auto cuda_status = cudaMemcpy(gpu_index.data(), cpu_index.data(),
+				      n * sizeof *gpu_index.data(), cudaMemcpyHostToDevice);
+	assert(cuda_status == cudaSuccess);
+
 	mapped_scan(gpu_scan.data(), gpu_index.data(), n, target_value);
-	cudaDeviceSynchronize();
-	cudaMemcpy(cpu_scan.data(), gpu_scan.data(),
-		   n * sizeof *gpu_scan.data(), cudaMemcpyDeviceToHost);
+	cuda_status = cudaDeviceSynchronize();
+	assert(cuda_status == cudaSuccess);
+	cuda_status = cudaMemcpy(cpu_scan.data(), gpu_scan.data(),
+				 n * sizeof *gpu_scan.data(), cudaMemcpyDeviceToHost);
+	assert(cuda_status == cudaSuccess);
+
 	cout << "Size is " << n << '\n';
 	cout << "Result of scan: ";
 	for (const auto &x : cpu_scan) {
