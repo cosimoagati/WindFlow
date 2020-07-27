@@ -125,12 +125,11 @@ private:
 	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
-	// std::vector<tuple_t> cpu_tuple_buffer;
 	PinnedCPUBuffer<tuple_t> cpu_tuple_buffer;
 	PinnedCPUBuffer<std::size_t> cpu_hash_index;
 	GPUBuffer<std::size_t> gpu_hash_index; // Stores modulo'd hash values for keys.
-	// std::size_t *scan {nullptr};
 	GPUBuffer<std::size_t> scan;
+
 	std::size_t destination_index {0};
 	std::size_t num_of_destinations;
 	// std::size_t current_allocated_size;
@@ -149,7 +148,6 @@ public:
 			    const int gpu_threads_per_block=256)
 		: routing_mode {FORWARD},
 		  num_of_destinations {num_of_destinations},
-		  // current_allocated_size {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output},
 		  gpu_threads_per_block {gpu_threads_per_block},
@@ -186,25 +184,11 @@ public:
 		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
 			failwith("cudaStreamCreate() failed in MapGPU_Node");
 		}
-		// if (cudaMalloc(&gpu_hash_index, num_of_destinations * sizeof *gpu_hash_index) != cudaSuccess) {
-		// 	failwith("Standard_EmitterGPU failed to allocate GPU hash array.");
-		// }
-		// if (cudaMalloc(&scan, num_of_destinations * sizeof *scan) != cudaSuccess) {
-		// 	failwith("Standard_EmitterGPU failed to allocate scan array.");
-		// }
 	}
 
 	~Standard_EmitterGPU() {
 		cuda_error = cudaStreamDestroy(cuda_stream);
 		assert(cuda_error == cudaSuccess);
-		// if (gpu_hash_index) {
-		// 	cuda_error = cudaFree(gpu_hash_index);
-		// 	assert(cuda_error == cudaSuccess);
-		// }
-		// if (scan) {
-		// 	cuda_error = cudaFree(scan);
-		// 	assert(cuda_error == cudaSuccess);
-		// }
 	}
 
 	Basic_Emitter *clone() const {
@@ -287,15 +271,7 @@ public:
 		cpu_hash_index.enlarge(handle->size);
 		gpu_hash_index.enlarge(handle->size);
 		scan.enlarge(handle->size);
-		// if (!enlarge_gpu_buffer(gpu_hash_index, handle->size, current_allocated_size)) {
-		// 	failwith("Standard_EmitterGPU failed to resize GPU hash index");
-		// }
-		// if (!enlarge_gpu_buffer(scan, handle->size, current_allocated_size)) {
-		// 	failwith("Standard_EmitterGPU failed to resize scan buffer");
-		// }
-		// if (handle->size > current_allocated_size) {
-		// 	current_allocated_size = handle->size;
-		// }
+
 		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
 		// TODO: Can we avoid this copy on cpu?
 		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer, raw_batch_size,
