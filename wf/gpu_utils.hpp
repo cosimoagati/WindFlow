@@ -251,6 +251,26 @@ public:
 	}
 };
 
+class GPUStream {
+	cudaStream_t stream;
+public:
+	GPUStream() {
+		const auto status = cudaStreamCreate(&stream);
+		assert(status == cudaSuccess);
+	}
+	~GPUStream() {
+		const auto status = cudaStreamDestroy(stream);
+		assert(status == cudaSuccess);
+	}
+	const cudaStream_t &raw_stream() const { return stream; }
+	cudaStream_t &raw_stream() { return stream; }
+
+	void synchronize() {
+		const auto status = cudaStreamSynchronize(stream);
+		assert(status == cudaSuccess);
+	}
+};
+
 /*
  * Resizes buffer to new_size if it's larger than old_size. the buffer must be
  * allocated on the device via CUDA.
