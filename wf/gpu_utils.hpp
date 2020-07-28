@@ -122,9 +122,13 @@ public:
 		  allocated_size {other.allocated_size}
 	{
 		other.buffer_ptr = nullptr;
+		other.allocated_size = other.buffer_size = 0;
 	}
 
 	GPUBuffer &operator=(const GPUBuffer &other) {
+		if (this->buffer_ptr == other.buffer_ptr) {
+			return *this;
+		}
 		if (buffer_ptr != nullptr) {
 			const auto status = cudaFree(buffer_ptr);
 			assert(status == cudaSuccess);
@@ -138,10 +142,14 @@ public:
 	}
 
 	GPUBuffer &operator=(GPUBuffer &&other) {
+		if (this->buffer_ptr == other.buffer_ptr) {
+			return *this;
+		}
 		buffer_ptr = other.buffer_ptr;
 		buffer_size = other.buffer_size;
 		allocated_size = other.allocated_size;
 		other.buffer_ptr = nullptr;
+		other.allocated_size = other.buffer_size = 0;
 	}
 
 	T *data() const { return buffer_ptr; }
@@ -207,9 +215,13 @@ public:
 		  allocated_size {other.allocated_size}
 	{
 		other.buffer_ptr = nullptr;
+		other.allocated_size = other.buffer_size = 0;
 	}
 
 	PinnedCPUBuffer &operator=(const PinnedCPUBuffer &other) {
+		if (this->buffer_ptr == other.buffer_ptr) {
+			return *this;
+		}
 		if (buffer_ptr != nullptr) {
 			const auto status = cudaFreeHost(buffer_ptr);
 			assert(status == cudaSuccess);
@@ -223,9 +235,13 @@ public:
 	}
 
 	PinnedCPUBuffer &operator=(PinnedCPUBuffer &&other) {
+		if (this->buffer_ptr == other.buffer_ptr) {
+			return *this;
+		}
 		buffer_ptr = other.buffer_ptr;
 		buffer_size = other.buffer_size;
 		allocated_size = other.allocated_size;
+		other.allocated_size = other.buffer_size = 0;
 		other.buffer_ptr = nullptr;
 	}
 
@@ -259,9 +275,30 @@ public:
 		assert(status == cudaSuccess);
 	}
 	~GPUStream() {
-		const auto status = cudaStreamDestroy(stream);
-		assert(status == cudaSuccess);
+		if (stream != 0) {
+			const auto status = cudaStreamDestroy(stream);
+			assert(status == cudaSuccess);
+		}
 	}
+	GPUStream(const GPUStream &other) : GPUStream {} {}
+
+	GPUStream(GPUStream &&other) {
+		stream = other.stream;
+		other.stream = 0;
+	}
+
+	GPUStream &operator=(const GPUStream &other) {
+		// Do nothing: already have our own independent stream.
+	}
+
+	GPUStream &operator=(GPUStream &&other) {
+		if (this->stream == other.stream) {
+			return *this;
+		}
+		stream = other.stream;
+		other.stream = 0;
+	}
+
 	const cudaStream_t &raw_stream() const { return stream; }
 	cudaStream_t &raw_stream() { return stream; }
 
