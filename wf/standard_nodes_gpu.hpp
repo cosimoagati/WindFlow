@@ -120,7 +120,7 @@ private:
 	using key_t = std::remove_reference_t<decltype(std::get<0>(tuple_t {}.getControlFields()))>;
 	using buffer_handle_t = GPUBufferHandle<tuple_t>;
 
-	cudaStream_t cuda_stream;
+	GPUStream cuda_stream;
 	cudaError_t cuda_error; // Used to store and catch CUDA errors;
 	routing_modes_t routing_mode;
 	routing_func_t routing_func; // routing function
@@ -157,9 +157,6 @@ public:
 		if (num_of_destinations <= 0) {
 			failwith("Standard_EmitterGPU initialized with non-positive number of destinations.");
 		}
-		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
-			failwith("cudaStreamCreate() failed in MapGPU_Node");
-		}
 	}
 
 	Standard_EmitterGPU(const routing_func_t routing_func,
@@ -181,14 +178,6 @@ public:
 		if (num_of_destinations <= 0) {
 			failwith("Standard_EmitterGPU initialized with non-positive number of destinations.");
 		}
-		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
-			failwith("cudaStreamCreate() failed in MapGPU_Node");
-		}
-	}
-
-	~Standard_EmitterGPU() {
-		cuda_error = cudaStreamDestroy(cuda_stream);
-		assert(cuda_error == cudaSuccess);
 	}
 
 	Basic_Emitter *clone() const {
@@ -226,12 +215,12 @@ public:
 		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
 		cpu_tuple_buffer.enlarge(handle->size);
 		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer,
-					     raw_batch_size, cudaMemcpyDeviceToHost, cuda_stream);
+					     raw_batch_size, cudaMemcpyDeviceToHost,
+					     cuda_stream.raw_stream());
 		assert(cuda_error == cudaSuccess);
 		std::vector<std::vector<tuple_t>> sub_buffers (num_of_destinations);
 
-		cuda_error = cudaStreamSynchronize(cuda_stream);
-		assert(cuda_error == cudaSuccess);
+		cuda_stream.synchronize();
 		for (auto i = 0; i < handle->size; ++i) {
 			const auto &tuple = cpu_tuple_buffer[i];
 			const auto key = std::get<0>(tuple.getControlFields());
@@ -249,11 +238,11 @@ public:
 				failwith("Standard_EmitterGPU failed to allocate GPU sub-buffer");
 			}
 			cuda_error = cudaMemcpyAsync(gpu_sub_buffer, cpu_sub_buffer.data(),
-						     raw_size, cudaMemcpyHostToDevice, cuda_stream);
+						     raw_size, cudaMemcpyHostToDevice,
+						     cuda_stream.raw_stream());
 			assert(cuda_error == cudaSuccess);
 
-			cuda_error = cudaStreamSynchronize(cuda_stream);
-			assert(cuda_error == cudaSuccess);
+			cuda_stream.synchronize();
 			this->ff_send_out_to(new buffer_handle_t
 					     {gpu_sub_buffer, cpu_sub_buffer.size()},
 					     i);
@@ -275,22 +264,23 @@ public:
 		const auto raw_batch_size = handle->size * sizeof *handle->buffer;
 		// TODO: Can we avoid this copy on cpu?
 		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle->buffer, raw_batch_size,
-					     cudaMemcpyDeviceToHost, cuda_stream);
+					     cudaMemcpyDeviceToHost, cuda_stream.raw_stream());
 		assert(cuda_error == cudaSuccess);
-		cudaStreamSynchronize(cuda_stream);
+		cuda_stream.synchronize();
 		for (auto i = 0; i < handle->size; ++i) {
 			const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
 			cpu_hash_index[i] = hash(key) % num_of_destinations;
 		}
 		const auto raw_index_size = sizeof *cpu_hash_index.data() * handle->size;
 		cuda_error = cudaMemcpyAsync(gpu_hash_index.data(), cpu_hash_index.data(),
-					     raw_index_size, cudaMemcpyHostToDevice, cuda_stream);
+					     raw_index_size, cudaMemcpyHostToDevice,
+					     cuda_stream.raw_stream());
 		assert(cuda_error == cudaSuccess);
 
 		const auto pow = get_closest_power_of_two(handle->size);
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			prescan<<<gpu_blocks, gpu_threads_per_block,
-				2 * pow * sizeof(int), cuda_stream>>>
+				2 * pow * sizeof(int), cuda_stream.raw_stream()>>>
 				(scan.data(), gpu_hash_index.data(), handle->size,
 				 static_cast<std::size_t>(i), pow);
 			assert(cudaGetLastError() == cudaSuccess);
@@ -304,22 +294,20 @@ public:
 			std::size_t bout_size;
 			cuda_error = cudaMemcpyAsync(&bout_size, &scan[handle->size - 1],
 						     sizeof bout_size, cudaMemcpyDeviceToHost,
-						     cuda_stream);
+						     cuda_stream.raw_stream());
 			assert(cuda_error == cudaSuccess);
-			cuda_error = cudaStreamSynchronize(cuda_stream);
-			assert(cuda_error == cudaSuccess);
+			cuda_stream.synchronize();
 
 			const auto bout_raw_size = bout_size * sizeof(tuple_t);
 			tuple_t *bout;
 			if (cudaMalloc(&bout, bout_raw_size) != cudaSuccess) {
 				failwith("Standard_EmitterGPU failed to allocate partial output batch.");
 			}
-			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream>>>
+			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw_stream()>>>
 				(handle->buffer, num_of_destinations,
 				 gpu_hash_index.data(), scan.data(), bout, i);
 			assert(cudaGetLastError() == cudaSuccess);
-			cuda_error = cudaStreamSynchronize(cuda_stream);
-			assert(cuda_error == cudaSuccess);
+			cuda_stream.synchronize();
 			ff_send_out_to(new buffer_handle_t {bout, bout_size}, i);
 		}
 		cuda_error = cudaFree(handle->buffer);
