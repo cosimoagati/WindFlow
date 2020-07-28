@@ -19,8 +19,8 @@
  *  @author  Cosimo Agati
  *  @date    08/01/2019
  *
- *  @brief Various utilities used by MapGPU (to be merged with other utils
- *  files)
+ *  @brief Various utilities used by GPU operators, including RAII types to
+ *  facilitate resource management.
  *
  *  @section MapGPU_Node (Description)
  */
