@@ -697,7 +697,7 @@ public:
 	 * simplicity, then sends out any remaining results from the last CUDA
 	 * kernel.
 	 */
-	void eosnotify(ssize_t) override  {
+	void eosnotify(ssize_t) override {
 		if (was_batch_started) {
 			cuda_stream.synchronize();
 			if (have_gpu_output) {
