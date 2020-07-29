@@ -742,14 +742,6 @@ public:
 		// TODO: Reallocate buffers...
 		have_gpu_output = new_val;
 	}
-
-	/*
-	 * This object may not be copied nor moved.
-	 */
-	MapGPU_Node(const MapGPU_Node &) = delete;
-	MapGPU_Node(MapGPU_Node &&) = delete;
-	MapGPU_Node &operator=(const MapGPU_Node &) = delete;
-	MapGPU_Node &operator=(MapGPU_Node &&) = delete;
 };
 
 } // namespace wf
