@@ -242,7 +242,7 @@ public:
 						     cuda_stream.raw_stream());
 			assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
-			this->ff_send_out_to(new GPUBuffer<tuple_t> {std::move(sub_buffer)}, i);
+			this->ff_send_out_to(new auto {std::move(sub_buffer)}, i);
 		}
 	}
 
@@ -292,7 +292,7 @@ public:
 				 gpu_hash_index.data(), scan.data(), bout.data(), i);
 			assert(cudaGetLastError() == cudaSuccess);
 			cuda_stream.synchronize();
-			ff_send_out_to(new GPUBuffer<tuple_t> {std::move(bout)}, i);
+			ff_send_out_to(new auto {std::move(bout)}, i);
 		}
 	}
 
