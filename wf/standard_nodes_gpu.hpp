@@ -45,53 +45,85 @@
 // # define PARALLEL_PARTITION
 
 namespace wf {
+constexpr auto threads_per_block = 512;
+
 // Use int instead of std::size_t since it's smaller and faster.  Beware
 // truncating!
-template<typename T>
-__global__ void prescan(T *const g_odata, T *const g_idata, const T n,
-			const T target_value, const T power_of_two) {
-	extern __shared__ int mapped_idata[];
-	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto stride = blockDim.x * gridDim.x;
-	// const auto thread_id = threadIdx.x;
-	const auto thread_id = threadIdx.x; // Assumes a single block.
-
-	for (auto i = index; i < n; i += stride) {
-		mapped_idata[i] = g_idata[i] == target_value;
-	}
-	// TODO: zero-out the rest of the array?
-	for (auto i = n; i < power_of_two; i += stride) {
-		mapped_idata[i] = 0;
-	}
-	// TODO: bit shifts should be more efficient...
-	for (auto stride = 1; stride <= power_of_two; stride *= 2) {
-		__syncthreads();
-		const auto index = (thread_id + 1) * stride * 2 - 1;
-		if (index < 2 * power_of_two) {
-			mapped_idata[index] += mapped_idata[index - stride];
-		}
-	}
-	for (auto stride = power_of_two / 2; stride > 0; stride /= 2) {
-		__syncthreads();
-		const auto index = (thread_id + 1) * stride * 2 - 1;
-		if ((index + stride) < 2 * power_of_two) {
-			mapped_idata[index + stride] += mapped_idata[index];
-		}
-	}
-	// Simple, but probably inefficient and redundant: write data to output.
-	__syncthreads();
-	for (auto i = index; i < n; i += stride) {
-		g_odata[i] = mapped_idata[i];
+__global__ void map_to_target(int *const output, int *const input,
+			      const int n, const int target_value) {
+	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
+	if (absolute_id < n) {
+		output[absolute_id] = input[absolute_id] == target_value;
 	}
 }
 
-template<typename T>
-constexpr T get_closest_power_of_two(const T n) {
-	auto i = 1;
-	while (i < n) {
-		i *= 2;
+__global__ void prescan(int *const output, int *const input,
+			int *const partial_sums, const int n) {
+	extern __shared__ int temp[];
+	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
+	const auto block_thread_id = threadIdx.x;
+
+	if (absolute_id < n) {
+		temp[block_thread_id] = input[absolute_id];
 	}
-	return i;
+	// TODO: bit shifts should be more efficient...
+	for (auto stride = 1; stride <= n; stride *= 2) {
+		__syncthreads();
+		const auto index = (block_thread_id + 1) * stride * 2 - 1;
+		if (index < 2 * n) {
+			temp[index] += temp[index - stride];
+		}
+	}
+	for (auto stride = n / 2; stride > 0; stride /= 2) {
+		__syncthreads();
+		const auto index = (block_thread_id + 1) * stride * 2 - 1;
+		if ((index + stride) < 2 * n) {
+			temp[index + stride] += temp[index];
+		}
+	}
+	__syncthreads();
+	if (block_thread_id == 0 && blockIdx.x > 0) {
+		partial_sums[blockIdx.x - 1] = temp[n - 1];
+	}
+	// Simple, but probably inefficient and redundant: write data to output.
+	if (absolute_id < n) {
+		output[absolute_id] = temp[block_thread_id];
+	}
+}
+
+__global__ void gather_sums(int *const array, int const *partial_sums) {
+	if (blockIdx.x > 0) {
+		array[threadIdx.x] += partial_sums[blockIdx.x - 1];
+	}
+}
+
+void prefix_recursive(int *const output, int *const input, const int size) {
+	const auto num_of_blocks = size / threads_per_block + 1;
+	auto pow = 1;
+	while (pow < threads_per_block) {
+		pow *= 2;
+	}
+	GPUBuffer<int> partial_sums {num_of_blocks - 1};
+	prescan<<<num_of_blocks, threads_per_block, 2 * threads_per_block>>>
+		(output, input, partial_sums.data(), size);
+	assert(cudaGetLastError() == cudaSuccess);
+	if (num_of_blocks <= 1) {
+		return;
+	}
+	auto cuda_status = cudaDeviceSynchronize();
+	assert(cuda_status == cudaSuccess);
+	prefix_recursive(partial_sums.data(), partial_sums.data(), partial_sums.size());
+	gather_sums<<<num_of_blocks, threads_per_block>>>(output, partial_sums.data());
+	assert(cudaGetLastError() == cudaSuccess);
+}
+
+void mapped_scan(int *const output, int *const input, const std::size_t size,
+		 const int target_value) {
+	const auto num_of_blocks = size / threads_per_block + 1;
+	map_to_target<<<num_of_blocks, threads_per_block>>>(output, input, size,
+							    target_value);
+	assert(cudaGetLastError() == cudaSuccess);
+	prefix_recursive(output, input, size);
 }
 
 /*
@@ -128,9 +160,11 @@ private:
 	routing_func_t routing_func; // routing function
 	std::hash<key_t> hash;
 	PinnedCPUBuffer<tuple_t> cpu_tuple_buffer;
-	PinnedCPUBuffer<std::size_t> cpu_hash_index;
-	GPUBuffer<std::size_t> gpu_hash_index; // Stores modulo'd hash values for keys.
-	GPUBuffer<std::size_t> scan;
+
+	// TODO: Do we use int or std::size_t for these buffers?
+	PinnedCPUBuffer<int> cpu_hash_index;
+	GPUBuffer<int> gpu_hash_index; // Stores modulo'd hash values for keys.
+	GPUBuffer<int> scan;
 
 	std::size_t destination_index {0};
 	std::size_t num_of_destinations;
@@ -273,11 +307,8 @@ public:
 
 		const auto pow = get_closest_power_of_two(handle.size());
 		for (auto i = 0; i < num_of_destinations; ++i) {
-			prescan<<<gpu_blocks, gpu_threads_per_block,
-				2 * pow * sizeof(int), cuda_stream.raw_stream()>>>
-				(scan.data(), gpu_hash_index.data(), handle.size(),
-				 static_cast<std::size_t>(i), pow);
-			assert(cudaGetLastError() == cudaSuccess);
+			mapped_scan(scan.data(), gpu_hash_index.data(), scan.size(), i);
+			cuda_stream.synchronize();
 
 			std::size_t bout_size;
 			cuda_error = cudaMemcpyAsync(&bout_size, &scan[handle.size() - 1],
