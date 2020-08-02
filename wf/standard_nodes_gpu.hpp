@@ -253,7 +253,7 @@ public:
 		cpu_tuple_buffer.enlarge(handle.size());
 		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle.data(),
 					     raw_batch_size, cudaMemcpyDeviceToHost,
-					     cuda_stream.raw_stream());
+					     cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
 		std::vector<std::vector<tuple_t>> sub_buffers (num_of_destinations);
 
@@ -273,7 +273,7 @@ public:
 			GPUBuffer<tuple_t> sub_buffer {cpu_sub_buffer.size()};
 			cuda_error = cudaMemcpyAsync(sub_buffer.data(), cpu_sub_buffer.data(),
 						     raw_size, cudaMemcpyHostToDevice,
-						     cuda_stream.raw_stream());
+						     cuda_stream.raw());
 			assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
 			this->ff_send_out_to(new auto {std::move(sub_buffer)}, i);
@@ -292,7 +292,7 @@ public:
 		const auto raw_batch_size = handle.size() * sizeof *handle.data();
 		// TODO: Can we avoid this copy on cpu?
 		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle.data(), raw_batch_size,
-					     cudaMemcpyDeviceToHost, cuda_stream.raw_stream());
+					     cudaMemcpyDeviceToHost, cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
 		cuda_stream.synchronize();
 		for (auto i = 0; i < handle->size(); ++i) {
@@ -302,7 +302,7 @@ public:
 		const auto raw_index_size = sizeof *cpu_hash_index.data() * handle.size();
 		cuda_error = cudaMemcpyAsync(gpu_hash_index.data(), cpu_hash_index.data(),
 					     raw_index_size, cudaMemcpyHostToDevice,
-					     cuda_stream.raw_stream());
+					     cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
 
 		const auto pow = get_closest_power_of_two(handle.size());
@@ -313,12 +313,12 @@ public:
 			std::size_t bout_size;
 			cuda_error = cudaMemcpyAsync(&bout_size, &scan[handle.size() - 1],
 						     sizeof bout_size, cudaMemcpyDeviceToHost,
-						     cuda_stream.raw_stream());
+						     cuda_stream.raw());
 			assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
 
 			GPUBuffer<tuple_t> bout {bout_size};
-			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw_stream()>>>
+			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw()>>>
 				(handle.data(), num_of_destinations,
 				 gpu_hash_index.data(), scan.data(), bout.data(), i);
 			assert(cudaGetLastError() == cudaSuccess);
