@@ -299,8 +299,8 @@ public:
 		other.stream = 0;
 	}
 
-	const cudaStream_t &raw_stream() const { return stream; }
-	cudaStream_t &raw_stream() { return stream; }
+	const cudaStream_t &raw() const { return stream; }
+	cudaStream_t &raw() { return stream; }
 
 	void synchronize() {
 		const auto status = cudaStreamSynchronize(stream);
