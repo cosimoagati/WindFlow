@@ -58,13 +58,11 @@ public:
 	tuple_t *svc(tuple_t *) {
 #ifdef PERFORMANCE_TEST
 		const auto current_time = steady_clock::now();
-		if (current_time >= end_time) {
+		if (current_time >= end_time)
 			return this->EOS;
-		}
 #else
-		if (counter > LIMIT) {
+		if (counter > LIMIT)
 			return this->EOS;
-		}
 #endif
 		// Generate them all with key 0 for simplicity.
 		const auto t = new tuple_t {0, counter, counter, counter};
@@ -100,11 +98,10 @@ void test_gpu() {
 		// cost less than buffering are not representative.
 		auto divide = false;
 		for (auto i = 0; i < 1000; ++i) {
-			if (divide && x.value != 0) {
+			if (divide && x.value != 0)
 				x.value /= x.value;
-			} else {
+			else
 				x.value *= x.value;
-			}
 			divide = !divide;
 		}
 	};
@@ -126,9 +123,8 @@ void test_gpu() {
 		assert(scratchpad != nullptr);
 		char x = scratchpad[0];
 		const auto prev_val = static_cast<int>(*scratchpad);
-		if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+		if (t.value == -1 || (t.value != 0 && t.value <= prev_val))
 			t.value = -1;
-		}
 		*reinterpret_cast<int *>(scratchpad) = t.value;
 	};
 	const auto nip_keyed_func = [] __host__ __device__ (const tuple_t &t,
@@ -139,9 +135,8 @@ void test_gpu() {
 		assert(size >= sizeof(int));
 		assert(scratchpad != nullptr);
 		const auto prev_val = static_cast<int>(*scratchpad);
-		if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+		if (t.value == -1 || (t.value != 0 && t.value <= prev_val))
 			r.value = -1;
-		}
 		*reinterpret_cast<int *>(scratchpad) = r.value;
 	};
 #endif
@@ -208,11 +203,10 @@ void test_cpu() {
 		// cost less than buffering are not representative.
 		auto divide = false;
 		for (auto i = 0; i < 1000; ++i) {
-			if (divide && x.value != 0) {
+			if (divide && x.value != 0)
 				x.value /= x.value;
-			} else {
+			else
 				x.value *= x.value;
-			}
 			divide = !divide;
 		}
 	};
@@ -226,9 +220,8 @@ void test_cpu() {
 		assert(scratchpad != nullptr);
 		char x = scratchpad[0];
 		const auto prev_val = static_cast<int>(*scratchpad);
-		if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+		if (t.value == -1 || (t.value != 0 && t.value <= prev_val))
 			t.value = -1;
-		}
 		*reinterpret_cast<int *>(scratchpad) = t.value;
 	};
 	const auto ip_keyed_func_nip = [] (const tuple_t &t, tuple_t &r, char *scratchpad,
@@ -237,9 +230,8 @@ void test_cpu() {
 		assert(size >= sizeof(int));
 		assert(scratchpad != nullptr);
 		const auto prev_val = static_cast<int>(*scratchpad);
-		if (t.value == -1 || (t.value != 0 && t.value <= prev_val)) {
+		if (t.value == -1 || (t.value != 0 && t.value <= prev_val))
 			r.value = -1;
-		}
 		*reinterpret_cast<int *>(scratchpad) = r.value;
 	};
 	ff_pipeline ip_pipe;

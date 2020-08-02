@@ -52,9 +52,8 @@ constexpr auto threads_per_block = 512;
 __global__ void map_to_target(int *const output, int *const input,
 			      const int n, const int target_value) {
 	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
-	if (absolute_id < n) {
+	if (absolute_id < n)
 		output[absolute_id] = input[absolute_id] == target_value;
-	}
 }
 
 __global__ void prescan(int *const output, int *const input,
@@ -63,53 +62,44 @@ __global__ void prescan(int *const output, int *const input,
 	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
 	const auto block_thread_id = threadIdx.x;
 
-	if (absolute_id < n) {
+	if (absolute_id < n)
 		temp[block_thread_id] = input[absolute_id];
-	}
 	// TODO: bit shifts should be more efficient...
 	for (auto stride = 1; stride <= n; stride *= 2) {
 		__syncthreads();
 		const auto index = (block_thread_id + 1) * stride * 2 - 1;
-		if (index < 2 * n) {
+		if (index < 2 * n)
 			temp[index] += temp[index - stride];
-		}
 	}
 	for (auto stride = n / 2; stride > 0; stride /= 2) {
 		__syncthreads();
 		const auto index = (block_thread_id + 1) * stride * 2 - 1;
-		if ((index + stride) < 2 * n) {
+		if ((index + stride) < 2 * n)
 			temp[index + stride] += temp[index];
-		}
 	}
 	__syncthreads();
-	if (block_thread_id == 0 && blockIdx.x > 0) {
+	if (block_thread_id == 0 && blockIdx.x > 0)
 		partial_sums[blockIdx.x - 1] = temp[n - 1];
-	}
-	// Simple, but probably inefficient and redundant: write data to output.
-	if (absolute_id < n) {
+	if (absolute_id < n)
 		output[absolute_id] = temp[block_thread_id];
-	}
 }
 
 __global__ void gather_sums(int *const array, int const *partial_sums) {
-	if (blockIdx.x > 0) {
+	if (blockIdx.x > 0)
 		array[threadIdx.x] += partial_sums[blockIdx.x - 1];
-	}
 }
 
 void prefix_recursive(int *const output, int *const input, const int size) {
 	const auto num_of_blocks = size / threads_per_block + 1;
 	auto pow = 1;
-	while (pow < threads_per_block) {
+	while (pow < threads_per_block)
 		pow *= 2;
-	}
 	GPUBuffer<int> partial_sums {num_of_blocks - 1};
 	prescan<<<num_of_blocks, threads_per_block, 2 * threads_per_block>>>
 		(output, input, partial_sums.data(), size);
 	assert(cudaGetLastError() == cudaSuccess);
-	if (num_of_blocks <= 1) {
+	if (num_of_blocks <= 1)
 		return;
-	}
 	auto cuda_status = cudaDeviceSynchronize();
 	assert(cuda_status == cudaSuccess);
 	prefix_recursive(partial_sums.data(), partial_sums.data(), partial_sums.size());
@@ -138,11 +128,8 @@ __global__ void create_sub_batch(tuple_t *const bin,
 				 tuple_t *const bout,
 				 const int target_node) {
 	const auto id = blockIdx.x * blockDim.x + threadIdx.x;
-	// No need for an explicit cycle: each GPU thread computes this in
-	// parallel.
-	if (id < batch_size && index[id] == target_node) {
+	if (id < batch_size && index[id] == target_node)
 		bout[scan[index[id]] - 1] = bin[id];
-	}
 }
 
 template<typename tuple_t>
@@ -168,7 +155,6 @@ private:
 
 	std::size_t destination_index {0};
 	std::size_t num_of_destinations;
-	// std::size_t current_allocated_size;
 	int gpu_blocks;
 	int gpu_threads_per_block;
 
@@ -190,9 +176,8 @@ public:
 		  gpu_blocks {std::ceil(num_of_destinations
 					/ static_cast<float>(gpu_threads_per_block))}
 	{
-		if (num_of_destinations <= 0) {
+		if (num_of_destinations <= 0)
 			failwith("Standard_EmitterGPU initialized with non-positive number of destinations.");
-		}
 	}
 
 	Standard_EmitterGPU(const routing_func_t routing_func,
@@ -211,9 +196,8 @@ public:
 		  gpu_blocks {std::ceil(num_of_destinations
 					/ static_cast<float>(gpu_threads_per_block))}
 	{
-		if (num_of_destinations <= 0) {
+		if (num_of_destinations <= 0)
 			failwith("Standard_EmitterGPU initialized with non-positive number of destinations.");
-		}
 	}
 
 	Basic_Emitter *clone() const {
@@ -223,9 +207,8 @@ public:
 	int svc_init() const { return 0; }
 
 	void *svc(void *const input) {
-		if (routing_mode != KEYBY) {
+		if (routing_mode != KEYBY)
 			return input; // Same whether input is a tuple or batch.
-		}
 		if (have_gpu_input) {
 			const auto handle = reinterpret_cast<GPUBuffer<tuple_t> *>(input);
 #ifdef PARALLEL_PARTITION
@@ -265,15 +248,13 @@ public:
 			sub_buffers[hashcode].push_back(tuple);
 		}
 		for (auto i = 0; i < num_of_destinations; ++i) {
-			if (sub_buffers[i].empty()) {
+			if (sub_buffers[i].empty())
 				continue;
-			}
 			const auto &cpu_sub_buffer = sub_buffers[i];
 			const auto raw_size = sizeof *cpu_sub_buffer.data() * cpu_sub_buffer.size();
 			GPUBuffer<tuple_t> sub_buffer {cpu_sub_buffer.size()};
 			cuda_error = cudaMemcpyAsync(sub_buffer.data(), cpu_sub_buffer.data(),
-						     raw_size, cudaMemcpyHostToDevice,
-						     cuda_stream.raw());
+						     raw_size, cudaMemcpyHostToDevice, cuda_stream.raw());
 			assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
 			this->ff_send_out_to(new auto {std::move(sub_buffer)}, i);
@@ -301,8 +282,7 @@ public:
 		}
 		const auto raw_index_size = sizeof *cpu_hash_index.data() * handle.size();
 		cuda_error = cudaMemcpyAsync(gpu_hash_index.data(), cpu_hash_index.data(),
-					     raw_index_size, cudaMemcpyHostToDevice,
-					     cuda_stream.raw());
+					     raw_index_size, cudaMemcpyHostToDevice, cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
 
 		const auto pow = get_closest_power_of_two(handle.size());
@@ -311,16 +291,15 @@ public:
 			cuda_stream.synchronize();
 
 			std::size_t bout_size;
-			cuda_error = cudaMemcpyAsync(&bout_size, &scan[handle.size() - 1],
-						     sizeof bout_size, cudaMemcpyDeviceToHost,
-						     cuda_stream.raw());
+			cuda_error = cudaMemcpyAsync(&bout_size, &scan[handle.size() - 1], sizeof bout_size,
+						     cudaMemcpyDeviceToHost, cuda_stream.raw());
 			assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
 
 			GPUBuffer<tuple_t> bout {bout_size};
 			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw()>>>
-				(handle.data(), num_of_destinations,
-				 gpu_hash_index.data(), scan.data(), bout.data(), i);
+				(handle.data(), num_of_destinations, gpu_hash_index.data(),
+				 scan.data(), bout.data(), i);
 			assert(cudaGetLastError() == cudaSuccess);
 			cuda_stream.synchronize();
 			ff_send_out_to(new auto {std::move(bout)}, i);
