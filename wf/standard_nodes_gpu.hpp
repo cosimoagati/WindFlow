@@ -250,6 +250,7 @@ public:
 		for (auto i = 0; i < num_of_destinations; ++i) {
 			if (sub_buffers[i].empty())
 				continue;
+
 			const auto &cpu_sub_buffer = sub_buffers[i];
 			const auto raw_size = sizeof *cpu_sub_buffer.data() * cpu_sub_buffer.size();
 			GPUBuffer<tuple_t> sub_buffer {cpu_sub_buffer.size()};
@@ -276,6 +277,7 @@ public:
 					     cudaMemcpyDeviceToHost, cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
 		cuda_stream.synchronize();
+
 		for (auto i = 0; i < handle->size(); ++i) {
 			const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
 			cpu_hash_index[i] = hash(key) % num_of_destinations;
