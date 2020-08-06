@@ -126,9 +126,9 @@ public:
 	}
 
 	GPUBuffer &operator=(const GPUBuffer &other) {
-		if (this->buffer_ptr == other.buffer_ptr) {
+		if (this->buffer_ptr == other.buffer_ptr)
 			return *this;
-		}
+
 		if (buffer_ptr != nullptr) {
 			const auto status = cudaFree(buffer_ptr);
 			assert(status == cudaSuccess);
@@ -142,9 +142,9 @@ public:
 	}
 
 	GPUBuffer &operator=(GPUBuffer &&other) {
-		if (this->buffer_ptr == other.buffer_ptr) {
+		if (this->buffer_ptr == other.buffer_ptr)
 			return *this;
-		}
+
 		buffer_ptr = other.buffer_ptr;
 		buffer_size = other.buffer_size;
 		allocated_size = other.allocated_size;
@@ -219,9 +219,9 @@ public:
 	}
 
 	PinnedCPUBuffer &operator=(const PinnedCPUBuffer &other) {
-		if (this->buffer_ptr == other.buffer_ptr) {
+		if (this->buffer_ptr == other.buffer_ptr)
 			return *this;
-		}
+
 		if (buffer_ptr != nullptr) {
 			const auto status = cudaFreeHost(buffer_ptr);
 			assert(status == cudaSuccess);
@@ -235,9 +235,9 @@ public:
 	}
 
 	PinnedCPUBuffer &operator=(PinnedCPUBuffer &&other) {
-		if (this->buffer_ptr == other.buffer_ptr) {
+		if (this->buffer_ptr == other.buffer_ptr)
 			return *this;
-		}
+
 		buffer_ptr = other.buffer_ptr;
 		buffer_size = other.buffer_size;
 		allocated_size = other.allocated_size;
@@ -292,9 +292,9 @@ public:
 	}
 
 	GPUStream &operator=(GPUStream &&other) {
-		if (this->stream == other.stream) {
+		if (this->stream == other.stream)
 			return *this;
-		}
+
 		stream = other.stream;
 		other.stream = 0;
 	}
@@ -308,28 +308,6 @@ public:
 	}
 };
 
-/*
- * Resizes buffer to new_size if it's larger than old_size. the buffer must be
- * allocated on the device via CUDA.
- * Returns true on successful operation, false otherwise.
- */
-template<typename T>
-inline bool enlarge_gpu_buffer(T *&buffer, const int new_size,
-			       const int old_size) {
-	if (new_size < old_size) {
-		return true;
-	}
-	T *tmp;
-	auto status = cudaMalloc(&tmp, new_size * sizeof *buffer);
-	assert(status == cudaSuccess);
-	// if (cudaMalloc(&tmp, new_size * sizeof *buffer) != cudaSuccess) {
-	// 	return false;
-	// }
-	status = cudaFree(buffer);
-	assert(status == cudaSuccess);
-	buffer = tmp;
-	return true;
-}
 } // namespace wf
 
 #endif
