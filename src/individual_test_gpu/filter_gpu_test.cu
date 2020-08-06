@@ -58,13 +58,11 @@ public:
 	tuple_t *svc(tuple_t *) {
 #ifdef PERFORMANCE_TEST
 		const auto current_time = steady_clock::now();
-		if (current_time >= end_time) {
+		if (current_time >= end_time)
 			return this->EOS;
-		}
 #else
-		if (counter > LIMIT) {
+		if (counter > LIMIT)
 			return this->EOS;
-		}
 #endif
 		// Generate them all with key 0 for simplicity.
 		const auto t = new tuple_t {0, counter, counter, counter};
