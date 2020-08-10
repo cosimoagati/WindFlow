@@ -126,30 +126,30 @@ public:
 	}
 
 	GPUBuffer &operator=(const GPUBuffer &other) {
-		if (this->buffer_ptr == other.buffer_ptr)
-			return *this;
-
-		if (buffer_ptr != nullptr) {
-			const auto status = cudaFree(buffer_ptr);
+		if (buffer_ptr != other.buffer_ptr) {
+			if (buffer_ptr != nullptr) {
+				const auto status = cudaFree(buffer_ptr);
+				assert(status == cudaSuccess);
+			}
+			// Only copies the relevant elements, even if allocated size of
+			// other is greater.
+			allocated_size = buffer_size = other.buffer_size;
+			const auto status = cudaMalloc(&buffer_ptr, buffer_size * sizeof *buffer_ptr) ;
 			assert(status == cudaSuccess);
+			std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
 		}
-		 // Only copies the relevant elements, even if allocated size of
-		 // other is greater.
-		allocated_size = buffer_size = other.buffer_size;
-		const auto status = cudaMalloc(&buffer_ptr, buffer_size * sizeof *buffer_ptr) ;
-		assert(status == cudaSuccess);
-		std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
+		return *this;
 	}
 
 	GPUBuffer &operator=(GPUBuffer &&other) {
-		if (this->buffer_ptr == other.buffer_ptr)
-			return *this;
-
-		buffer_ptr = other.buffer_ptr;
-		buffer_size = other.buffer_size;
-		allocated_size = other.allocated_size;
-		other.buffer_ptr = nullptr;
-		other.allocated_size = other.buffer_size = 0;
+		if (buffer_ptr != other.buffer_ptr) {
+			buffer_ptr = other.buffer_ptr;
+			buffer_size = other.buffer_size;
+			allocated_size = other.allocated_size;
+			other.buffer_ptr = nullptr;
+			other.allocated_size = other.buffer_size = 0;
+		}
+		return *this;
 	}
 
 	T *data() const { return buffer_ptr; }
@@ -219,30 +219,30 @@ public:
 	}
 
 	PinnedCPUBuffer &operator=(const PinnedCPUBuffer &other) {
-		if (this->buffer_ptr == other.buffer_ptr)
-			return *this;
-
-		if (buffer_ptr != nullptr) {
-			const auto status = cudaFreeHost(buffer_ptr);
+		if (buffer_ptr != other.buffer_ptr) {
+			if (buffer_ptr != nullptr) {
+				const auto status = cudaFreeHost(buffer_ptr);
+				assert(status == cudaSuccess);
+			}
+			// Only copies the relevant elements, even if allocated size of
+			// other is greater.
+			allocated_size = buffer_size = other.buffer_size;
+			const auto status = cudaMallocHost(&buffer_ptr, buffer_size * sizeof *buffer_ptr) ;
 			assert(status == cudaSuccess);
+			std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
 		}
-		// Only copies the relevant elements, even if allocated size of
-		 // other is greater.
-		allocated_size = buffer_size = other.buffer_size;
-		const auto status = cudaMallocHost(&buffer_ptr, buffer_size * sizeof *buffer_ptr) ;
-		assert(status == cudaSuccess);
-		std::copy(other.buffer_ptr, other.buffer_ptr + buffer_size, buffer_ptr);
+		return *this;
 	}
 
 	PinnedCPUBuffer &operator=(PinnedCPUBuffer &&other) {
-		if (this->buffer_ptr == other.buffer_ptr)
-			return *this;
-
-		buffer_ptr = other.buffer_ptr;
-		buffer_size = other.buffer_size;
-		allocated_size = other.allocated_size;
-		other.allocated_size = other.buffer_size = 0;
-		other.buffer_ptr = nullptr;
+		if (buffer_ptr != other.buffer_ptr) {
+			buffer_ptr = other.buffer_ptr;
+			buffer_size = other.buffer_size;
+			allocated_size = other.allocated_size;
+			other.allocated_size = other.buffer_size = 0;
+			other.buffer_ptr = nullptr;
+		}
+		return *this;
 	}
 
 	T *data() const { return buffer_ptr; }
@@ -289,14 +289,15 @@ public:
 
 	GPUStream &operator=(const GPUStream &other) {
 		// Do nothing: already have our own independent stream.
+		return *this;
 	}
 
 	GPUStream &operator=(GPUStream &&other) {
-		if (this->stream == other.stream)
-			return *this;
-
-		stream = other.stream;
-		other.stream = 0;
+		if (stream != other.stream) {
+			stream = other.stream;
+			other.stream = 0;
+		}
+		return *this;
 	}
 
 	const cudaStream_t &raw() const { return stream; }
