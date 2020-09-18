@@ -33,7 +33,7 @@ __global__ void prescan(int *const output, int *const input,
 	for (auto stride = n / 2; stride > 0; stride /= 2) {
 		__syncthreads();
 		const auto index = (block_thread_id + 1) * stride * 2 - 1;
-		if ((index + stride) < 2 * n)
+		if (index + stride < 2 * n)
 			temp[index + stride] += temp[index];
 	}
 	__syncthreads();
