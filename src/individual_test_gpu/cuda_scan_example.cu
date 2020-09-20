@@ -65,12 +65,13 @@ void prefix_recursive(int *const output, int *const input, const int size) {
 	assert(cudaGetLastError() == cudaSuccess);
 }
 
-void mapped_scan(int *const output, int *const input, const int size, const int target_value) {
+void mapped_scan(GPUBuffer<int> &output, GPUBuffer<int> &input, const int size, const int target_value) {
 	const auto num_of_blocks = size / threads_per_block + 1;
 	GPUBuffer<int> mapped_input {size};
-	map_to_target<<<num_of_blocks, threads_per_block>>>(mapped_input.data(), input, size, target_value);
+	map_to_target<<<num_of_blocks, threads_per_block>>>(mapped_input.data(), input.data(),
+							    size, target_value);
 	assert(cudaGetLastError() == cudaSuccess);
-	prefix_recursive(output, mapped_input.data(), size);
+	prefix_recursive(output.data(), mapped_input.data(), size);
 }
 
 template<typename tuple_t>
@@ -107,7 +108,7 @@ int main(const int argc, char *const argv[]) {
 				      n * sizeof *gpu_index.data(), cudaMemcpyHostToDevice);
 	assert(cuda_status == cudaSuccess);
 
-	mapped_scan(gpu_scan.data(), gpu_index.data(), n, target_value);
+	mapped_scan(gpu_scan, gpu_index, n, target_value);
 	cuda_status = cudaDeviceSynchronize();
 	assert(cuda_status == cudaSuccess);
 	cuda_status = cudaMemcpy(cpu_scan.data(), gpu_scan.data(),
