@@ -8,15 +8,13 @@ using wf::GPUBuffer;
 
 static constexpr auto threads_per_block = 512;
 
-__global__ void map_to_target(int *const output, int *const input,
-			      const int n, const int target_value) {
+__global__ void map_to_target(int *const output, int *const input, const int n, const int target_value) {
 	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
 	if (absolute_id < n)
 		output[absolute_id] = input[absolute_id] == target_value;
 }
 
-__global__ void prescan(int *const output, int *const input,
-			int *const partial_sums, const int n) {
+__global__ void prescan(int *const output, int *const input, int *const partial_sums, const int n) {
 	extern __shared__ int temp[];
 	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
 	const auto block_thread_id = threadIdx.x;
@@ -67,13 +65,12 @@ void prefix_recursive(int *const output, int *const input, const int size) {
 	assert(cudaGetLastError() == cudaSuccess);
 }
 
-void mapped_scan(int *const output, int *const input, const int size,
-		 const int target_value) {
+void mapped_scan(int *const output, int *const input, const int size, const int target_value) {
 	const auto num_of_blocks = size / threads_per_block + 1;
-	map_to_target<<<num_of_blocks, threads_per_block>>>(output, input, size,
-							    target_value);
+	GPUBuffer<int> mapped_input {size};
+	map_to_target<<<num_of_blocks, threads_per_block>>>(mapped_input.data(), input, size, target_value);
 	assert(cudaGetLastError() == cudaSuccess);
-	prefix_recursive(output, input, size);
+	prefix_recursive(output, mapped_input.data(), size);
 }
 
 template<typename tuple_t>
