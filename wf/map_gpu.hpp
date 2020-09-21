@@ -134,8 +134,7 @@ class MapGPU: public ff::ff_farm, public Basic_Operator {
 
 	/// type of the function to map the key hashcode onto an identifier
 	/// starting from zero to pardegree-1
-	using routing_func_t = std::function<std::size_t(std::size_t,
-							 std::size_t)>;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
 
 	// The type of objects used as internal farm nodes.
 	using node_t = MapGPU_Node<tuple_t, result_t, func_t>;
@@ -175,18 +174,13 @@ public:
 		check_constructor_parameters(pardegree, tuple_buffer_capacity, gpu_threads_per_block);
 		std::vector<ff_node *> workers;
 		for (auto i = 0; i < pardegree; i++) {
-			auto seq = new node_t {func, name,
-					       tuple_buffer_capacity,
-					       gpu_threads_per_block,
-					       0, have_gpu_input,
-					       have_gpu_output};
+			auto seq = new node_t {func, name, tuple_buffer_capacity, gpu_threads_per_block,
+					       0, have_gpu_input, have_gpu_output};
 			workers.push_back(seq);
 		}
-		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
-		// 			 {pardegree});
-		ff::ff_farm::add_emitter(new Standard_EmitterGPU<tuple_t>
-					 {pardegree, have_gpu_input,
-					  have_gpu_output});
+		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t> {pardegree});
+		ff::ff_farm::add_emitter(new Standard_EmitterGPU<tuple_t> {pardegree, have_gpu_input,
+									   have_gpu_output});
 		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
@@ -217,26 +211,21 @@ public:
 	       const bool have_gpu_input=false,
 	       const bool have_gpu_output=false)
 		: name {name}, pardegree {pardegree}, routing_mode {KEYBY},
-		  have_gpu_input {have_gpu_input},
-		  have_gpu_output {have_gpu_output}
+		  have_gpu_input {have_gpu_input}, have_gpu_output {have_gpu_output}
 	{
 		check_constructor_parameters(pardegree, tuple_buffer_capacity, gpu_threads_per_block);
 		if (scratchpad_size <= 0)
 			failwith("MapGPU has non-positive scratchpad size");
 		std::vector<ff_node *> workers;
 		for (auto i = 0; i < pardegree; i++) {
-			auto seq = new node_t {func, name,
-					       tuple_buffer_capacity,
-					       gpu_threads_per_block,
-					       scratchpad_size, have_gpu_input,
-					       have_gpu_output};
+			auto seq = new node_t {func, name, tuple_buffer_capacity, gpu_threads_per_block,
+					       scratchpad_size, have_gpu_input, have_gpu_output};
 			workers.push_back(seq);
 		}
 		// ff::ff_farm::add_emitter(new Standard_Emitter<tuple_t>
 		// 			 {routing_func, pardegree});
-		ff::ff_farm::add_emitter(new Standard_EmitterGPU<tuple_t>
-					 {routing_func, pardegree,
-					  have_gpu_input, have_gpu_output});
+		ff::ff_farm::add_emitter(new Standard_EmitterGPU<tuple_t> {routing_func, pardegree,
+									   have_gpu_input, have_gpu_output});
 		ff::ff_farm::add_workers(workers);
 		// add default collector
 		ff::ff_farm::add_collector(nullptr);
