@@ -174,8 +174,7 @@ class MapGPU_Node: public ff::ff_minode {
 			  && is_in_place_keyed<func_t> && !is_not_in_place_keyed<func_t>)
 		      || (!is_in_place_keyless<func_t> && !is_not_in_place_keyless<func_t>
 			  && !is_in_place_keyed<func_t> && is_not_in_place_keyed<func_t>),
-		      "WindFlow Error: MapGPU function parameter does not have "
-		      "a valid signature. It must be EXACTLY one of:\n"
+		      "WindFlow Error: MapGPU function parameter does not have a valid signature. It must be EXACTLY one of:\n"
 		      "void(tuple_t &) (In-place, keyless)\n"
 		      "void(const tuple_t, result_t &) (Non in-place, keyless)\n"
 		      "void(tuple_t &, char *, std::size_t) (In-place, keyed)\n"
@@ -190,8 +189,7 @@ class MapGPU_Node: public ff::ff_minode {
 	 * Boolean logic!
 	 */
 	static_assert(!is_in_place<func_t> || std::is_same<tuple_t, result_t>::value,
-		      "WindFlow Error: if instantiating MapGPU with an in-place "
-		      "function, the input type and the output type must match.");
+		      "WindFlow Error: if instantiating MapGPU with an in-place function, the input type and the output type must match.");
 
 	/*
 	 * Type aliases.
