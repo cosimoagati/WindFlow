@@ -303,14 +303,6 @@ public:
 	 *  \return true if the MapGPU has output to the GPU, false otherwise
 	 */
 	bool HasGPUOutput() const { return have_gpu_output; }
-
-	/*
-	 * This object may not be copied nor moved.
-	 */
-	MapGPU(const MapGPU &) = delete;
-	MapGPU(MapGPU &&) = delete;
-	MapGPU &operator=(const MapGPU &) = delete;
-	MapGPU &operator=(MapGPU &&) = delete;
 };
 } // namespace wf
 
