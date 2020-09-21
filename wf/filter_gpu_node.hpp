@@ -54,9 +54,8 @@ __global__ void run_filter_kernel(const func_t filter_func,
 				  const std::size_t buffer_capacity) {
 	const auto index = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto stride = blockDim.x * gridDim.x;
-	for (auto i = index; i < buffer_capacity; i += stride) {
+	for (auto i = index; i < buffer_capacity; i += stride)
 		filter_func(tuple_buffer[i], tuple_mask[i]);
-	}
 }
 
 template<typename tuple_t, typename func_t>
@@ -71,28 +70,20 @@ __global__ void run_filter_kernel_keyed(const func_t filter_func,
 
 	for (auto i = 0u; i < buffer_capacity; ++i) {
 		auto &state = tuple_state[i];
-		if (state.hash % num_threads == index) {
-			filter_func(tuple_buffer[i], tuple_mask[i],
-				    state.scratchpad, scratchpad_size);
-		}
+		if (state.hash % num_threads == index)
+			filter_func(tuple_buffer[i], tuple_mask[i], state.scratchpad, scratchpad_size);
 	}
 }
 
 template<typename tuple_t, typename func_t>
 class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 	template<typename F>
-	static constexpr bool is_keyless = is_invocable<F, const tuple_t &,
-							bool &>::value;
+	static constexpr bool is_keyless = is_invocable<F, const tuple_t &, bool &>::value;
 	template<typename F>
-	static constexpr bool is_keyed = is_invocable<F, const tuple_t &,
-						      bool &, char *,
-						      std::size_t>::value;
+	static constexpr bool is_keyed = is_invocable<F, const tuple_t &, bool &, char *, std::size_t>::value;
 
-	static_assert((is_keyless<func_t> && !is_keyed<func_t>)
-		      || (!is_keyless<func_t> && is_keyed<func_t>),
-		      "WindFlow Error: filter function has an invalid "
-		      "signature: it is neither keyed nor keyless.");
-
+	static_assert((is_keyless<func_t> && !is_keyed<func_t>) || (!is_keyless<func_t> && is_keyed<func_t>),
+		      "WindFlow Error: filter function has an invalid signature: it is neither keyed nor keyless.");
 
 	/*
 	 * Class memebers
@@ -151,12 +142,10 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	void setup_tuple_state_buffers() {
 		const auto size = total_buffer_capacity * sizeof(TupleState);
-		if (cudaMallocHost(&cpu_tuple_state_buffer, size) != cudaSuccess) {
+		if (cudaMallocHost(&cpu_tuple_state_buffer, size) != cudaSuccess)
 			failwith("FilterGPU_Node failed to allocate CPU tuple state buffer");
-		}
-		if (cudaMalloc(&gpu_tuple_state_buffer, size) != cudaSuccess) {
+		if (cudaMalloc(&gpu_tuple_state_buffer, size) != cudaSuccess)
 			failwith("FilterGPU_Node failed to allocate GPU tuple state buffer");
-		}
 	}
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyless<F>, int> = 0>
@@ -164,14 +153,14 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 		cpu_tuple_buffer[current_buffer_capacity] = *t;
 		++current_buffer_capacity;
 		delete t;
-		if (current_buffer_capacity < total_buffer_capacity) {
+		if (current_buffer_capacity < total_buffer_capacity)
 			return this->GO_ON;
-		}
+
 		send_last_batch_if_any();
 		copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
-		for (auto i = 0; i < total_buffer_capacity; ++i) {
+		for (auto i = 0; i < total_buffer_capacity; ++i)
 			cpu_result_buffer[i] = cpu_tuple_buffer[i]; // Can we avoid these copies?
-		}
+
 		current_buffer_capacity = 0;
 		run_kernel();
 		was_batch_started = true;
@@ -185,25 +174,24 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 
 		if (key_scratchpad_map.find(key) == key_scratchpad_map.end()) {
 			auto &scratchpad = key_scratchpad_map[key];
-			if (cudaMalloc(&scratchpad, scratchpad_size) != cudaSuccess) {
+			if (cudaMalloc(&scratchpad, scratchpad_size) != cudaSuccess)
 				failwith("FilterGPU_Node failed to allocate GPU scratchpad.");
-			}
 		}
 		cpu_tuple_state_buffer[current_buffer_capacity] =
 			{hash(key), key_scratchpad_map[key]};
 		delete t;
 		++current_buffer_capacity;
 
-		if (current_buffer_capacity < total_buffer_capacity) {
+		if (current_buffer_capacity < total_buffer_capacity)
 			return this->GO_ON;
-		}
+
 		send_last_batch_if_any();
 		copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
 		copy_host_buffer_to_device(gpu_tuple_state_buffer,
 					   cpu_tuple_state_buffer);
-		for (auto i = 0; i < total_buffer_capacity; ++i) {
+		for (auto i = 0; i < total_buffer_capacity; ++i)
 			cpu_result_buffer[i] = cpu_tuple_buffer[i]; // Can we avoid these copies?
-		}
+
 		current_buffer_capacity = 0;
 		run_kernel();
 		was_batch_started = true;
@@ -211,17 +199,16 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 	}
 
 	void send_last_batch_if_any() {
-		if (!was_batch_started) {
+		if (!was_batch_started)
 			return;
-		}
+
 		cudaStreamSynchronize(cuda_stream);
 		const auto mask_size = total_buffer_capacity * sizeof(bool);
 		cudaMemcpy(cpu_tuple_mask, gpu_tuple_mask, mask_size,
 			   cudaMemcpyDeviceToHost);
 		for (auto i = 0; i < total_buffer_capacity; ++i) {
-			if (cpu_tuple_mask[i]) {
+			if (cpu_tuple_mask[i])
 				this->ff_send_out(new tuple_t {cpu_result_buffer[i]});
-			}
 		}
 	}
 
@@ -247,9 +234,8 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 			bool mask;
 
 			filter_func(t, mask);
-			if (mask) {
+			if (mask)
 				this->ff_send_out(new tuple_t {t});
-			}
 		}
 	}
 
@@ -270,9 +256,8 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 			}
 			bool mask;
 			filter_func(t, mask, last_map[key].data(), scratchpad_size);
-			if (mask) {
+			if (mask)
 				this->ff_send_out(new tuple_t {t});
-			}
 		}
 	}
 
@@ -305,25 +290,20 @@ public:
 		  have_gpu_output {have_gpu_output}
 	{
 		const auto tuple_buffer_size = sizeof(tuple_t) * total_buffer_capacity;
-		if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
+		if (cudaMallocHost(&cpu_tuple_buffer, tuple_buffer_size) != cudaSuccess)
 			failwith("FilterGPU_Node failed to allocate CPU tuple buffer");
-		}
-		if (cudaMallocHost(&cpu_result_buffer, tuple_buffer_size) != cudaSuccess) {
+		if (cudaMallocHost(&cpu_result_buffer, tuple_buffer_size) != cudaSuccess)
 			failwith("FilterGPU_Node failed to allocate CPU result buffer");
-		}
+
 		const auto tuple_mask_size = sizeof(bool) * total_buffer_capacity;
-		if (cudaMallocHost(&cpu_tuple_mask, tuple_mask_size) != cudaSuccess) {
+		if (cudaMallocHost(&cpu_tuple_mask, tuple_mask_size) != cudaSuccess)
 			failwith("FilterGPU_Node failed to allocate CPU tuple mask");
-		}
-		if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess) {
+		if (cudaMalloc(&gpu_tuple_buffer, tuple_buffer_size) != cudaSuccess)
 			failwith("FilterGPU_Node failed to allocate GPU tuple buffer");
-		}
-		if (cudaMalloc(&gpu_tuple_mask, tuple_buffer_size) != cudaSuccess) {
+		if (cudaMalloc(&gpu_tuple_mask, tuple_buffer_size) != cudaSuccess)
 			failwith("FilterGPU_Node failed to allocate GPU tuple mask");
-		}
-		if (cudaStreamCreate(&cuda_stream) != cudaSuccess) {
+		if (cudaStreamCreate(&cuda_stream) != cudaSuccess)
 			failwith("cudaStreamCreate() failed in FilterGPU_Node");
-		}
 		setup_tuple_state_buffers();
 	}
 
