@@ -14,7 +14,8 @@ __global__ void map_to_target(int *const output, int *const input, const int n, 
 		output[absolute_id] = input[absolute_id] == target_value;
 }
 
-__global__ void prescan(int *const output, int *const input, int *const partial_sums, const int n) {
+__global__ void prescan(int *const output, int *const input, int *const partial_sums, const int n,
+			const int pow) {
 	extern __shared__ int temp[];
 	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
 	const auto block_thread_id = threadIdx.x;
@@ -22,13 +23,13 @@ __global__ void prescan(int *const output, int *const input, int *const partial_
 	if (absolute_id < n)
 		temp[block_thread_id] = input[absolute_id];
 	// TODO: bit shifts should be more efficient...
-	for (auto stride = 1; stride <= n; stride *= 2) {
+	for (auto stride = 1; stride <= pow; stride *= 2) {
 		__syncthreads();
 		const auto index = (block_thread_id + 1) * stride * 2 - 1;
 		if (index < 2 * n)
 			temp[index] += temp[index - stride];
 	}
-	for (auto stride = n / 2; stride > 0; stride /= 2) {
+	for (auto stride = pow / 2; stride > 0; stride /= 2) {
 		__syncthreads();
 		const auto index = (block_thread_id + 1) * stride * 2 - 1;
 		if (index + stride < 2 * n)
@@ -54,7 +55,7 @@ void prefix_recursive(int *const output, int *const input, const int size) {
 
 	GPUBuffer<int> partial_sums {num_of_blocks - 1};
 	prescan<<<num_of_blocks, threads_per_block, 2 * threads_per_block>>>
-		(output, input, partial_sums.data(), size);
+		(output, input, partial_sums.data(), size, pow);
 	assert(cudaGetLastError() == cudaSuccess);
 	if (num_of_blocks <= 1)
 		return;
