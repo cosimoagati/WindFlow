@@ -60,8 +60,7 @@ namespace wf {
  */
 template<typename tuple_t, typename func_t>
 class FilterGPU: public ff::ff_farm , public Basic_Operator {
-	using routing_func_t = std::function<std::size_t(std::size_t,
-							 std::size_t)>;
+	using routing_func_t = std::function<std::size_t(std::size_t, std::size_t)>;
 	using node_t = FilterGPU_Node<tuple_t, func_t>;
 
 	friend class MultiPipe;
@@ -98,19 +97,15 @@ public:
 		  have_gpu_output {have_gpu_output}
 	{
 		if (pardegree == 0) {
-			std::cerr << RED
-				  << "WindFlow Error: FilterGPU has parallelism zero"
+			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero"
 				  << DEFAULT_COLOR << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
 		// vector of FilterGPU_Node
 		std::vector<ff_node *> workers;
 		for (auto i = 0; i < pardegree; ++i) {
-			auto seq = new node_t {func, name,
-					       tuple_buffer_capacity,
-					       gpu_threads_per_block,
-					       0, have_gpu_input,
-					       have_gpu_output};
+			auto seq = new node_t {func, name, tuple_buffer_capacity, gpu_threads_per_block,
+					       0, have_gpu_input, have_gpu_output};
 			workers.push_back(seq);
 		}
 		// add emitter
@@ -146,8 +141,7 @@ public:
 	{
 		// check the validity of the parallelism degree
 		if (pardegree == 0) {
-			std::cerr << RED
-				  << "WindFlow Error: FilterGPU has parallelism zero"
+			std::cerr << RED << "WindFlow Error: FilterGPU has parallelism zero"
 				  << DEFAULT_COLOR << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
@@ -155,8 +149,7 @@ public:
 		std::vector<ff_node *> workers;
 		for (size_t i = 0; i < pardegree; i++) {
 			auto seq = new node_t {func, name, tuple_buffer_capacity,
-					       gpu_threads_per_block,
-					       scratchpad_size};
+					       gpu_threads_per_block, scratchpad_size};
 			workers.push_back(seq);
 		}
 		// add emitter
