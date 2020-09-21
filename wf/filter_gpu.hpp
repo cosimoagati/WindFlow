@@ -59,7 +59,7 @@ namespace wf {
  *  items and dropping out all of them for which the predicate evaluates to false.
  */
 template<typename tuple_t, typename func_t>
-class FilterGPU: public ff::ff_farm , public Basic_Emitter {
+class FilterGPU: public ff::ff_farm , public Basic_Operator {
 	using routing_func_t = std::function<std::size_t(std::size_t,
 							 std::size_t)>;
 	using node_t = FilterGPU_Node<tuple_t, func_t>;
