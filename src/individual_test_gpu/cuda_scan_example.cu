@@ -51,6 +51,7 @@ void prefix_recursive(int *const output, int *const input, const int size) {
 	auto pow = 1;
 	while (pow < threads_per_block)
 		pow *= 2;
+
 	GPUBuffer<int> partial_sums {num_of_blocks - 1};
 	prescan<<<num_of_blocks, threads_per_block, 2 * threads_per_block>>>
 		(output, input, partial_sums.data(), size);
