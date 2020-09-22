@@ -39,11 +39,6 @@
 #include "basic.hpp"
 
 namespace wf {
-inline void failwith(const std::string &err) {
-	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
-		  << std::endl;
-	std::exit(EXIT_FAILURE);
-}
 
 template<typename F, typename... Args>
 struct is_invocable :
@@ -308,6 +303,12 @@ public:
 		assert(status == cudaSuccess);
 	}
 };
+
+inline void failwith(const std::string &err) {
+	std::cerr << RED << "WindFlow Error: " << err << DEFAULT_COLOR
+		  << std::endl;
+	std::exit(EXIT_FAILURE);
+}
 
 } // namespace wf
 
