@@ -678,7 +678,7 @@ public:
 				send_tuples_to_cpu_operator();
 			}
 		}
-		if (!have_gpu_input)
+		if (!have_gpu_input && current_buffer_capacity)
 			process_last_buffered_tuples();
 	}
 
