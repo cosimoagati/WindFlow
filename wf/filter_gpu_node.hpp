@@ -75,6 +75,28 @@ __global__ void run_filter_kernel_keyed(const func_t filter_func,
 	}
 }
 
+/*
+ * Compact tuple buffer. Assume we have a thread for each buffer element.
+ */
+template<typename tuple_t>
+___global__ void compact(tuple_t *const tuple_buffer,
+			 bool *const mask,
+			 int *const mask_prefix,
+			 const std::size_t n) {
+	const auto id = blockDim.x * blockIdx.x + threadIdx.x;
+
+	if (id < n) {
+		tuple_t tuple_to_write;
+		std::size_t index_to_write;
+		if (mask[id]) {
+			tuple_to_write = tuple_buffer[id];
+			index_to_write = id - mask_prefix[id];
+		}
+		__syncthreads();
+		tuple_buffer[index_to_write] = tuple_to_write;
+	}
+}
+
 template<typename tuple_t, typename func_t>
 class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 	template<typename F>
@@ -230,6 +252,8 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyless<F>, int> = 0>
 	void process_last_tuples() {
+		assert(current_buffer_capacity > 0);
+
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
 			const auto &t = cpu_tuple_buffer[i];
 			bool mask;
@@ -242,6 +266,8 @@ class FilterGPU_Node: public ff::ff_node_t<tuple_t> {
 
 	template<typename F=func_t, typename std::enable_if_t<is_keyed<F>, int> = 0>
 	void process_last_tuples() {
+		assert(current_buffer_capacity > 0);
+
 		std::unordered_map<key_t, std::vector<char>> last_map;
 
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
@@ -351,7 +377,8 @@ public:
 	 */
 	void eosnotify(ssize_t) {
 		send_last_batch_if_any();
-		process_last_tuples();
+		if (current_buffer_capacity > 0)
+			process_last_tuples();
 	}
 
 	// svc_end method (utilized by the FastFlow runtime)
