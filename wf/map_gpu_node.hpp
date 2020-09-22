@@ -490,6 +490,8 @@ class MapGPU_Node: public ff::ff_minode {
 	 */
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyless<F>, int> = 0>
 	void process_last_buffered_tuples() {
+		assert(current_buffer_capacity > 0);
+
 		for (auto i = 0; i < current_buffer_capacity; ++i)
 			map_func(cpu_tuple_buffer[i]);
 		if (have_gpu_output) {
@@ -507,6 +509,8 @@ class MapGPU_Node: public ff::ff_minode {
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyless<F>, int> = 0>
 	void process_last_buffered_tuples() {
+		assert(current_buffer_capacity > 0);
+
 		for (auto i = 0; i < current_buffer_capacity; ++i)
 			map_func(cpu_tuple_buffer[i], cpu_result_buffer[i]);
 		if (have_gpu_output) {
@@ -524,6 +528,8 @@ class MapGPU_Node: public ff::ff_minode {
 
 	template<typename F=func_t, typename std::enable_if_t<is_in_place_keyed<F>, int> = 0>
 	void process_last_buffered_tuples() {
+		assert(current_buffer_capacity > 0);
+
 		std::unordered_map<key_t, std::vector<char>> last_map;
 
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
@@ -559,6 +565,8 @@ class MapGPU_Node: public ff::ff_minode {
 
 	template<typename F=func_t, typename std::enable_if_t<is_not_in_place_keyed<F>, int> = 0>
 	void process_last_buffered_tuples() {
+		assert(current_buffer_capacity > 0);
+
 		std::unordered_map<key_t, std::vector<char>> last_map;
 
 		for (auto i = 0; i < current_buffer_capacity; ++i) {
@@ -678,7 +686,7 @@ public:
 				send_tuples_to_cpu_operator();
 			}
 		}
-		if (!have_gpu_input && current_buffer_capacity)
+		if (!have_gpu_input && current_buffer_capacity > 0)
 			process_last_buffered_tuples();
 	}
 
