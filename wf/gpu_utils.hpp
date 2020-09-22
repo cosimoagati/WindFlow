@@ -122,12 +122,13 @@ public:
 
 	GPUBuffer &operator=(const GPUBuffer &other) {
 		if (buffer_ptr != other.buffer_ptr) {
+			// TODO: should resize instead of reallocating...
 			if (buffer_ptr != nullptr) {
 				const auto status = cudaFree(buffer_ptr);
 				assert(status == cudaSuccess);
 			}
-			// Only copies the relevant elements, even if allocated size of
-			// other is greater.
+			// Only copies the relevant elements, even if allocated
+			// size of other is greater.
 			allocated_size = buffer_size = other.buffer_size;
 			const auto status = cudaMalloc(&buffer_ptr, buffer_size * sizeof *buffer_ptr) ;
 			assert(status == cudaSuccess);
@@ -138,6 +139,10 @@ public:
 
 	GPUBuffer &operator=(GPUBuffer &&other) {
 		if (buffer_ptr != other.buffer_ptr) {
+			if (buffer_ptr != nullptr) {
+				const auto status = cudaFree(buffer_ptr);
+				assert(status == cudaSuccess);
+			}
 			buffer_ptr = other.buffer_ptr;
 			buffer_size = other.buffer_size;
 			allocated_size = other.allocated_size;
@@ -219,8 +224,8 @@ public:
 				const auto status = cudaFreeHost(buffer_ptr);
 				assert(status == cudaSuccess);
 			}
-			// Only copies the relevant elements, even if allocated size of
-			// other is greater.
+			// Only copies the relevant elements, even if allocated
+			// size of other is greater.
 			allocated_size = buffer_size = other.buffer_size;
 			const auto status = cudaMallocHost(&buffer_ptr, buffer_size * sizeof *buffer_ptr) ;
 			assert(status == cudaSuccess);
@@ -231,6 +236,10 @@ public:
 
 	PinnedCPUBuffer &operator=(PinnedCPUBuffer &&other) {
 		if (buffer_ptr != other.buffer_ptr) {
+			if (buffer_ptr != nullptr) {
+				const auto status = cudaFreeHost(buffer_ptr);
+				assert(status == cudaSuccess);
+			}
 			buffer_ptr = other.buffer_ptr;
 			buffer_size = other.buffer_size;
 			allocated_size = other.allocated_size;
