@@ -298,17 +298,22 @@ class MapGPU_Node: public ff::ff_minode {
 	void *svc_aux(void *const input) {
 		if (have_gpu_input) {
 			const auto handle = reinterpret_cast<GPUBuffer<tuple_t> *>(input);
+			gpu_tuple_buffer = std::move(*handle);
+			delete handle;
+
 			if (was_batch_started) {
 				cuda_stream.synchronize();
 				if (have_gpu_output) {
 					this->ff_send_out(new auto {std::move(gpu_result_buffer)});
+					gpu_result_buffer = gpu_tuple_buffer.size();
 				} else {
 					send_tuples_to_cpu_operator();
+					gpu_result_buffer.enlarge(gpu_tuple_buffer.size());
 					cpu_result_buffer.enlarge(handle->size());
 				}
+			} else {
+				gpu_result_buffer = gpu_tuple_buffer.size();
 			}
-			gpu_result_buffer = std::move(*handle);
-			delete handle;
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
