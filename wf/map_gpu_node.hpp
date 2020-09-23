@@ -303,14 +303,6 @@ class MapGPU_Node: public ff::ff_minode {
 			gpu_tuple_buffer = std::move(*handle);
 			delete handle;
 
-			// Added for debugging.
-			// cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), gpu_tuple_buffer.data(),
-			// 			     gpu_tuple_buffer.size() * sizeof *gpu_tuple_buffer.data(),
-			// 			     cudaMemcpyDeviceToHost, cuda_stream.raw());
-			// assert(cuda_error == cudaSuccess);
-			// cuda_stream.synchronize();
-			// End debugging code.
-
 			if (was_batch_started) {
 				cuda_stream.synchronize();
 				if (have_gpu_output) {
