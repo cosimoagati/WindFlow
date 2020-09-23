@@ -259,7 +259,7 @@ class MapGPU_Node: public ff::ff_minode {
 					this->ff_send_out(new auto {std::move(gpu_result_buffer)});
 				} else {
 					send_tuples_to_cpu_operator();
-					cpu_result_buffer.enlarge(handle->size());
+					cpu_result_buffer.resize(handle->size());
 				}
 			}
 			gpu_result_buffer = std::move(*handle);
@@ -309,8 +309,8 @@ class MapGPU_Node: public ff::ff_minode {
 					gpu_result_buffer = size;
 				} else {
 					send_tuples_to_cpu_operator();
-					gpu_result_buffer.enlarge(handle->size());
-					cpu_result_buffer.enlarge(handle->size());
+					gpu_result_buffer.resize(handle->size());
+					cpu_result_buffer.resize(handle->size());
 				}
 			} else {
 				gpu_result_buffer = gpu_tuple_buffer.size();
@@ -353,14 +353,14 @@ class MapGPU_Node: public ff::ff_minode {
 					this->ff_send_out(new auto {std::move(gpu_result_buffer)});
 				} else {
 					send_tuples_to_cpu_operator();
-					cpu_result_buffer.enlarge(handle->size());
+					cpu_result_buffer.resize(handle->size());
 				}
 			}
 			gpu_result_buffer = std::move(*handle);
 			delete handle;
-			cpu_tuple_buffer.enlarge(gpu_result_buffer.size());
-			cpu_tuple_state_buffer.enlarge(gpu_result_buffer.size());
-			gpu_tuple_state_buffer.enlarge(gpu_result_buffer.size());
+			cpu_tuple_buffer.resize(gpu_result_buffer.size());
+			cpu_tuple_state_buffer.resize(gpu_result_buffer.size());
+			gpu_tuple_state_buffer.resize(gpu_result_buffer.size());
 
 			// Ensure scratchpads are allocated and retrieve keys. Could be costly...
 			cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), gpu_result_buffer.data(),
@@ -422,8 +422,8 @@ class MapGPU_Node: public ff::ff_minode {
 			const auto handle = reinterpret_cast<GPUBuffer<tuple_t> *>(input);
 			gpu_tuple_buffer = std::move(*handle);
 			delete handle;
-			cpu_result_buffer.enlarge(gpu_tuple_buffer.size());
-			cpu_tuple_buffer.enlarge(gpu_tuple_buffer.size());
+			cpu_result_buffer.resize(gpu_tuple_buffer.size());
+			cpu_tuple_buffer.resize(gpu_tuple_buffer.size());
 
 			// Ensure scratchpads are allocated. Could be costly...
 			cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), gpu_result_buffer.data(),
@@ -479,7 +479,7 @@ class MapGPU_Node: public ff::ff_minode {
 					     size, cudaMemcpyDeviceToHost, cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
 		cuda_stream.synchronize();
-		for (auto i = 0; i < gpu_result_buffer.size(); ++i)
+		for (auto i = 0; i < cpu_result_buffer.size(); ++i)
 			this->ff_send_out(new auto {cpu_result_buffer[i]});
 	}
 

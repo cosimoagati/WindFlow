@@ -155,7 +155,7 @@ public:
 	T *data() const { return buffer_ptr; }
 	std::size_t size() const { return buffer_size; }
 
-	void enlarge(const std::size_t new_size) {
+	void resize(const std::size_t new_size) {
 		if (new_size < allocated_size) {
 			buffer_size = new_size;
 			return;
@@ -254,7 +254,7 @@ public:
 	T &operator[](std::size_t i) { return buffer_ptr[i]; }
 	const T &operator[](std::size_t i) const { return buffer_ptr[i]; }
 
-	void enlarge(const std::size_t new_size) {
+	void resize(const std::size_t new_size) {
 		if (new_size < allocated_size) {
 			buffer_size = new_size;
 			return;

@@ -162,7 +162,7 @@ public:
 	 */
 	void linear_keyed_gpu_partition(const GPUBuffer<tuple_t> &handle) {
 		const auto raw_batch_size = handle.size() * sizeof *handle.data();
-		cpu_tuple_buffer.enlarge(handle.size());
+		cpu_tuple_buffer.resize(handle.size());
 		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle.data(),
 					     raw_batch_size, cudaMemcpyDeviceToHost,
 					     cuda_stream.raw());
@@ -195,10 +195,10 @@ public:
 	 * Actual partitioning implementation to be eventually used.
 	 */
 	void parallel_keyed_gpu_partition(const GPUBuffer<tuple_t> &handle) {
-		cpu_tuple_buffer.enlarge(handle.size());
-		cpu_hash_index.enlarge(handle.size());
-		gpu_hash_index.enlarge(handle.size());
-		scan.enlarge(handle.size());
+		cpu_tuple_buffer.resize(handle.size());
+		cpu_hash_index.resize(handle.size());
+		gpu_hash_index.resize(handle.size());
+		scan.resize(handle.size());
 
 		const auto raw_batch_size = handle.size() * sizeof *handle.data();
 		// TODO: Can we avoid this copy on cpu?
