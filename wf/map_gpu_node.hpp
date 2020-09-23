@@ -205,7 +205,6 @@ class MapGPU_Node: public ff::ff_minode {
 	std::string operator_name;
 	GPUStream cuda_stream;
 	cudaError_t cuda_error; // Used to store and catch CUDA errors;
-	int total_buffer_capacity;
 	int gpu_threads_per_block;
 	int gpu_blocks;
 	bool have_gpu_input;
@@ -362,7 +361,6 @@ class MapGPU_Node: public ff::ff_minode {
 			cpu_tuple_buffer.enlarge(gpu_result_buffer.size());
 			cpu_tuple_state_buffer.enlarge(gpu_result_buffer.size());
 			gpu_tuple_state_buffer.enlarge(gpu_result_buffer.size());
-			// total_buffer_capacity = gpu_result_buffer.size();
 
 			// Ensure scratchpads are allocated and retrieve keys. Could be costly...
 			cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), gpu_result_buffer.data(),
@@ -425,15 +423,16 @@ class MapGPU_Node: public ff::ff_minode {
 			gpu_tuple_buffer = std::move(*handle);
 			delete handle;
 			cpu_result_buffer.enlarge(gpu_tuple_buffer.size());
+			cpu_tuple_buffer.enlarge(gpu_tuple_buffer.size());
 
 			// Ensure scratchpads are allocated. Could be costly...
 			cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), gpu_result_buffer.data(),
-						     total_buffer_capacity * sizeof *cpu_tuple_buffer.data(),
+						     cpu_tuple_buffer.size() * sizeof *cpu_tuple_buffer.data(),
 						     cudaMemcpyDeviceToHost, cuda_stream.raw());
 			assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
 
-			for (auto i = 0; i < total_buffer_capacity; ++i) {
+			for (auto i = 0; i < cpu_tuple_buffer.size(); ++i) {
 				const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
 				allocate_scratchpad_if_not_present(key);
 				cpu_tuple_state_buffer[i] = {hash(key), key_scratchpad_map[key].data()};
@@ -449,14 +448,15 @@ class MapGPU_Node: public ff::ff_minode {
 			cpu_tuple_state_buffer[current_buffer_capacity] =
 				{hash(key), key_scratchpad_map[key].data()};
 			++current_buffer_capacity;
-			if (current_buffer_capacity < total_buffer_capacity)
+			if (current_buffer_capacity < cpu_tuple_buffer.size())
 				return this->GO_ON;
 
 			if (was_batch_started) {
 				cuda_stream.synchronize();
 				if (have_gpu_output) {
+					const auto size = gpu_result_buffer.size();
 					this->ff_send_out(new auto {std::move(gpu_result_buffer)});
-					gpu_result_buffer = total_buffer_capacity;
+					gpu_result_buffer = size;;
 				} else {
 					send_tuples_to_cpu_operator();
 				}
@@ -467,7 +467,7 @@ class MapGPU_Node: public ff::ff_minode {
 		}
 		run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw()>>>
 			(map_func, gpu_tuple_buffer.data(), gpu_result_buffer.data(),
-			 gpu_tuple_state_buffer.data(), scratchpad_size, total_buffer_capacity);
+			 gpu_tuple_state_buffer.data(), scratchpad_size, gpu_tuple_buffer.size());
 		assert(cudaGetLastError() == cudaSuccess);
 		was_batch_started = true;
 		return this->GO_ON;
@@ -617,7 +617,6 @@ public:
 		    const bool have_gpu_input=false,
 		    const bool have_gpu_output=false)
 		: map_func {map_func}, operator_name {name},
-		  total_buffer_capacity {total_buffer_capacity},
 		  cpu_tuple_buffer {total_buffer_capacity},
 		  cpu_result_buffer {total_buffer_capacity},
 		  gpu_threads_per_block {gpu_threads_per_block},
