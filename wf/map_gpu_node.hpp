@@ -243,7 +243,9 @@ class MapGPU_Node: public ff::ff_minode {
 	 */
 	template<typename T>
 	void copy_host_buffer_to_device(GPUBuffer<T> &device_to, PinnedCPUBuffer<T> &host_from) {
-		const auto size = device_to.size() * sizeof *device_to.data();
+		const auto size = host_from.size() * sizeof *host_from.data();
+
+		device_to.resize(host_from.size()); // Maybe redundant
 		cuda_error = cudaMemcpyAsync(device_to.data(), host_from.data(), size,
 					     cudaMemcpyHostToDevice, cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
@@ -300,6 +302,14 @@ class MapGPU_Node: public ff::ff_minode {
 			const auto handle = reinterpret_cast<GPUBuffer<tuple_t> *>(input);
 			gpu_tuple_buffer = std::move(*handle);
 			delete handle;
+
+			// Added for debugging.
+			// cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), gpu_tuple_buffer.data(),
+			// 			     gpu_tuple_buffer.size() * sizeof *gpu_tuple_buffer.data(),
+			// 			     cudaMemcpyDeviceToHost, cuda_stream.raw());
+			// assert(cuda_error == cudaSuccess);
+			// cuda_stream.synchronize();
+			// End debugging code.
 
 			if (was_batch_started) {
 				cuda_stream.synchronize();
@@ -474,7 +484,9 @@ class MapGPU_Node: public ff::ff_minode {
 	}
 
 	void send_tuples_to_cpu_operator() {
-		const auto size = cpu_result_buffer.size() * sizeof *cpu_result_buffer.data();
+		const auto size = gpu_result_buffer.size() * sizeof *cpu_result_buffer.data();
+
+		cpu_result_buffer.resize(gpu_result_buffer.size());
 		cuda_error = cudaMemcpyAsync(cpu_result_buffer.data(), gpu_result_buffer.data(),
 					     size, cudaMemcpyDeviceToHost, cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
@@ -505,6 +517,8 @@ class MapGPU_Node: public ff::ff_minode {
 			map_func(cpu_tuple_buffer[i]);
 		if (have_gpu_output) {
 			const auto raw_size = current_buffer_capacity * sizeof *gpu_result_buffer.data();
+
+			gpu_result_buffer.resize(current_buffer_capacity);
 			cuda_error = cudaMemcpyAsync(gpu_result_buffer.data(), cpu_tuple_buffer.data(),
 						     raw_size, cudaMemcpyHostToDevice, cuda_stream.raw());
 			assert(cuda_error == cudaSuccess);
@@ -524,6 +538,8 @@ class MapGPU_Node: public ff::ff_minode {
 			map_func(cpu_tuple_buffer[i], cpu_result_buffer[i]);
 		if (have_gpu_output) {
 			const auto raw_size = current_buffer_capacity * sizeof *gpu_result_buffer.data();
+
+			gpu_result_buffer.resize(current_buffer_capacity);
 			cuda_error = cudaMemcpyAsync(gpu_result_buffer.data(), cpu_result_buffer.data(),
 						     raw_size, cudaMemcpyHostToDevice, cuda_stream.raw());
 			assert(cuda_error == cudaSuccess);
@@ -629,7 +645,7 @@ public:
 		assert(total_buffer_capacity > 0 && gpu_threads_per_block > 0 && scratchpad_size >= 0);
 		if (!have_gpu_input)
 			gpu_result_buffer = total_buffer_capacity;
-		if (!is_in_place<func_t>)
+		if (!is_in_place<func_t> && !have_gpu_input)
 			gpu_tuple_buffer = total_buffer_capacity;
 		if (is_keyed<func_t>) {
 			cpu_tuple_state_buffer = total_buffer_capacity;
