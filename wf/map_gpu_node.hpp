@@ -243,9 +243,9 @@ class MapGPU_Node: public ff::ff_minode {
 	 * buffer capacity.
 	 */
 	template<typename T>
-	void copy_host_buffer_to_device(T *device_to, T *host_from) {
-		const auto size = total_buffer_capacity * sizeof *device_to;
-		cuda_error = cudaMemcpyAsync(device_to, host_from, size,
+	void copy_host_buffer_to_device(GPUBuffer<T> &device_to, PinnedCPUBuffer<T> &host_from) {
+		const auto size = device_to.size() * sizeof *device_to.data();
+		cuda_error = cudaMemcpyAsync(device_to.data(), host_from.data(), size,
 					     cudaMemcpyHostToDevice, cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
 	}
@@ -285,7 +285,7 @@ class MapGPU_Node: public ff::ff_minode {
 					send_tuples_to_cpu_operator();
 				}
 			}
-			copy_host_buffer_to_device(gpu_result_buffer.data(), cpu_tuple_buffer.data());
+			copy_host_buffer_to_device(gpu_result_buffer, cpu_tuple_buffer);
 			current_buffer_capacity = 0;
 		}
 		run_map_kernel_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw()>>>
@@ -305,8 +305,9 @@ class MapGPU_Node: public ff::ff_minode {
 			if (was_batch_started) {
 				cuda_stream.synchronize();
 				if (have_gpu_output) {
+					const auto size = gpu_result_buffer.size();
 					this->ff_send_out(new auto {std::move(gpu_result_buffer)});
-					gpu_result_buffer = handle->size();
+					gpu_result_buffer = size;
 				} else {
 					send_tuples_to_cpu_operator();
 					gpu_result_buffer.enlarge(handle->size());
@@ -333,7 +334,7 @@ class MapGPU_Node: public ff::ff_minode {
 					send_tuples_to_cpu_operator();
 				}
 			}
-			copy_host_buffer_to_device(gpu_tuple_buffer.data(), cpu_tuple_buffer.data());
+			copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
 			current_buffer_capacity = 0;
 		}
 		run_map_kernel_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw()>>>
@@ -361,20 +362,20 @@ class MapGPU_Node: public ff::ff_minode {
 			cpu_tuple_buffer.enlarge(gpu_result_buffer.size());
 			cpu_tuple_state_buffer.enlarge(gpu_result_buffer.size());
 			gpu_tuple_state_buffer.enlarge(gpu_result_buffer.size());
-			total_buffer_capacity = gpu_result_buffer.size();
+			// total_buffer_capacity = gpu_result_buffer.size();
 
 			// Ensure scratchpads are allocated and retrieve keys. Could be costly...
 			cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), gpu_result_buffer.data(),
-						     total_buffer_capacity * sizeof *cpu_tuple_buffer.data(),
+						     gpu_result_buffer.size() * sizeof *gpu_result_buffer.data(),
 						     cudaMemcpyDeviceToHost, cuda_stream.raw());
 			assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
-			for (auto i = 0; i < total_buffer_capacity; ++i) {
+			for (auto i = 0; i < gpu_result_buffer.size(); ++i) {
 				const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
 				allocate_scratchpad_if_not_present(key);
 				cpu_tuple_state_buffer[i] = {hash(key), key_scratchpad_map[key].data()};
 			}
-			copy_host_buffer_to_device(gpu_tuple_state_buffer.data(), cpu_tuple_state_buffer.data());
+			copy_host_buffer_to_device(gpu_tuple_state_buffer, cpu_tuple_state_buffer);
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
@@ -385,25 +386,26 @@ class MapGPU_Node: public ff::ff_minode {
 			cpu_tuple_state_buffer[current_buffer_capacity] =
 				{hash(key), key_scratchpad_map[key].data()};
 			++current_buffer_capacity;
-			if (current_buffer_capacity < total_buffer_capacity)
+			if (current_buffer_capacity < gpu_result_buffer.size())
 				return this->GO_ON;
 
 			if (was_batch_started) {
 				cuda_stream.synchronize();
 				if (have_gpu_output) {
+					const auto size = gpu_result_buffer.size();
 					this->ff_send_out(new auto {std::move(gpu_result_buffer)});
-					gpu_result_buffer = total_buffer_capacity;
+					gpu_result_buffer = size;
 				} else {
 					send_tuples_to_cpu_operator();
 				}
 			}
-			copy_host_buffer_to_device(gpu_result_buffer.data(), cpu_tuple_buffer.data());
-			copy_host_buffer_to_device(gpu_tuple_state_buffer.data(), cpu_tuple_state_buffer.data());
+			copy_host_buffer_to_device(gpu_result_buffer, cpu_tuple_buffer);
+			copy_host_buffer_to_device(gpu_tuple_state_buffer, cpu_tuple_state_buffer);
 			current_buffer_capacity = 0;
 		}
 		run_map_kernel_keyed_ip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw()>>>
 			(map_func, gpu_result_buffer.data(), gpu_tuple_state_buffer.data(),
-			 scratchpad_size, total_buffer_capacity);
+			 scratchpad_size, gpu_result_buffer.size());
 		assert(cudaGetLastError() == cudaSuccess);
 		was_batch_started = true;
 		return this->GO_ON;
@@ -436,7 +438,7 @@ class MapGPU_Node: public ff::ff_minode {
 				allocate_scratchpad_if_not_present(key);
 				cpu_tuple_state_buffer[i] = {hash(key), key_scratchpad_map[key].data()};
 			}
-			copy_host_buffer_to_device(gpu_tuple_state_buffer.data(), cpu_tuple_state_buffer.data());
+			copy_host_buffer_to_device(gpu_tuple_state_buffer, cpu_tuple_state_buffer);
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
@@ -459,8 +461,8 @@ class MapGPU_Node: public ff::ff_minode {
 					send_tuples_to_cpu_operator();
 				}
 			}
-			copy_host_buffer_to_device(gpu_tuple_buffer.data(), cpu_tuple_buffer.data());
-			copy_host_buffer_to_device(gpu_tuple_state_buffer.data(), cpu_tuple_state_buffer.data());
+			copy_host_buffer_to_device(gpu_tuple_buffer, cpu_tuple_buffer);
+			copy_host_buffer_to_device(gpu_tuple_state_buffer, cpu_tuple_state_buffer);
 			current_buffer_capacity = 0;
 		}
 		run_map_kernel_keyed_nip<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw()>>>
@@ -472,7 +474,7 @@ class MapGPU_Node: public ff::ff_minode {
 	}
 
 	void send_tuples_to_cpu_operator() {
-		const auto size = gpu_result_buffer.size() * sizeof *cpu_result_buffer.data();
+		const auto size = cpu_result_buffer.size() * sizeof *cpu_result_buffer.data();
 		cuda_error = cudaMemcpyAsync(cpu_result_buffer.data(), gpu_result_buffer.data(),
 					     size, cudaMemcpyDeviceToHost, cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
