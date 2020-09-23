@@ -315,7 +315,6 @@ class MapGPU_Node: public ff::ff_minode {
 			} else {
 				gpu_result_buffer = gpu_tuple_buffer.size();
 			}
-			// total_buffer_capacity = gpu_tuple_buffer.size();
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			cpu_tuple_buffer[current_buffer_capacity] = *t;
