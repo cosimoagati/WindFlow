@@ -239,7 +239,8 @@ class MapGPU_Node: public ff::ff_minode {
 	/*
 	 * Helper function to ease transfer from host to device (and vice
 	 * versa).  Assumes that both buffers share the same length, the common
-	 * buffer capacity.
+	 * buffer capacity.  Copy is *asynchronous*, make sure to synchronize
+	 * with stream when necessary.
 	 */
 	template<typename T>
 	void copy_host_buffer_to_device(GPUBuffer<T> &device_to, PinnedCPUBuffer<T> &host_from) {
@@ -505,19 +506,15 @@ class MapGPU_Node: public ff::ff_minode {
 	void process_last_buffered_tuples() {
 		assert(current_buffer_capacity > 0);
 
-		for (auto i = 0; i < current_buffer_capacity; ++i)
+		cpu_tuple_buffer.resize(current_buffer_capacity);
+		for (auto i = 0; i < cpu_tuple_buffer.size(); ++i)
 			map_func(cpu_tuple_buffer[i]);
 		if (have_gpu_output) {
-			const auto raw_size = current_buffer_capacity * sizeof *gpu_result_buffer.data();
-
-			gpu_result_buffer.resize(current_buffer_capacity);
-			cuda_error = cudaMemcpyAsync(gpu_result_buffer.data(), cpu_tuple_buffer.data(),
-						     raw_size, cudaMemcpyHostToDevice, cuda_stream.raw());
-			assert(cuda_error == cudaSuccess);
+			copy_host_buffer_to_device(gpu_result_buffer, cpu_tuple_buffer);
 			cuda_stream.synchronize();
 			this->ff_send_out(new auto {std::move(gpu_result_buffer)});
 		} else {
-			for (auto i = 0; i < current_buffer_capacity; ++i)
+			for (auto i = 0; i < cpu_tuple_buffer.size(); ++i)
 				this->ff_send_out(new auto {cpu_tuple_buffer[i]});
 		}
 	}
@@ -526,19 +523,17 @@ class MapGPU_Node: public ff::ff_minode {
 	void process_last_buffered_tuples() {
 		assert(current_buffer_capacity > 0);
 
-		for (auto i = 0; i < current_buffer_capacity; ++i)
+		cpu_tuple_buffer.resize(current_buffer_capacity);
+		cpu_result_buffer.resize(current_buffer_capacity);
+
+		for (auto i = 0; i < cpu_tuple_buffer.size(); ++i)
 			map_func(cpu_tuple_buffer[i], cpu_result_buffer[i]);
 		if (have_gpu_output) {
-			const auto raw_size = current_buffer_capacity * sizeof *gpu_result_buffer.data();
-
-			gpu_result_buffer.resize(current_buffer_capacity);
-			cuda_error = cudaMemcpyAsync(gpu_result_buffer.data(), cpu_result_buffer.data(),
-						     raw_size, cudaMemcpyHostToDevice, cuda_stream.raw());
-			assert(cuda_error == cudaSuccess);
+			copy_host_buffer_to_device(gpu_result_buffer, cpu_result_buffer);
 			cuda_stream.synchronize();
 			this->ff_send_out(new auto {std::move(gpu_result_buffer)});
 		} else {
-			for (auto i = 0; i < current_buffer_capacity; ++i)
+			for (auto i = 0; i < cpu_result_buffer.size(); ++i)
 				this->ff_send_out(new auto {cpu_result_buffer[i]});
 		}
 	}
