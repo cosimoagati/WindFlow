@@ -313,7 +313,6 @@ class MapGPU_Node: public ff::ff_minode {
 				} else {
 					send_tuples_to_cpu_operator();
 					gpu_result_buffer.resize(gpu_tuple_buffer.size());
-					// cpu_result_buffer.resize(gpu_tuple_buffer.size());
 				}
 			} else {
 				gpu_result_buffer = gpu_tuple_buffer.size();
