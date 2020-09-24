@@ -90,17 +90,14 @@ private:
 	// TODO: is it fine for a GPU emitter to be used in a Tree_Emitter?
 	bool is_combined; // true if this node is used within a Tree_Emitter node
 	bool have_gpu_input;
-	bool have_gpu_output;
 
 public:
 	Standard_EmitterGPU(const std::size_t num_of_destinations,
 			    const bool have_gpu_input=false,
-			    const bool have_gpu_output=false,
 			    const int gpu_threads_per_block=256)
 		: routing_mode {FORWARD},
 		  num_of_destinations {num_of_destinations},
 		  have_gpu_input {have_gpu_input},
-		  have_gpu_output {have_gpu_output},
 		  gpu_threads_per_block {gpu_threads_per_block},
 		  gpu_blocks {std::ceil(num_of_destinations
 					/ static_cast<float>(gpu_threads_per_block))}
@@ -112,7 +109,6 @@ public:
 	Standard_EmitterGPU(const routing_func_t routing_func,
 			    const std::size_t num_of_destinations,
 			    const bool have_gpu_input=false,
-			    const bool have_gpu_output=false,
 			    const int gpu_threads_per_block=256)
 		: routing_mode {KEYBY}, routing_func {routing_func},
 		  num_of_destinations {num_of_destinations},
@@ -120,7 +116,6 @@ public:
 		  cpu_hash_index (num_of_destinations),
 		  gpu_hash_index {num_of_destinations},
 		  scan {num_of_destinations}, have_gpu_input {have_gpu_input},
-		  have_gpu_output {have_gpu_output},
 		  gpu_threads_per_block {gpu_threads_per_block},
 		  gpu_blocks {std::ceil(num_of_destinations
 					/ static_cast<float>(gpu_threads_per_block))}
