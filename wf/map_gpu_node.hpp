@@ -562,11 +562,6 @@ class MapGPU_Node: public ff::ff_minode {
 		}
 		if (have_gpu_output) {
 			copy_host_buffer_to_device(gpu_result_buffer, cpu_tuple_buffer);
-			// const auto raw_size = current_buffer_capacity * sizeof *gpu_result_buffer.data();
-			// cuda_error = cudaMemcpyAsync(gpu_result_buffer.data(), cpu_tuple_buffer.data(),
-			// 			     raw_size, cudaMemcpyHostToDevice,
-			// 			     cuda_stream.raw());
-			// assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
 			this->ff_send_out(new auto {std::move(gpu_result_buffer)});
 		} else {
