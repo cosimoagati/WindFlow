@@ -609,29 +609,29 @@ public:
 	// TODO: Maybe factor out different constructors to avoid creating
 	// unnecessary members for the different cases...
 	MapGPU_Node(const func_t map_func, const std::string &name,
-		    const int total_buffer_capacity,
+		    const int initial_buffer_capacity,
 		    const int gpu_threads_per_block,
 		    const std::size_t scratchpad_size=0,
 		    const bool have_gpu_input=false,
 		    const bool have_gpu_output=false)
 		: map_func {map_func}, operator_name {name},
-		  cpu_tuple_buffer {total_buffer_capacity},
-		  cpu_result_buffer {total_buffer_capacity},
+		  cpu_tuple_buffer {initial_buffer_capacity},
+		  cpu_result_buffer {initial_buffer_capacity},
 		  gpu_threads_per_block {gpu_threads_per_block},
-		  gpu_blocks {std::ceil(total_buffer_capacity
+		  gpu_blocks {std::ceil(initial_buffer_capacity
 					/ static_cast<float>(gpu_threads_per_block))},
 		  scratchpad_size {scratchpad_size},
 		  have_gpu_input {have_gpu_input},
 		  have_gpu_output {have_gpu_output}
 	{
-		assert(total_buffer_capacity > 0 && gpu_threads_per_block > 0 && scratchpad_size >= 0);
+		assert(initial_buffer_capacity > 0 && gpu_threads_per_block > 0 && scratchpad_size >= 0);
 		if (!have_gpu_input)
-			gpu_result_buffer = total_buffer_capacity;
+			gpu_result_buffer = initial_buffer_capacity;
 		if (!is_in_place<func_t> && !have_gpu_input)
-			gpu_tuple_buffer = total_buffer_capacity;
+			gpu_tuple_buffer = initial_buffer_capacity;
 		if (is_keyed<func_t>) {
-			cpu_tuple_state_buffer = total_buffer_capacity;
-			gpu_tuple_state_buffer = total_buffer_capacity;
+			cpu_tuple_state_buffer = initial_buffer_capacity;
+			gpu_tuple_state_buffer = initial_buffer_capacity;
 		}
 	}
 
