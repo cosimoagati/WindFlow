@@ -235,7 +235,6 @@ class MapGPU_Node: public ff::ff_minode {
 	volatile unsigned long startTD, startTS, endTD, endTS;
 	std::ofstream *logfile = nullptr;
 #endif
-
 	/*
 	 * Helper function to ease transfer from host to device (and vice
 	 * versa).  Assumes that both buffers share the same length, the common
@@ -543,7 +542,8 @@ class MapGPU_Node: public ff::ff_minode {
 
 		std::unordered_map<key_t, std::vector<char>> last_map;
 
-		for (auto i = 0; i < current_buffer_capacity; ++i) {
+		cpu_tuple_buffer.resize(current_buffer_capacity);
+		for (auto i = 0; i < cpu_tuple_buffer.size(); ++i) {
 			auto &t = cpu_tuple_buffer[i];
 			const auto key = std::get<0>(t.getControlFields());
 
@@ -561,15 +561,16 @@ class MapGPU_Node: public ff::ff_minode {
 			map_func(t, last_map[key].data(), scratchpad_size);
 		}
 		if (have_gpu_output) {
-			const auto raw_size = current_buffer_capacity * sizeof *gpu_result_buffer.data();
-			cuda_error = cudaMemcpyAsync(gpu_result_buffer.data(), cpu_tuple_buffer.data(),
-						     raw_size, cudaMemcpyHostToDevice,
-						     cuda_stream.raw());
-			assert(cuda_error == cudaSuccess);
+			copy_host_buffer_to_device(gpu_result_buffer, cpu_tuple_buffer);
+			// const auto raw_size = current_buffer_capacity * sizeof *gpu_result_buffer.data();
+			// cuda_error = cudaMemcpyAsync(gpu_result_buffer.data(), cpu_tuple_buffer.data(),
+			// 			     raw_size, cudaMemcpyHostToDevice,
+			// 			     cuda_stream.raw());
+			// assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
 			this->ff_send_out(new auto {std::move(gpu_result_buffer)});
 		} else {
-			for (auto i = 0; i < current_buffer_capacity; ++i)
+			for (auto i = 0; i < cpu_tuple_buffer.size(); ++i)
 				this->ff_send_out(new auto {cpu_tuple_buffer[i]});
 		}
 	}
