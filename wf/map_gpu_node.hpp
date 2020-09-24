@@ -701,8 +701,6 @@ public:
 		if (!have_gpu_input && current_buffer_capacity > 0) {
 			if (result_buffer_sent)
 				gpu_result_buffer = current_buffer_capacity;
-			else
-				gpu_result_buffer.resize(current_buffer_capacity);
 			process_last_buffered_tuples();
 		}
 	}
