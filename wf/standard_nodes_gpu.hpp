@@ -140,16 +140,15 @@ public:
 #else
 			linear_keyed_gpu_partition(*handle);
 #endif
+			delete handle;
 		} else {
 			const auto t = reinterpret_cast<tuple_t *>(input);
 			const auto key = std::get<0>(t->getControlFields());
 			const auto hashcode = hash(key);
 			destination_index = routing_func(hashcode, num_of_destinations);
 			this->ff_send_out_to(t, destination_index);
-			return this->GO_ON;
 		}
-		delete input;
-		return nullptr; // Silence potential compiler warnings.
+		return this->GO_ON;
 	}
 
 	/*
