@@ -687,17 +687,24 @@ public:
 	 * kernel.
 	 */
 	void eosnotify(ssize_t) override {
+		auto result_buffer_sent = false;
+
 		if (was_batch_started) {
 			cuda_stream.synchronize();
 			if (have_gpu_output) {
 				this->ff_send_out(new auto {std::move(gpu_result_buffer)});
-				gpu_result_buffer = current_buffer_capacity;
+				result_buffer_sent = true;
 			} else {
 				send_tuples_to_cpu_operator();
 			}
 		}
-		if (!have_gpu_input && current_buffer_capacity > 0)
+		if (!have_gpu_input && current_buffer_capacity > 0) {
+			if (result_buffer_sent)
+				gpu_result_buffer = current_buffer_capacity;
+			else
+				gpu_result_buffer.resize(current_buffer_capacity);
 			process_last_buffered_tuples();
+		}
 	}
 
 	// svc_end method (utilized by the FastFlow runtime)
