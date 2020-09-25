@@ -42,7 +42,7 @@
 #include "basic_emitter.hpp"
 #include "gpu_utils.hpp"
 
-// # define PARALLEL_PARTITION
+# define PARALLEL_PARTITION
 
 namespace wf {
 /*
@@ -78,9 +78,9 @@ private:
 	PinnedCPUBuffer<tuple_t> cpu_tuple_buffer;
 
 	// TODO: Do we use int or std::size_t for these buffers?
-	PinnedCPUBuffer<int> cpu_hash_index;
-	GPUBuffer<int> gpu_hash_index; // Stores modulo'd hash values for keys.
-	GPUBuffer<int> scan;
+	PinnedCPUBuffer<std::size_t> cpu_hash_index;
+	GPUBuffer<std::size_t> gpu_hash_index; // Stores modulo'd hash values for keys.
+	GPUBuffer<std::size_t> scan;
 
 	std::size_t destination_index {0};
 	std::size_t num_of_destinations;
@@ -201,7 +201,7 @@ public:
 		assert(cuda_error == cudaSuccess);
 		cuda_stream.synchronize();
 
-		for (auto i = 0; i < handle->size(); ++i) {
+		for (auto i = 0; i < handle.size(); ++i) {
 			const auto key = std::get<0>(cpu_tuple_buffer[i].getControlFields());
 			cpu_hash_index[i] = hash(key) % num_of_destinations;
 		}
@@ -210,20 +210,20 @@ public:
 					     raw_index_size, cudaMemcpyHostToDevice, cuda_stream.raw());
 		assert(cuda_error == cudaSuccess);
 
-		const auto pow = get_closest_power_of_two(handle.size());
 		for (auto i = 0; i < num_of_destinations; ++i) {
-			mapped_scan(scan, gpu_hash_index, scan.size(), i);
+			mapped_scan(scan, gpu_hash_index, scan.size(), static_cast<std::size_t>(i));
 			cuda_stream.synchronize();
 
 			std::size_t bout_size;
-			cuda_error = cudaMemcpyAsync(&bout_size, &scan[handle.size() - 1], sizeof bout_size,
-						     cudaMemcpyDeviceToHost, cuda_stream.raw());
+			cuda_error = cudaMemcpyAsync(&bout_size, scan.data() + handle.size() - 1,
+						     sizeof bout_size, cudaMemcpyDeviceToHost,
+						     cuda_stream.raw());
 			assert(cuda_error == cudaSuccess);
 			cuda_stream.synchronize();
 
 			GPUBuffer<tuple_t> bout {bout_size};
 			create_sub_batch<<<gpu_blocks, gpu_threads_per_block, 0, cuda_stream.raw()>>>
-				(handle.data(), num_of_destinations, gpu_hash_index.data(),
+				(handle.data(), handle.size(), gpu_hash_index.data(),
 				 scan.data(), bout.data(), i);
 			assert(cudaGetLastError() == cudaSuccess);
 			cuda_stream.synchronize();

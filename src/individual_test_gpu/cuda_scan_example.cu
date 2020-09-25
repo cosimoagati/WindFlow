@@ -5,6 +5,7 @@
 
 using namespace std;
 using wf::GPUBuffer;
+using wf::GPUStream;
 using wf::mapped_scan;
 
 template<typename tuple_t>
@@ -30,8 +31,10 @@ int main(const int argc, char *const argv[]) {
 	const auto n = argc - 1;
 	GPUBuffer<int> gpu_scan {n};
 	GPUBuffer<int> gpu_index {n};
+	GPUStream stream;
 	vector<int> cpu_index;
 	vector<int> cpu_scan;
+
 
 	cpu_scan.resize(n);
 	for (auto i = 1; i < argc; ++i)
@@ -41,7 +44,7 @@ int main(const int argc, char *const argv[]) {
 				      n * sizeof *gpu_index.data(), cudaMemcpyHostToDevice);
 	assert(cuda_status == cudaSuccess);
 
-	mapped_scan(gpu_scan, gpu_index, n, target_value);
+	mapped_scan(gpu_scan, gpu_index, n, target_value, stream);
 	cuda_status = cudaDeviceSynchronize();
 	assert(cuda_status == cudaSuccess);
 	cuda_status = cudaMemcpy(cpu_scan.data(), gpu_scan.data(),
