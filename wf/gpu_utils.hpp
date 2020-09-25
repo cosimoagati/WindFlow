@@ -178,9 +178,7 @@ class PinnedCPUBuffer {
 	std::size_t buffer_size;
 	std::size_t allocated_size;
 public:
-	PinnedCPUBuffer(const std::size_t size)
-		: buffer_size {size}, allocated_size {size}
-	{
+	PinnedCPUBuffer(const std::size_t size) : buffer_size {size}, allocated_size {size} {
 		if (size > 0) {
 			const auto status = cudaMallocHost(&buffer_ptr, size * sizeof *buffer_ptr);
 			assert(status == cudaSuccess);
@@ -321,14 +319,16 @@ inline void failwith(const std::string &err) {
 
 constexpr auto threads_per_block = 512;
 
-__global__ void map_to_target(int *const output, int *const input, const int n, const int target_value) {
+template<typename T>
+__global__ void map_to_target(T *const output, T *const input, const std::size_t n, const T target_value) {
 	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
 	if (absolute_id < n)
 		output[absolute_id] = input[absolute_id] == target_value;
 }
 
-__global__ void prescan(int *const output, int *const input, int *const partial_sums, const int n,
-			const int pow) {
+template<typename T>
+__global__ void prescan(T *const output, T *const input, T *const partial_sums, const std::size_t n,
+			const std::size_t pow) {
 	extern __shared__ int temp[];
 	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
 	const auto block_thread_id = threadIdx.x;
@@ -355,19 +355,21 @@ __global__ void prescan(int *const output, int *const input, int *const partial_
 		output[absolute_id] = temp[block_thread_id];
 }
 
-__global__ void gather_sums(int *const array, int const *partial_sums) {
+template<typename T>
+__global__ void gather_sums(T *const array, T const *partial_sums) {
 	if (blockIdx.x > 0)
 		array[threadIdx.x] += partial_sums[blockIdx.x - 1];
 }
 
-void prefix_recursive(int *const output, int *const input, const int size) {
+template<typename T>
+void prefix_recursive(T *const output, T *const input, const std::size_t size, cudaStream_t &stream) {
 	const auto num_of_blocks = size / threads_per_block + 1;
-	auto pow = 1;
+	std::size_t pow {1};
 	while (pow < threads_per_block)
 		pow *= 2;
 
-	GPUBuffer<int> partial_sums {num_of_blocks - 1};
-	prescan<<<num_of_blocks, threads_per_block, 2 * threads_per_block>>>
+	GPUBuffer<T> partial_sums {num_of_blocks - 1};
+	prescan<<<num_of_blocks, threads_per_block, 2 * threads_per_block, stream>>>
 		(output, input, partial_sums.data(), size, pow);
 	assert(cudaGetLastError() == cudaSuccess);
 	if (num_of_blocks <= 1)
@@ -375,18 +377,21 @@ void prefix_recursive(int *const output, int *const input, const int size) {
 
 	auto cuda_status = cudaDeviceSynchronize();
 	assert(cuda_status == cudaSuccess);
-	prefix_recursive(partial_sums.data(), partial_sums.data(), partial_sums.size());
-	gather_sums<<<num_of_blocks, threads_per_block>>>(output, partial_sums.data());
+	prefix_recursive(partial_sums.data(), partial_sums.data(), partial_sums.size(), stream);
+	gather_sums<<<num_of_blocks, threads_per_block, 0, stream>>>(output, partial_sums.data());
 	assert(cudaGetLastError() == cudaSuccess);
 }
 
-void mapped_scan(GPUBuffer<int> &output, GPUBuffer<int> &input, const int size, const int target_value) {
+template<typename T>
+void mapped_scan(GPUBuffer<T> &output, GPUBuffer<T> &input, const std::size_t size,
+		 const T target_value, GPUStream &stream) {
 	const auto num_of_blocks = size / threads_per_block + 1;
-	GPUBuffer<int> mapped_input {size};
-	map_to_target<<<num_of_blocks, threads_per_block>>>(mapped_input.data(), input.data(),
-							    size, target_value);
+	GPUBuffer<T> mapped_input {size};
+
+	map_to_target<<<num_of_blocks, threads_per_block, 0, stream.raw()>>>
+		(mapped_input.data(), input.data(), size, target_value);
 	assert(cudaGetLastError() == cudaSuccess);
-	prefix_recursive(output.data(), mapped_input.data(), size);
+	prefix_recursive(output.data(), mapped_input.data(), size, stream.raw());
 }
 
 } // namespace wf
