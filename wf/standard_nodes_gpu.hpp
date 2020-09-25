@@ -157,9 +157,8 @@ public:
 	void linear_keyed_gpu_partition(const GPUBuffer<tuple_t> &handle) {
 		const auto raw_batch_size = handle.size() * sizeof *handle.data();
 		cpu_tuple_buffer.resize(handle.size());
-		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle.data(),
-					     raw_batch_size, cudaMemcpyDeviceToHost,
-					     stream.raw());
+		cuda_error = cudaMemcpyAsync(cpu_tuple_buffer.data(), handle.data(), raw_batch_size,
+					     cudaMemcpyDeviceToHost, stream.raw());
 		assert(cuda_error == cudaSuccess);
 		std::vector<std::vector<tuple_t>> sub_buffers (num_of_destinations);
 
@@ -216,8 +215,7 @@ public:
 
 			std::size_t bout_size;
 			cuda_error = cudaMemcpyAsync(&bout_size, scan.data() + handle.size() - 1,
-						     sizeof bout_size, cudaMemcpyDeviceToHost,
-						     stream.raw());
+						     sizeof bout_size, cudaMemcpyDeviceToHost, stream.raw());
 			assert(cuda_error == cudaSuccess);
 			stream.sync();
 
