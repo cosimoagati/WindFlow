@@ -305,7 +305,7 @@ public:
 	const cudaStream_t &raw() const { return stream; }
 	cudaStream_t &raw() { return stream; }
 
-	void synchronize() {
+	void sync() {
 		const auto status = cudaStreamSynchronize(stream);
 		assert(status == cudaSuccess);
 	}
