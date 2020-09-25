@@ -327,7 +327,10 @@ __global__ void map_to_target(T *const output, T *const input, const std::size_t
 }
 
 template<typename T>
-__global__ void prescan(T *const output, T *const input, T *const partial_sums, const std::size_t n,
+__global__ void prescan(T *const output,
+			T *const input,
+			T *const partial_sums,
+			const std::size_t n,
 			const std::size_t pow) {
 	extern __shared__ int temp[];
 	const auto absolute_id  =  blockDim.x * blockIdx.x + threadIdx.x;
@@ -383,8 +386,11 @@ void prefix_recursive(T *const output, T *const input, const std::size_t size, c
 }
 
 template<typename T>
-void mapped_scan(GPUBuffer<T> &output, GPUBuffer<T> &input, const std::size_t size,
-		 const T target_value, GPUStream &stream) {
+void mapped_scan(GPUBuffer<T> &output,
+		 GPUBuffer<T> &input,
+		 const std::size_t size,
+		 const T target_value,
+		 GPUStream &stream) {
 	const auto num_of_blocks = size / threads_per_block + 1;
 	GPUBuffer<T> mapped_input {size};
 
