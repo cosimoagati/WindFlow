@@ -42,7 +42,7 @@
 #include "basic_emitter.hpp"
 #include "gpu_utils.hpp"
 
-# define PARALLEL_PARTITION
+// # define PARALLEL_PARTITION
 
 namespace wf {
 /*
