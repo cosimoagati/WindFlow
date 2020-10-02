@@ -400,6 +400,18 @@ void mapped_scan(GPUBuffer<T> &output,
 	prefix_recursive(output.data(), mapped_input.data(), size, stream.raw());
 }
 
+// assert function on GPU (shouldn't be used directly)
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=false) {
+	if (code != cudaSuccess) {
+		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+		if (abort)
+			exit(code);
+	}
+}
+
+// gpuErrChk macro
+#define gpuErrChk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+
 } // namespace wf
 
 #endif
