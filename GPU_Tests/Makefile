@@ -43,6 +43,9 @@ test_stateful_v4.o: stateful/test_v4.cpp
 test_stateful_v5.o: stateful/test_v5.cpp
 	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) -c $< -o test_stateful_v5.o
 
+test_stateful_v6.o: stateful/test_v6.cpp
+	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) -c $< -o test_stateful_v6.o
+
 test_scatter_v1: test_scatter_v1.o
 	$(NVXX) test_scatter_v1.o -o test_scatter_v1
 
@@ -69,6 +72,9 @@ test_stateful_v4: test_stateful_v4.o
 
 test_stateful_v5: test_stateful_v5.o
 	$(NVXX) test_stateful_v5.o -o test_stateful_v5
+
+test_stateful_v6: test_stateful_v6.o
+	$(NVXX) test_stateful_v6.o -o test_stateful_v6
 
 clean:
 	rm -f test_scatter_v1
