@@ -14,7 +14,7 @@ NVXX 			= /usr/local/cuda/bin/nvcc
 NVXXFLAGS		= -std=c++14 -x cu 
 NVOPTFLAGS		= -w --expt-extended-lambda -O3 -g -gencode arch=compute_30,code=sm_30 -Wno-deprecated-gpu-targets
 
-all: test_scatter_v1 test_scatter_v2 test_scatter_v3 test_scatter_v4 test_stateful_v1 test_stateful_v2 test_stateful_v3 test_stateful_v4 test_stateful_v5
+all: test_scatter_v1 test_scatter_v2 test_scatter_v3 test_scatter_v4 test_stateful_v1 test_stateful_v2 test_stateful_v3 test_stateful_v4 test_stateful_v5 test_stateful_v6
 
 test_scatter_v1.o: scattering/test_v1.cpp
 	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS)  -c $< -o test_scatter_v1.o
