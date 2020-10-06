@@ -204,7 +204,7 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, size_t *keys, state_
 
 // Source class
 class Source : public ff_node_t<batch_t> {
-      public:
+public:
 	long                                                     stream_len;
 	long                                                     num_keys;
 	long                                                     batch_len;
@@ -272,7 +272,7 @@ class Source : public ff_node_t<batch_t> {
 
 // Emitter class
 class Emitter : public ff_monode_t<batch_t> {
-      public:
+public:
 	size_t        n_dest;
 	size_t        batch_len;
 	cudaStream_t  cudaStream;
@@ -356,13 +356,13 @@ class Emitter : public ff_monode_t<batch_t> {
 	// svc_end method
 	void svc_end() {
 		std::cout << "[Emitter] average service time: "
-		          << (((double)tot_elapsed_nsec) / received) / 1000 << " usec" << std::endl;
+		          << (((double) tot_elapsed_nsec) / received) / 1000 << " usec" << std::endl;
 	}
 };
 
 // Worker class
 class Worker : public ff_node_t<batch_t> {
-      public:
+public:
 	unsigned long                    received_batch = 0;
 	size_t                           received       = 0; // counter of received tuples
 	size_t                           par_deg;
@@ -401,7 +401,7 @@ class Worker : public ff_node_t<batch_t> {
 		// std::cout << "]" << std::endl;
 #endif
 		// for each key in the batch create the state if not present
-		state_t **state_ptrs_cpu = (state_t **)malloc(b->size * sizeof(state_t *));
+		state_t **state_ptrs_cpu = (state_t **) malloc(b->size * sizeof(state_t *));
 		for (size_t i = 0; i < b->size; i++) {
 			size_t key = keys_cpu[i];
 			auto   it  = hashmap.find(key);
@@ -421,8 +421,8 @@ class Worker : public ff_node_t<batch_t> {
 		gpuErrChk(cudaMemcpyAsync(state_ptrs_gpu, state_ptrs_cpu, b->size * sizeof(state_t *),
 		                          cudaMemcpyHostToDevice, cudaStream));
 		// proces the batch in a stateful manner
-		size_t num_blocks = (size_t)ceil(
-		        ((double)b->size) / threads_per_block); // it can be too large, no check here...
+		size_t num_blocks = (size_t) ceil(
+		        ((double) b->size) / threads_per_block); // it can be too large, no check here...
 		Stateful_Processing_Kernel<<<num_blocks, threads_per_block, 0, cudaStream>>>(
 		        b->data_gpu, b->keys_gpu, state_ptrs_gpu, b->size);
 
@@ -440,7 +440,7 @@ class Worker : public ff_node_t<batch_t> {
 	// svc_end method
 	void svc_end() {
 		printf("[Worker] average service time: %f usec\n",
-		       (((double)tot_elapsed_nsec) / received_batch) / 1000);
+		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
 		// std::cout << "[Worker] average service time: " << (((double)
 		// tot_elapsed_nsec)/received_batch) / 1000 << " usec" << std::endl;
 	}
@@ -448,7 +448,7 @@ class Worker : public ff_node_t<batch_t> {
 
 // Sink class
 class Sink : public ff_minode_t<batch_t> {
-      public:
+public:
 	size_t                 received        = 0; // counter of received tuples
 	size_t                 received_sample = 0; // counter of recevied tuples per sample
 	volatile unsigned long start_time_us;       // starting time usec
@@ -479,7 +479,7 @@ class Sink : public ff_minode_t<batch_t> {
 
 		// print the throughput per second
 		if (current_time_usecs() - last_time_us > 1000000) {
-			double elapsed_sec = ((double)(current_time_usecs() - start_time_us)) / 1000000;
+			double elapsed_sec = ((double) (current_time_usecs() - start_time_us)) / 1000000;
 			std::cout << "[SINK] time " << elapsed_sec << " received " << received_sample
 			          << std::endl;
 			received_sample = 0;
@@ -491,7 +491,7 @@ class Sink : public ff_minode_t<batch_t> {
 	}
 
 	void svc_end() {
-		double elapsed_sec = ((double)(current_time_usecs() - start_time_us)) / 1000000;
+		double elapsed_sec = ((double) (current_time_usecs() - start_time_us)) / 1000000;
 		// std::cout << "[SINK] time " << elapsed_sec << " received " << received_sample << std::endl;
 		// std::cout << "[SINK] total received " << received << std::endl;
 		printf("[SINK] time %f received %d\n", elapsed_sec, received_sample);
