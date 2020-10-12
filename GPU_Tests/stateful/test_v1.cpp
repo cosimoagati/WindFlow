@@ -169,33 +169,37 @@ struct state_t {
 
 // processing function on a tuple and the state of its key
 __device__ void process(tuple_t *t, state_t *state) {
-	if (t->value % 2 == 0) { // even
-		if (t->value % 4 == 0) {
-			(state->buffer)[state->index] += t->value;
-			t->value     = (state->buffer)[state->index];
-			state->index = (state->index + 1) % 100;
+	auto &index           = state->index;
+	auto &buffer_location = (state->buffer)[index];
+	auto &value           = t->value;
+
+	if (value % 2 == 0) { // even
+		if (value % 4 == 0) {
+			buffer_location += value;
+			value = buffer_location;
+			index = (index + 1) % 100;
 		} else {
-			(state->buffer)[state->index] *= t->value;
-			t->value     = (state->buffer)[state->index];
-			state->index = (state->index + 2) % 100;
+			buffer_location *= value;
+			value = buffer_location;
+			index = (index + 2) % 100;
 		}
 	} else { // odd
-		if (t->value % 5 == 0) {
-			(state->buffer)[state->index] *= t->value;
-			t->value     = (state->buffer)[state->index];
-			state->index = (state->index + 3) % 100;
+		if (value % 5 == 0) {
+			buffer_location *= value;
+			value = buffer_location;
+			index = (index + 3) % 100;
 		} else {
-			(state->buffer)[state->index] += t->value;
-			t->value     = (state->buffer)[state->index];
-			state->index = (state->index + 4) % 100;
+			buffer_location += value;
+			value = buffer_location;
+			index = (index + 4) % 100;
 		}
 	}
 }
 
 // CUDA Kernel Stateful_Processing_Kernel
 __global__ void Stateful_Processing_Kernel(tuple_t *tuples, size_t *keys, state_t **states, size_t len) {
-	int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
-	int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
+	const int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
+	const int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
 	for (size_t i = 0; i < len; i++) {
 		if (keys[i] % num_threads == id)
 			process(&(tuples[i]), states[i]);
@@ -205,10 +209,11 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, size_t *keys, state_
 // Source class
 class Source : public ff_node_t<batch_t> {
 public:
-	long                                                     stream_len;
-	long                                                     num_keys;
-	long                                                     batch_len;
-	std::uniform_int_distribution<std::mt19937::result_type> dist;
+	long stream_len;
+	long num_keys;
+	long batch_len;
+	// std::uniform_int_distribution<std::mt19937::result_type> dist;
+	geometric_distribution<size_t>                           dist;
 	std::uniform_int_distribution<std::mt19937::result_type> dist2;
 	mt19937                                                  rng;
 	mt19937                                                  rng2;
@@ -218,7 +223,7 @@ public:
 
 	// constructor
 	Source(long _stream_len, long _num_keys, long _batch_len)
-	        : stream_len(_stream_len), num_keys(_num_keys), batch_len(_batch_len), dist(0, _num_keys - 1),
+	        : stream_len(_stream_len), num_keys(_num_keys), batch_len(_batch_len), dist(0.5),
 	          dist2(0, 2000) {
 		// set random seed
 		// rng.seed(std::random_device()());
@@ -243,7 +248,7 @@ public:
 		// generation loop
 		long sent = 0;
 		while (sent < stream_len) {
-			batch_t *b = create_batch();
+			batch_t *const b = create_batch();
 			this->ff_send_out(b);
 			sent += batch_len;
 		}
@@ -252,10 +257,11 @@ public:
 
 	// function to generate and send a batch of data
 	batch_t *create_batch() {
-		batch_t *b = new batch_t(batch_len);
+		const auto b = new batch_t(batch_len);
 		// std::cout << "Source Keys [ ";
 		for (size_t i = 0; i < batch_len; i++) {
-			keys_cpu[i]       = dist(rng);
+			const auto key    = dist(rng);
+			keys_cpu[i]       = key < num_keys ? key : num_keys - 1;
 			data_cpu[i].value = dist2(rng2);
 			// std::cout << keys_cpu[i] << " ";
 		}
@@ -304,14 +310,14 @@ public:
 		received++;
 		if (n_dest == 1) {
 			volatile unsigned long end_time_nsec     = current_time_nsecs();
-			unsigned long          elapsed_time_nsec = end_time_nsec - start_time_nsec;
+			const auto             elapsed_time_nsec = end_time_nsec - start_time_nsec;
 			tot_elapsed_nsec += elapsed_time_nsec;
 			return b;
 		}
 		// sort of the input batch: inputs directed to the same destination are placed contiguously in
 		// the batch
-		thrust::device_ptr<tuple_t> th_data_gpu = thrust::device_pointer_cast(b->data_gpu);
-		thrust::device_ptr<size_t>  th_keys_gpu = thrust::device_pointer_cast(b->keys_gpu);
+		const auto th_data_gpu = thrust::device_pointer_cast(b->data_gpu);
+		const auto th_keys_gpu = thrust::device_pointer_cast(b->keys_gpu);
 		thrust::sort_by_key(thrust::cuda::par.on(cudaStream), th_keys_gpu, th_keys_gpu + b->size,
 		                    th_data_gpu, key_less_than_op(n_dest));
 
@@ -322,11 +328,11 @@ public:
 		        n_dest);                                    // for sure they are not more than n_dest
 		thrust::device_vector<int> freqs_dests_gpu(n_dest); // for sure they are not more than n_dest
 
-		auto   end             = thrust::reduce_by_key(thrust::cuda::par.on(cudaStream), th_keys_gpu,
-                                                 th_keys_gpu + b->size, ones_gpu.begin(),
-                                                 unique_dests_gpu.begin(), freqs_dests_gpu.begin(),
-                                                 key_equal_to_op(n_dest));
-		size_t num_found_dests = end.first - unique_dests_gpu.begin();
+		const auto   end = thrust::reduce_by_key(thrust::cuda::par.on(cudaStream), th_keys_gpu,
+                                                       th_keys_gpu + b->size, ones_gpu.begin(),
+                                                       unique_dests_gpu.begin(), freqs_dests_gpu.begin(),
+                                                       key_equal_to_op(n_dest));
+		const size_t num_found_dests = end.first - unique_dests_gpu.begin();
 		assert(num_found_dests > 0);
 		gpuErrChk(cudaMemcpyAsync(unique_dests_cpu, thrust::raw_pointer_cast(unique_dests_gpu.data()),
 		                          sizeof(size_t) * num_found_dests, cudaMemcpyDeviceToHost,
@@ -334,9 +340,9 @@ public:
 		gpuErrChk(cudaMemcpyAsync(freqs_dests_cpu, thrust::raw_pointer_cast(freqs_dests_gpu.data()),
 		                          sizeof(int) * num_found_dests, cudaMemcpyDeviceToHost, cudaStream));
 		gpuErrChk(cudaStreamSynchronize(cudaStream));
-		size_t          offset  = 0;
-		atomic<size_t> *counter = new atomic<size_t>(
-		        num_found_dests); // to deallocate correctly the GPU buffer within the batch
+		size_t offset  = 0;
+		auto * counter = new atomic<size_t>(
+                        num_found_dests); // to deallocate correctly the GPU buffer within the batch
 		// for each destination that must receive data
 		for (size_t i = 0; i < num_found_dests; i++) {
 			int      result = freqs_dests_cpu[i];
@@ -381,7 +387,7 @@ public:
 	~Worker() { gpuErrChk(cudaStreamDestroy(cudaStream)); }
 
 	// svc method
-	batch_t *svc(batch_t *b) {
+	batch_t *svc(batch_t *const b) {
 		volatile unsigned long start_time_nsec = current_time_nsecs();
 		received_batch++;
 		received += b->size;
@@ -401,10 +407,10 @@ public:
 		// std::cout << "]" << std::endl;
 #endif
 		// for each key in the batch create the state if not present
-		state_t **state_ptrs_cpu = (state_t **) malloc(b->size * sizeof(state_t *));
+		auto state_ptrs_cpu = (state_t **) malloc(b->size * sizeof(state_t *));
 		for (size_t i = 0; i < b->size; i++) {
-			size_t key = keys_cpu[i];
-			auto   it  = hashmap.find(key);
+			const auto key = keys_cpu[i];
+			auto       it  = hashmap.find(key);
 			if (it == hashmap.end()) {
 				// create the state of that key
 				state_t *state = nullptr;
@@ -421,8 +427,8 @@ public:
 		gpuErrChk(cudaMemcpyAsync(state_ptrs_gpu, state_ptrs_cpu, b->size * sizeof(state_t *),
 		                          cudaMemcpyHostToDevice, cudaStream));
 		// proces the batch in a stateful manner
-		size_t num_blocks = (size_t) ceil(
-		        ((double) b->size) / threads_per_block); // it can be too large, no check here...
+		auto num_blocks = (size_t) ceil(((double) b->size)
+		                                / threads_per_block); // it can be too large, no check here...
 		Stateful_Processing_Kernel<<<num_blocks, threads_per_block, 0, cudaStream>>>(
 		        b->data_gpu, b->keys_gpu, state_ptrs_gpu, b->size);
 
@@ -466,7 +472,7 @@ public:
 	~Sink() { gpuErrChk(cudaStreamDestroy(cudaStream)); }
 
 	// svc method
-	batch_t *svc(batch_t *b) {
+	batch_t *svc(batch_t *const b) {
 		received += b->size;
 		received_sample += b->size;
 		tuple_t *data_cpu = nullptr;
@@ -533,10 +539,10 @@ int main(int argc, char *argv[]) {
 		}
 		}
 	}
-	ff_pipeline *pipe   = new ff_pipeline();
-	Source *     source = new Source(stream_len, n_keys, batch_len);
+	auto pipe   = new ff_pipeline();
+	auto source = new Source(stream_len, n_keys, batch_len);
 	pipe->add_stage(source);
-	ff_farm *farm = new ff_farm();
+	auto farm = new ff_farm();
 	farm->add_emitter(new Emitter(par_degree, batch_len));
 
 	std::vector<ff_node *> ws;

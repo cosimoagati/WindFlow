@@ -160,7 +160,7 @@ struct batch_t {
 	// destructor
 	~batch_t() {
 		if (counter != nullptr) {
-			size_t old_cnt = counter->fetch_sub(1);
+			const size_t old_cnt = counter->fetch_sub(1);
 			if (old_cnt == 1) {
 				if (cleanup) {
 					cudaFree(raw_data_gpu);
@@ -189,27 +189,30 @@ struct state_t {
 	}
 };
 
-// process function on a tuple and the state of its key
 __device__ void process(tuple_t *t, state_t *state) {
-	if (t->value % 2 == 0) { // even
-		if (t->value % 4 == 0) {
-			(state->buffer)[state->index] += t->value;
-			t->value     = (state->buffer)[state->index];
-			state->index = (state->index + 1) % 100;
+	auto &index           = state->index;
+	auto &buffer_location = (state->buffer)[index];
+	auto &value           = t->value;
+
+	if (value % 2 == 0) { // even
+		if (value % 4 == 0) {
+			buffer_location += value;
+			value = buffer_location;
+			index = (index + 1) % 100;
 		} else {
-			(state->buffer)[state->index] *= t->value;
-			t->value     = (state->buffer)[state->index];
-			state->index = (state->index + 2) % 100;
+			buffer_location *= value;
+			value = buffer_location;
+			index = (index + 2) % 100;
 		}
-	} else {
-		if (t->value % 5 == 0) {
-			(state->buffer)[state->index] *= t->value;
-			t->value     = (state->buffer)[state->index];
-			state->index = (state->index + 3) % 100;
+	} else { // odd
+		if (value % 5 == 0) {
+			buffer_location *= value;
+			value = buffer_location;
+			index = (index + 3) % 100;
 		} else {
-			(state->buffer)[state->index] += t->value;
-			t->value     = (state->buffer)[state->index];
-			state->index = (state->index + 4) % 100;
+			buffer_location += value;
+			value = buffer_location;
+			index = (index + 4) % 100;
 		}
 	}
 }
@@ -219,17 +222,17 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, size_t *keys, int *m
                                            size_t *dist_keys_gpu, size_t *start_idxs, state_t **states,
                                            size_t num_dist_keys, int num_active_thread_per_warp) {
 	// extern __shared__ char array[];
-	int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
-	int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
-	int threads_per_worker =
-	        warpSize / num_active_thread_per_warp;      // number of threads composing a worker entity
-	int num_workers = num_threads / threads_per_worker; // number of workers
-	int id_worker   = id / threads_per_worker;          // id of the worker corresponding to this thread
+	const auto id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
+	const auto num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
+	const auto threads_per_worker =
+	        warpSize / num_active_thread_per_warp; // number of threads composing a worker entity
+	const auto num_workers = num_threads / threads_per_worker; // number of workers
+	const auto id_worker   = id / threads_per_worker; // id of the worker corresponding to this thread
 	if (id % threads_per_worker == 0) {
 		// state_t *cached_state = ((state_t *) array) + (threadIdx.x / threads_per_worker);
 		for (size_t id_key = id_worker; id_key < num_dist_keys; id_key += num_workers) {
-			size_t key = dist_keys_gpu[id_key]; // key used
-			size_t idx = start_idxs[id_key];
+			const auto key = dist_keys_gpu[id_key]; // key used
+			auto       idx = start_idxs[id_key];
 			//*(cached_state) = *(states[id_key]);
 			// execute all the inputs with key in the input batch
 			while (idx != -1) {
@@ -291,7 +294,7 @@ public:
 
 	// function to generate and send a batch of data
 	batch_t *create_batch() {
-		batch_t *b = new batch_t(batch_len);
+		const auto b = new batch_t(batch_len);
 		// std::cout << "Source Keys [ ";
 		for (size_t i = 0; i < batch_len; i++) {
 			keys_cpu[i]       = dist(rng);
@@ -350,8 +353,8 @@ public:
 		}
 		// sort of the input batch: inputs directed to the same destination are placed contiguously in
 		// the batch
-		thrust::device_ptr<tuple_t> th_data_gpu = thrust::device_pointer_cast(b->data_gpu);
-		thrust::device_ptr<size_t>  th_keys_gpu = thrust::device_pointer_cast(b->keys_gpu);
+		const auto th_data_gpu = thrust::device_pointer_cast(b->data_gpu);
+		const auto th_keys_gpu = thrust::device_pointer_cast(b->keys_gpu);
 		thrust::sort_by_key(thrust::cuda::par.on(cudaStream), th_keys_gpu, th_keys_gpu + b->size,
 		                    th_data_gpu, key_less_than_op(n_dest));
 		gpuErrChk(cudaMemcpyAsync(b->keys_cpu, b->keys_gpu, sizeof(size_t) * b->size,
@@ -362,11 +365,11 @@ public:
 		thrust::device_vector<size_t> unique_dests_gpu(
 		        n_dest);                                    // for sure they are not more than n_dest
 		thrust::device_vector<int> freqs_dests_gpu(n_dest); // for sure they are not more than n_dest
-		auto   end             = thrust::reduce_by_key(thrust::cuda::par.on(cudaStream), th_keys_gpu,
-                                                 th_keys_gpu + b->size, ones_gpu.begin(),
-                                                 unique_dests_gpu.begin(), freqs_dests_gpu.begin(),
-                                                 key_equal_to_op(n_dest));
-		size_t num_found_dests = end.first - unique_dests_gpu.begin();
+		const auto   end = thrust::reduce_by_key(thrust::cuda::par.on(cudaStream), th_keys_gpu,
+                                                       th_keys_gpu + b->size, ones_gpu.begin(),
+                                                       unique_dests_gpu.begin(), freqs_dests_gpu.begin(),
+                                                       key_equal_to_op(n_dest));
+		const size_t num_found_dests = end.first - unique_dests_gpu.begin();
 		assert(num_found_dests > 0);
 		gpuErrChk(cudaMemcpyAsync(unique_dests_cpu, thrust::raw_pointer_cast(unique_dests_gpu.data()),
 		                          sizeof(size_t) * num_found_dests, cudaMemcpyDeviceToHost,
@@ -374,13 +377,13 @@ public:
 		gpuErrChk(cudaMemcpyAsync(freqs_dests_cpu, thrust::raw_pointer_cast(freqs_dests_gpu.data()),
 		                          sizeof(int) * num_found_dests, cudaMemcpyDeviceToHost, cudaStream));
 		gpuErrChk(cudaStreamSynchronize(cudaStream));
-		size_t          offset  = 0;
-		atomic<size_t> *counter = new atomic<size_t>(
-		        num_found_dests); // to deallocate correctly the GPU buffer within the batch
+		size_t offset  = 0;
+		auto   counter = new atomic<size_t>(
+                        num_found_dests); // to deallocate correctly the GPU buffer within the batch
 		// for each destination that must receive data
 		for (size_t i = 0; i < num_found_dests; i++) {
-			int      result = freqs_dests_cpu[i];
-			batch_t *bout =
+			const int  result = freqs_dests_cpu[i];
+			const auto bout =
 			        new batch_t(result, b->data_gpu, b->keys_gpu, b->keys_cpu, offset, counter);
 			this->ff_send_out_to(bout, unique_dests_cpu[i] % n_dest);
 			offset += result;
@@ -397,7 +400,7 @@ public:
 	// svc_end method
 	void svc_end() {
 		std::cout << "[Emitter] average service time: "
-		          << (((double)tot_elapsed_nsec) / received) / 1000 << " usec" << std::endl;
+		          << (((double) tot_elapsed_nsec) / received) / 1000 << " usec" << std::endl;
 	}
 };
 
@@ -473,8 +476,8 @@ public:
 		size_t *start_idxs_cpu;
 		cudaMallocHost(&start_idxs_cpu, sizeof(size_t) * b->size);
 		for (size_t i = 0; i < b->size; i++) {
-			size_t key = b->keys_cpu[i];
-			auto   it  = hashmap.find(key);
+			const auto key = b->keys_cpu[i];
+			auto       it  = hashmap.find(key);
 			if (it == hashmap.end()) {
 				// create the state of that key
 				state_t *state = nullptr;
@@ -484,7 +487,7 @@ public:
 				it = hashmap.find(key);
 			}
 			// count distinct keys in the batch
-			auto it2 = dist_map.find(key);
+			const auto it2 = dist_map.find(key);
 			if (it2 == dist_map.end()) {
 				dist_map.insert(std::make_pair(key, i));
 				dist_keys_cpu[num_dist_keys]  = key;
@@ -518,16 +521,16 @@ public:
 		gpuErrChk(cudaMemcpyAsync(start_idxs_gpu, start_idxs_cpu, num_dist_keys * sizeof(size_t),
 		                          cudaMemcpyHostToDevice, cudaStream));
 		// launch the kernel to compute the results
-		int warps_per_block = ((max_threads_per_sm / max_blocks_per_sm) / threads_per_warp);
-		int tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
+		const int warps_per_block = ((max_threads_per_sm / max_blocks_per_sm) / threads_per_warp);
+		const int tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
 		// compute how many threads should be active per warps
-		int32_t x = (int32_t)ceil(((double)num_dist_keys) / tot_num_warps);
+		int32_t x = (int32_t) ceil(((double) num_dist_keys) / tot_num_warps);
 		if (x > 1) {
 			x = next_power_of_two(x);
 		}
-		int num_active_thread_per_warp = std::min(x, threads_per_warp);
-		int num_blocks = std::min((int)ceil(((double)num_dist_keys) / warps_per_block),
-		                          numSMs * max_blocks_per_sm);
+		const int num_active_thread_per_warp = std::min(x, threads_per_warp);
+		const int num_blocks = std::min((int) ceil(((double) num_dist_keys) / warps_per_block),
+		                                numSMs * max_blocks_per_sm);
 		cudaFreeHost(dist_keys_cpu);
 		cudaFreeHost(state_ptrs_cpu);
 		cudaFreeHost(map_idxs_cpu);
@@ -559,7 +562,7 @@ public:
 	// svc_end method
 	void svc_end() {
 		printf("[Worker] average service time: %f usec\n",
-		       (((double)tot_elapsed_nsec) / received_batch) / 1000);
+		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
 		// std::cout << "[Worker] average service time: " << (((double)
 		// tot_elapsed_nsec)/received_batch) / 1000 << " usec" << std::endl;
 	}
@@ -598,7 +601,8 @@ public:
 		}
 		// print the throughput per second
 		if (current_time_usecs() - last_time_us > 1000000) {
-			double elapsed_sec = ((double)(current_time_usecs() - start_time_us)) / 1000000;
+			const double elapsed_sec =
+			        ((double) (current_time_usecs() - start_time_us)) / 1000000;
 			std::cout << "[SINK] time " << elapsed_sec << " received " << received_sample
 			          << std::endl;
 			received_sample = 0;
@@ -610,7 +614,7 @@ public:
 	}
 
 	void svc_end() {
-		double elapsed_sec = ((double)(current_time_usecs() - start_time_us)) / 1000000;
+		const double elapsed_sec = ((double) (current_time_usecs() - start_time_us)) / 1000000;
 		// std::cout << "[SINK] time " << elapsed_sec << " received " << received_sample << std::endl;
 		// std::cout << "[SINK] total received " << received << std::endl;
 		printf("[SINK] time %f received %d\n", elapsed_sec, received_sample);
@@ -652,10 +656,10 @@ int main(int argc, char *argv[]) {
 		}
 		}
 	}
-	ff_pipeline *pipe   = new ff_pipeline();
-	Source *     source = new Source(stream_len, n_keys, batch_len);
+	auto pipe   = new ff_pipeline();
+	auto source = new Source(stream_len, n_keys, batch_len);
 	pipe->add_stage(source);
-	ff_farm *farm = new ff_farm();
+	auto farm = new ff_farm();
 	farm->add_emitter(new Emitter(par_degree, batch_len));
 	std::vector<ff_node *> ws;
 	for (size_t i = 0; i < par_degree; i++) {
