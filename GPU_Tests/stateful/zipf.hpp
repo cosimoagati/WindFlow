@@ -19,28 +19,14 @@
  */
 template<class IntType = unsigned long, class RealType = double>
 class zipf_distribution {
-public:
-	typedef RealType input_type;
-	typedef IntType  result_type;
+	static constexpr RealType epsilon = 1e-8;
 
-	static_assert(std::numeric_limits<IntType>::is_integer, "");
-	static_assert(!std::numeric_limits<RealType>::is_integer, "");
+	IntType                                  n;    ///< Number of elements
+	RealType                                 q;    ///< Exponent
+	RealType                                 H_x1; ///< H(x_1)
+	RealType                                 H_n;  ///< H(n)
+	std::uniform_real_distribution<RealType> dist; ///< [H(x_1), H(n)]
 
-	zipf_distribution(const IntType n = std::numeric_limits<IntType>::max(), const RealType q = 1.0)
-	        : n(n), q(q), H_x1(H(1.5) - 1.0), H_n(H(n + 0.5)), dist(H_x1, H_n) {}
-
-	IntType operator()(std::mt19937 &rng) {
-		while (true) {
-			const RealType u = dist(rng);
-			const RealType x = H_inv(u);
-			const IntType  k = clamp<IntType>(std::round(x), 1, n);
-			if (u >= H(k + 0.5) - h(k)) {
-				return k;
-			}
-		}
-	}
-
-private:
 	/** Clamp x to [min, max]. */
 	template<typename T>
 	static constexpr T clamp(const T x, const T min, const T max) {
@@ -79,13 +65,26 @@ private:
 	/** That hat function h(x) = 1 / (x ^ q) */
 	const RealType h(const RealType x) { return std::exp(-q * std::log(x)); }
 
-	static constexpr RealType epsilon = 1e-8;
+public:
+	using input_type = RealType;
+	using result_type = IntType;
 
-	IntType                                  n;    ///< Number of elements
-	RealType                                 q;    ///< Exponent
-	RealType                                 H_x1; ///< H(x_1)
-	RealType                                 H_n;  ///< H(n)
-	std::uniform_real_distribution<RealType> dist; ///< [H(x_1), H(n)]
+	static_assert(std::numeric_limits<IntType>::is_integer, "");
+	static_assert(!std::numeric_limits<RealType>::is_integer, "");
+
+	zipf_distribution(const IntType n = std::numeric_limits<IntType>::max(), const RealType q = 1.0)
+	        : n(n), q(q), H_x1(H(1.5) - 1.0), H_n(H(n + 0.5)), dist(H_x1, H_n) {}
+
+	IntType operator()(std::mt19937 &rng) {
+		while (true) {
+			const RealType u = dist(rng);
+			const RealType x = H_inv(u);
+			const IntType  k = clamp<IntType>(std::round(x), 1, n);
+			if (u >= H(k + 0.5) - h(k)) {
+				return k;
+			}
+		}
+	}
 };
 
 template<class IntType = unsigned long, class RealType = double>
