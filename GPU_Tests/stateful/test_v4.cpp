@@ -225,4 +225,4 @@ public:
 	}
 };
 
-int main(int argc, char *argv[]) { return run_test<Worker, shifted_zipf_distribution<>>(argc, argv); }
+int main(int argc, char *argv[]) { return run_test<Worker>(argc, argv); }
