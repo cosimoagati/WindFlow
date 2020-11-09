@@ -27,6 +27,7 @@
  */
 
 // includes
+#include "zipf.hpp"
 #include <algorithm>
 #include <ff/ff.hpp>
 #include <iostream>
@@ -247,10 +248,11 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, size_t *keys, int *m
 // Source class
 class Source : public ff_node_t<batch_t> {
 public:
-	long                                                     stream_len;
-	long                                                     num_keys;
-	long                                                     batch_len;
-	std::uniform_int_distribution<std::mt19937::result_type> dist;
+	long stream_len;
+	long num_keys;
+	long batch_len;
+	// std::uniform_int_distribution<std::mt19937::result_type> dist;
+	shifted_zipf_distribution<std::size_t>                   dist;
 	std::uniform_int_distribution<std::mt19937::result_type> dist2;
 	mt19937                                                  rng;
 	mt19937                                                  rng2;

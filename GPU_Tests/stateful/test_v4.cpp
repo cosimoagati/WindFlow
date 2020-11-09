@@ -225,4 +225,6 @@ public:
 	}
 };
 
-int main(int argc, char *argv[]) { return run_test<Worker>(argc, argv); }
+int main(int argc, char *argv[]) {
+	return run_test<Worker, shifted_zipf_distribution<std::size_t>>(argc, argv);
+}
