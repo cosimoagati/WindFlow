@@ -94,8 +94,8 @@ class shifted_zipf_distribution {
 
 public:
 	shifted_zipf_distribution(IntType lower, IntType upper, RealType q = 1.0)
-	        : dist {upper - lower, q}, lower {lower} {
-		assert(upper > lower);
+	        : dist {upper - lower + 1, q}, lower {lower} {
+		assert(upper >= lower);
 	}
 
 	IntType operator()(std::mt19937 &eng) { return lower + dist(eng) - 1; }
