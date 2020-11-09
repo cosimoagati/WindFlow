@@ -100,7 +100,7 @@ public:
 	tuple_t *                                                data_cpu = nullptr;
 
 	Source(const long _stream_len, const long _num_keys, const long _batch_len)
-	        : stream_len(_stream_len), num_keys(_num_keys), batch_len(_batch_len), dist(0, _num_keys -1),
+	        : stream_len(_stream_len), num_keys(_num_keys), batch_len(_batch_len), dist(0, _num_keys - 1),
 	          dist2(0, 2000) {
 		// set random seed
 		// rng.seed(random_device()());
@@ -175,10 +175,10 @@ inline unsigned long current_time_usecs() {
 // Sink class
 class Sink : public ff::ff_minode_t<batch_t> {
 public:
-	std::size_t            received        = 0; // counter of received tuples
-	std::size_t            received_sample = 0; // counter of recevied tuples per sample
-	volatile unsigned long start_time_us;       // starting time usec
-	volatile unsigned long last_time_us;        //  time usec
+	std::size_t            received            = 0; // counter of received tuples
+	std::size_t            received_per_sample = 0; // counter of recevied tuples per sample
+	volatile unsigned long start_time_us;           // starting time usec
+	volatile unsigned long last_time_us;            //  time usec
 	cudaStream_t           cudaStream;
 	unsigned long          correctness = 0;
 

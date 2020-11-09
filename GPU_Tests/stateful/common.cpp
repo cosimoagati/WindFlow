@@ -152,7 +152,7 @@ Sink::~Sink() { gpuErrChk(cudaStreamDestroy(cudaStream)); }
 
 batch_t *Sink::svc(batch_t *const b) {
 	received += b->size;
-	received_sample += b->size;
+	received_per_sample += b->size;
 	tuple_t *data_cpu = nullptr;
 	cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size);
 	gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t), cudaMemcpyDeviceToHost,
@@ -164,8 +164,8 @@ batch_t *Sink::svc(batch_t *const b) {
 	// print the throughput per second
 	if (current_time_usecs() - last_time_us > 1000000) {
 		double elapsed_sec = ((double) (current_time_usecs() - start_time_us)) / 1000000;
-		std::cout << "[SINK] time " << elapsed_sec << " received " << received_sample << std::endl;
-		received_sample = 0;
+		std::cout << "[SINK] time " << elapsed_sec << " received " << received_per_sample << std::endl;
+		received_per_sample = 0;
 		last_time_us    = current_time_usecs();
 	}
 	delete b;
@@ -175,8 +175,8 @@ batch_t *Sink::svc(batch_t *const b) {
 
 void Sink::svc_end() {
 	double elapsed_sec = ((double) (current_time_usecs() - start_time_us)) / 1000000;
-	// std::cout << "[SINK] time " << elapsed_sec << " received " << received_sample << std::endl;
+	// std::cout << "[SINK] time " << elapsed_sec << " received " << received_per_sample << std::endl;
 	// std::cout << "[SINK] total received " << received << std::endl;
-	printf("[SINK] time %f received %d\n", elapsed_sec, received_sample);
+	printf("[SINK] time %f received %d\n", elapsed_sec, received_per_sample);
 	printf("[SINK] total received %d with total count %ld\n", received, correctness);
 }
