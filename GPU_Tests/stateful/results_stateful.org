@@ -47,11 +47,10 @@ Machine: pianosau
 |     10000 | 552942 | 745294 |  318459 |  810470 | 1086536 | 2667739 |
 
 
-
 | N.B: tutti i risultati esprimono la banda in input al secondo
 
 | Legenda |                                             |
-| V1      | Versione gi‡ fatta                          |
+| V1      | Versione gi√† fatta                          |
 | V2      | Versione con #threads = #unique_keys        |
 | V3      | Versione con warp-parallelism               |
 | V4      | Versione con worker di dimensione variabile |
