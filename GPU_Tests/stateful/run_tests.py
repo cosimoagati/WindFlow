@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 
-FILE = "stateful-results-improved.txt"
+FILE = "stateful-results-zipf.txt"
 
 with open(FILE, "w") as output_file:
     for testnum in range(1, 7):
