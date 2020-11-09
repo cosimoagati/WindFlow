@@ -13,8 +13,11 @@ with open(FILE, "w") as output_file:
             output_file.flush()
 
             subprocess.run(arglist, stdout=output_file, check=True)
-            output_file.write("\n\n")
+            output_file.write("\n")
             output_file.flush()
+
+        output_file.write("\n\n")
+        output_file.flush()
 
 with open(FILE, "r+") as output_file:
     lines = output_file.readlines()
