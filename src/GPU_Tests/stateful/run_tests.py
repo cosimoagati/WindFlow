@@ -3,6 +3,8 @@ import subprocess
 
 FILE = "stateful-results-zipf.txt"
 
+print('Starting tests, writing results to ' + FILE)
+
 with open(FILE, "w") as output_file:
     for testnum in range(1, 7):
         for keynum in [1, 10, 100, 500, 960, 1000, 2000, 4000, 8000, 10000]:

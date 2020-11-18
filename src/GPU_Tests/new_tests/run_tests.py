@@ -3,6 +3,8 @@ import subprocess
 
 FILE = 'testresults.txt'
 
+print('Starting tests, writing results to ' + FILE)
+
 with open(FILE, 'w') as output_file:
     for test in ['gpu_map_stateless', 'gpu_map_stateful',
                  'gpu_filter_stateless', 'gpu_filter_stateful']:
