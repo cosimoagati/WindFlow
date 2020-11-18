@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 
-FILE = 'stateful-results-zipf.txt'
+FILE = 'testresults.txt'
 
 with open(FILE, 'w') as output_file:
     for test in ['gpu_map_stateless', 'gpu_map_stateful',
