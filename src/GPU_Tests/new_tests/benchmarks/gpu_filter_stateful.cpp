@@ -18,7 +18,6 @@
  *  Version with { Sources } -> { Filter } -> Sink. Stateful Filter on GPU.
  */
 
-// includes
 #include "custom_allocator.hpp"
 #include "robin.hpp"
 #include <algorithm>
@@ -76,7 +75,6 @@ monitored_field _field               = TEMPERATURE;
 double          _threshold           = 0.025;
 unsigned long   app_run_time         = 60 * 1000000000L;
 
-// struct tuple_t
 struct tuple_t {
 	double   property_value;
 	double   incremental_average;
@@ -84,21 +82,17 @@ struct tuple_t {
 	uint64_t id;
 	uint64_t ts;
 
-	// Constructor I
 	__host__ __device__ tuple_t() : property_value(0.0), incremental_average(0.0), key(0), id(0), ts(0) {}
 
-	// Constructor II
 	__host__ __device__ tuple_t(double _property_value, double _incremental_average, size_t _key,
 	                            uint64_t _id, uint64_t _ts)
 	        : property_value(_property_value), incremental_average(_incremental_average), key(_key),
 	          id(_id), ts(_ts) {}
 
-	// getControlFields method
 	__host__ __device__ std::tuple<size_t, uint64_t, uint64_t> getControlFields() const {
 		return tuple<size_t, uint64_t, uint64_t>(key, id, ts);
 	}
 
-	// setControlFields method
 	__host__ __device__ void setControlFields(size_t _key, uint64_t _id, uint64_t _ts) {
 		key = _key;
 		id  = _id;
@@ -143,11 +137,9 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort =
 	}
 }
 
-// gpuErrChk macro
 #define gpuErrChk(ans)                                                                                       \
 	{ gpuAssert((ans), __FILE__, __LINE__); }
 
-// struct of a batch
 template<typename in_t, typename key_t = std::false_type>
 struct batch_t {
 	size_t          size;           // size of the batch
@@ -166,7 +158,6 @@ struct batch_t {
 	};
 	keyby_record kb; // keyby record
 
-	// constructor I
 	batch_t(size_t _size, in_t *_data_gpu, in_t *_raw_data_gpu, MPMC_Ptr_Queue *_queue,
 	        atomic<size_t> *_delete_counter, atomic<size_t> *_ready_counter = nullptr)
 	        : size(_size), data_gpu(_data_gpu), raw_data_gpu(_raw_data_gpu), queue(_queue),
@@ -179,7 +170,6 @@ struct batch_t {
 		std::fill(kb.map_idxs_cpu, kb.map_idxs_cpu + size, -1);
 	}
 
-	// destructor
 	~batch_t() {
 		free(kb.dist_keys_cpu);
 		free(kb.start_idxs_cpu);
@@ -210,7 +200,6 @@ struct batch_t {
 	}
 };
 
-// Source class
 class Source : public ff_monode_t<batch_t<tuple_t, size_t>> {
 private:
 	size_t                     n_dest;
@@ -235,7 +224,6 @@ private:
 	int                                       id_r = 0;
 
 public:
-	// Constructor
 	Source(size_t _n_dest, vector<tuple_t> &_dataset, size_t _batch_size, unsigned long _app_start_time,
 	       MPMC_Ptr_Queue *_recycle_queue)
 	        : n_dest(_n_dest), dataset(_dataset), batch_size(_batch_size),
@@ -255,7 +243,6 @@ public:
 		        (batch_t<tuple_t, size_t> **) malloc(sizeof(batch_t<tuple_t, size_t> *) * n_dest);
 	}
 
-	// Destructor
 	~Source() {
 		// deallocate data_cpus from pinned memory
 		cudaFreeHost(data_cpu[0]);
@@ -268,7 +255,6 @@ public:
 		free(previous_bouts);
 	}
 
-	// svc method
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *) {
 		bool endGeneration = false;
 		while (!endGeneration) {
@@ -296,7 +282,6 @@ public:
 		return this->EOS;
 	}
 
-	// prepare batch method
 	void prepare_batch(tuple_t &t) {
 		if (data_gpu[id_r] == nullptr) {
 #ifdef __RECYCLE__
@@ -359,7 +344,6 @@ public:
 		}
 	}
 
-	// eosnotify method
 	void eosnotify(ssize_t id) {
 		if (generated_batches > 0) {
 			gpuErrChk(cudaStreamSynchronize(cudaStreams[(id_r + 1) % 2]));
@@ -369,7 +353,6 @@ public:
 		}
 	}
 
-	// svc_end method
 	void svc_end() {
 		bool     end = false;
 		tuple_t *ptr = nullptr;
@@ -383,7 +366,6 @@ public:
 	}
 };
 
-// Window_State class
 struct Window_State {
 	double values[1000];
 	// double *values=nullptr;
@@ -392,7 +374,6 @@ struct Window_State {
 	size_t last;
 	size_t count;
 
-	// Constructor
 	__device__ Window_State() {
 		// values = (double *) malloc(1000 * sizeof(double));
 		// assert(values != nullptr); // malloc in device code can fail!
@@ -402,7 +383,6 @@ struct Window_State {
 		count = 0;
 	}
 
-	// compute method
 	__device__ double compute(double next_value) {
 		if (count == 1000) {
 			sum -= values[first];
@@ -492,7 +472,6 @@ __global__ void Initialize_States_Kernel(Window_State **new_states, size_t num_s
 	}
 }
 
-// Filter class
 class Filter : public ff_node_t<batch_t<tuple_t, size_t>> {
 private:
 	size_t        id_map;
@@ -559,7 +538,6 @@ private:
 	cached_allocator alloc;
 
 public:
-	// Constructor
 	Filter(size_t _id_map, size_t _map_degree, const unsigned long _app_start_time, size_t _max_batch_len,
 	       bool *_flags_gpu)
 	        : id_map(_id_map), map_degree(_map_degree), processed(0), app_start_time(_app_start_time),
@@ -578,7 +556,6 @@ public:
 		cudaMalloc(&new_data_gpu, sizeof(tuple_t) * max_batch_len);
 	}
 
-	// Destructor
 	~Filter() {
 		if (received_batch > 0) {
 			delete records[0];
@@ -588,7 +565,6 @@ public:
 		cudaFree(new_data_gpu);
 	}
 
-	// svc method
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		volatile unsigned long start_time_nsec = current_time_nsecs();
 		received_batch++;
@@ -698,7 +674,6 @@ public:
 		return this->GO_ON;
 	}
 
-	// eosnotify method
 	void eosnotify(ssize_t id) {
 		if (batch_to_be_sent != nullptr) {
 			gpuErrChk(cudaStreamSynchronize(records[(id_r + 1) % 2]->cudaStream));
@@ -710,7 +685,6 @@ public:
 		}
 	}
 
-	// svc_end method
 	void svc_end() {
 		printf("[FILTER] average service time: %f usec\n",
 		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
@@ -719,7 +693,6 @@ public:
 	}
 };
 
-// Sink class
 class Sink : public ff_minode_t<batch_t<tuple_t, size_t>> {
 private:
 	uint64_t     received;
@@ -727,19 +700,16 @@ private:
 	cudaStream_t cudaStream;
 
 public:
-	// Constructor
 	Sink() : received(0), received_batches(0) {
 		// initialize CUDA stream
 		gpuErrChk(cudaStreamCreate(&cudaStream));
 	}
 
-	// Destructor
 	~Sink() {
 		// deallocate CUDA stream
 		gpuErrChk(cudaStreamDestroy(cudaStream));
 	}
 
-	// svc method
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		received_batches++;
 #if 0
@@ -763,11 +733,9 @@ public:
 		return this->GO_ON;
 	}
 
-	// svc_end method
 	void svc_end() { cout << "[SINK] received " << received << " inputs" << endl; }
 };
 
-// parse_dataset function
 void parse_dataset(const string &file_path) {
 	ifstream file(file_path);
 	if (!file.is_open()) {
@@ -810,7 +778,6 @@ void parse_dataset(const string &file_path) {
 	file.close();
 }
 
-// create_tuples function
 void create_tuples(int num_keys) {
 	std::uniform_int_distribution<std::mt19937::result_type> dist(0, num_keys - 1);
 	mt19937                                                  rng;
@@ -841,7 +808,6 @@ void create_tuples(int num_keys) {
 	}
 }
 
-// main
 int main(int argc, char *argv[]) {
 	const auto arg_error_message = string {argv[0]}
 	                               + " -s [num sources] -k [num keys] -b [batch length] "

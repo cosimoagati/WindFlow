@@ -18,7 +18,6 @@
  *  Version with { Sources } -> { Map } -> Sink. Stateless Map on GPU.
  */
 
-// includes
 #include <algorithm>
 #include <ff/buffer.hpp>
 #include <ff/ff.hpp>
@@ -72,7 +71,6 @@ monitored_field _field               = TEMPERATURE;
 double          _threshold           = 0.025;
 unsigned long   app_run_time         = 60 * 1000000000L;
 
-// struct tuple_t
 struct tuple_t {
 	double   property_value;
 	double   incremental_average;
@@ -80,20 +78,16 @@ struct tuple_t {
 	uint64_t id;
 	uint64_t ts;
 
-	// Constructor I
 	tuple_t() : property_value(0.0), incremental_average(0.0), key(0), id(0), ts(0) {}
 
-	// Constructor II
 	tuple_t(double _property_value, double _incremental_average, size_t _key, uint64_t _id, uint64_t _ts)
 	        : property_value(_property_value), incremental_average(_incremental_average), key(_key),
 	          id(_id), ts(_ts) {}
 
-	// getControlFields method
 	__host__ __device__ std::tuple<size_t, uint64_t, uint64_t> getControlFields() const {
 		return tuple<size_t, uint64_t, uint64_t>(key, id, ts);
 	}
 
-	// setControlFields method
 	void setControlFields(size_t _key, uint64_t _id, uint64_t _ts) {
 		key = _key;
 		id  = _id;
@@ -138,11 +132,9 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort =
 	}
 }
 
-// gpuErrChk macro
 #define gpuErrChk(ans)                                                                                       \
 	{ gpuAssert((ans), __FILE__, __LINE__); }
 
-// struct of a batch
 template<typename in_t, typename key_t = std::false_type>
 struct batch_t {
 	size_t          size;           // size of the batch
@@ -161,7 +153,6 @@ struct batch_t {
 	};
 	keyby_record kb; // keyby record
 
-	// constructor I
 	batch_t(size_t _size, in_t *_data_gpu, in_t *_raw_data_gpu, MPMC_Ptr_Queue *_queue,
 	        atomic<size_t> *_delete_counter, atomic<size_t> *_ready_counter = nullptr)
 	        : size(_size), data_gpu(_data_gpu), raw_data_gpu(_raw_data_gpu), queue(_queue),
@@ -174,7 +165,6 @@ struct batch_t {
 		std::fill(kb.map_idxs_cpu, kb.map_idxs_cpu + size, -1);
 	}
 
-	// destructor
 	~batch_t() {
 		free(kb.dist_keys_cpu);
 		free(kb.start_idxs_cpu);
@@ -205,7 +195,6 @@ struct batch_t {
 	}
 };
 
-// Source class
 class Source : public ff_monode_t<batch_t<tuple_t, size_t>> {
 private:
 	size_t                    n_dest;
@@ -228,7 +217,6 @@ private:
 	int                       id_r          = 0;
 
 public:
-	// Constructor
 	Source(size_t _n_dest, vector<tuple_t> &_dataset, size_t _batch_size, unsigned long _app_start_time,
 	       MPMC_Ptr_Queue *_recycle_queue)
 	        : n_dest(_n_dest), dataset(_dataset), batch_size(_batch_size),
@@ -244,7 +232,6 @@ public:
 		gpuErrChk(cudaStreamCreate(&cudaStreams[1]));
 	}
 
-	// Destructor
 	~Source() {
 		// deallocate data_cpus from pinned memory
 		cudaFreeHost(data_cpu[0]);
@@ -254,7 +241,6 @@ public:
 		gpuErrChk(cudaStreamDestroy(cudaStreams[1]));
 	}
 
-	// svc method
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *) {
 		bool endGeneration = false;
 		while (!endGeneration) {
@@ -282,7 +268,6 @@ public:
 		return this->EOS;
 	}
 
-	// prepare batch method
 	void prepare_batch(tuple_t &t) {
 		if (data_gpu[id_r] == nullptr) {
 #ifdef __RECYCLE__
@@ -321,7 +306,6 @@ public:
 		}
 	}
 
-	// eosnotify method
 	void eosnotify(ssize_t id) {
 		if (generated_batches > 0) {
 			gpuErrChk(cudaStreamSynchronize(cudaStreams[(id_r + 1) % 2]));
@@ -329,7 +313,6 @@ public:
 		}
 	}
 
-	// svc_end method
 	void svc_end() {
 		bool     end = false;
 		tuple_t *ptr = nullptr;
@@ -349,7 +332,6 @@ struct node_t {
 	size_t value;
 };
 
-// class Map_Functor
 class Map_Functor {
 private:
 	int     size;
@@ -358,7 +340,6 @@ private:
 	node_t *table_gpu;
 
 public:
-	// constructor
 	Map_Functor(size_t _n_keys) : size(_n_keys), mask(_n_keys - 1) {
 		// create the table on cpu
 		table_cpu = (node_t *) malloc(sizeof(node_t) * size);
@@ -376,13 +357,11 @@ public:
 		cudaMemcpy(table_gpu, table_cpu, sizeof(node_t) * size, cudaMemcpyHostToDevice);
 	}
 
-	// destructor
 	~Map_Functor() {
 		// free(table_cpu);
 		// cudaFree(table_gpu);
 	}
 
-	// get_value method
 	__device__ size_t get_value(const size_t key) {
 		int ind = key & mask;
 		int i   = ind;
@@ -399,14 +378,12 @@ public:
 		return 0;
 	}
 
-	// operator()
 	__device__ void operator()(tuple_t &t) {
 		size_t value = get_value(std::get<0>(t.getControlFields()));
 		t.id         = value;
 	}
 };
 
-// CUDA Kernel Stateless_Processing_Kernel
 __global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, Map_Functor _func,
                                             int num_active_thread_per_warp) {
 	int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
@@ -423,7 +400,6 @@ __global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, Map_Fun
 	}
 }
 
-// Map class
 class Map : public ff_node_t<batch_t<tuple_t, size_t>> {
 private:
 	size_t                    id_map;
@@ -446,7 +422,6 @@ private:
 	Map_Functor *             mapF_gpu;
 
 public:
-	// Constructor
 	Map(size_t _id_map, size_t _map_degree, const unsigned long _app_start_time, size_t _max_batch_len,
 	    size_t _num_keys)
 	        : id_map(_id_map), map_degree(_map_degree), processed(0), app_start_time(_app_start_time),
@@ -471,10 +446,8 @@ public:
 		                          cudaStream));
 	}
 
-	// Destructor
 	~Map() { gpuErrChk(cudaStreamDestroy(cudaStream)); }
 
-	// svc method
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		volatile unsigned long start_time_nsec = current_time_nsecs();
 		received_batch++;
@@ -500,14 +473,12 @@ public:
 		return b;
 	}
 
-	// svc_end method
 	void svc_end() {
 		printf("[MAP] average service time: %f usec\n",
 		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
 	}
 };
 
-// Sink class
 class Sink : public ff_minode_t<batch_t<tuple_t, size_t>> {
 private:
 	uint64_t     received;
@@ -515,19 +486,16 @@ private:
 	cudaStream_t cudaStream;
 
 public:
-	// Constructor
 	Sink() : received(0), received_batches(0) {
 		// initialize CUDA stream
 		gpuErrChk(cudaStreamCreate(&cudaStream));
 	}
 
-	// Destructor
 	~Sink() {
 		// deallocate CUDA stream
 		gpuErrChk(cudaStreamDestroy(cudaStream));
 	}
 
-	// svc method
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		received_batches++;
 #if 0
@@ -551,15 +519,13 @@ public:
 		return this->GO_ON;
 	}
 
-	// svc_end method
 	void svc_end() { cout << "[SINK] received " << received << " inputs" << endl; }
 };
 
-// parse_dataset function
 void parse_dataset(const string &file_path) {
 	ifstream file(file_path);
 	if (!file.is_open()) {
-		cerr << "Error while reading file " << file_path << ", does it exist?"<< endl;
+		cerr << "Error while reading file " << file_path << ", does it exist?" << endl;
 		exit(EXIT_FAILURE);
 	}
 	size_t all_records        = 0;
@@ -598,7 +564,6 @@ void parse_dataset(const string &file_path) {
 	file.close();
 }
 
-// create_tuples function
 void create_tuples(int num_keys) {
 	std::uniform_int_distribution<std::mt19937::result_type> dist(0, num_keys - 1);
 	mt19937                                                  rng;
@@ -629,7 +594,6 @@ void create_tuples(int num_keys) {
 	}
 }
 
-// main
 int main(int argc, char *argv[]) {
 	const auto arg_error_message = string {argv[0]}
 	                               + " -s [num sources] -k [num keys] -b [batch length] "
