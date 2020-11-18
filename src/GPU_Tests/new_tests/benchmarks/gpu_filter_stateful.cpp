@@ -770,45 +770,44 @@ public:
 // parse_dataset function
 void parse_dataset(const string &file_path) {
 	ifstream file(file_path);
-	if (file.is_open()) {
-		size_t all_records        = 0;
-		size_t incomplete_records = 0;
-		string line;
-		while (getline(file, line)) {
-			// process file line
-			int            token_count = 0;
-			vector<string> tokens;
-			regex          rgx("\\s+"); // regex quantifier (matches one or many whitespaces)
-			sregex_token_iterator iter(line.begin(), line.end(), rgx, -1);
-			sregex_token_iterator end;
-			while (iter != end) {
-				tokens.push_back(*iter);
-				token_count++;
-				iter++;
-			}
-			// a record is valid if it contains at least 8 values (one for each field of interest)
-			if (token_count >= 8) {
-				// save parsed file
-				record_t r(tokens.at(DATE_FIELD), tokens.at(TIME_FIELD),
-				           atoi(tokens.at(EPOCH_FIELD).c_str()),
-				           atoi(tokens.at(DEVICE_ID_FIELD).c_str()),
-				           atof(tokens.at(TEMP_FIELD).c_str()),
-				           atof(tokens.at(HUMID_FIELD).c_str()),
-				           atof(tokens.at(LIGHT_FIELD).c_str()),
-				           atof(tokens.at(VOLT_FIELD).c_str()));
-				parsed_file.push_back(r);
-				// insert the key device_id in the map (if it is not present)
-				if (key_occ.find(get<DEVICE_ID_FIELD>(r)) == key_occ.end()) {
-					key_occ.insert(make_pair(get<DEVICE_ID_FIELD>(r), 0));
-				}
-			} else {
-				incomplete_records++;
-			}
-
-			all_records++;
-		}
-		file.close();
+	if (!file.is_open()) {
+		cerr << "Error while reading file " << file_path << ", does it exist?" << endl;
+		exit(EXIT_FAILURE);
 	}
+	size_t all_records        = 0;
+	size_t incomplete_records = 0;
+	string line;
+	while (getline(file, line)) {
+		// process file line
+		int                   token_count = 0;
+		vector<string>        tokens;
+		regex                 rgx("\\s+"); // regex quantifier (matches one or many whitespaces)
+		sregex_token_iterator iter(line.begin(), line.end(), rgx, -1);
+		sregex_token_iterator end;
+		while (iter != end) {
+			tokens.push_back(*iter);
+			token_count++;
+			iter++;
+		}
+		// a record is valid if it contains at least 8 values (one for each field of interest)
+		if (token_count >= 8) {
+			// save parsed file
+			record_t r(tokens.at(DATE_FIELD), tokens.at(TIME_FIELD),
+			           atoi(tokens.at(EPOCH_FIELD).c_str()),
+			           atoi(tokens.at(DEVICE_ID_FIELD).c_str()),
+			           atof(tokens.at(TEMP_FIELD).c_str()), atof(tokens.at(HUMID_FIELD).c_str()),
+			           atof(tokens.at(LIGHT_FIELD).c_str()), atof(tokens.at(VOLT_FIELD).c_str()));
+			parsed_file.push_back(r);
+			// insert the key device_id in the map (if it is not present)
+			if (key_occ.find(get<DEVICE_ID_FIELD>(r)) == key_occ.end()) {
+				key_occ.insert(make_pair(get<DEVICE_ID_FIELD>(r), 0));
+			}
+		} else {
+			incomplete_records++;
+		}
+		all_records++;
+	}
+	file.close();
 }
 
 // create_tuples function
@@ -844,6 +843,9 @@ void create_tuples(int num_keys) {
 
 // main
 int main(int argc, char *argv[]) {
+	const auto arg_error_message = string {argv[0]}
+	                               + " -s [num sources] -k [num keys] -b [batch length] "
+	                                 "-n [map degree] -f [input file]";
 	/// parse arguments from command line
 	int    option = 0;
 	int    index  = 0;
@@ -854,13 +856,13 @@ int main(int argc, char *argv[]) {
 	int    num_keys       = 0;
 	int    map_degree     = 0;
 	int    num_sources    = 0;
+	string input_file     = "";
 	// arguments from command line
-	if (argc != 9) {
-		cout << argv[0] << " -s [num sources] -k [num keys] -b [batch length] -n [map degree]"
-		     << endl;
+	if (argc != 11) {
+		cout << arg_error_message << endl;
 		exit(EXIT_SUCCESS);
 	}
-	while ((option = getopt(argc, argv, "s:k:b:n:")) != -1) {
+	while ((option = getopt(argc, argv, "s:k:b:n:f:")) != -1) {
 		switch (option) {
 		case 's':
 			num_sources = atoi(optarg);
@@ -874,6 +876,9 @@ int main(int argc, char *argv[]) {
 		case 'n':
 			map_degree = atoi(optarg);
 			break;
+		case 'f':
+			input_file = optarg;
+			break;
 		default: {
 			cout << argv[0] << " -s [num sources] -k [num keys] -b [batch length] -n [map degree]"
 			     << endl;
@@ -882,8 +887,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	// data pre-processing
-	const string _input_file = "../../Datasets/SD/sensors.dat";
-	parse_dataset(_input_file);
+	parse_dataset(input_file);
 	create_tuples(num_keys);
 	// application starting time
 	unsigned long     app_start_time = current_time_nsecs();
