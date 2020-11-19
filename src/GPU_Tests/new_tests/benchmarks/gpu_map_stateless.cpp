@@ -502,7 +502,8 @@ public:
         if (received < 100) {
             tuple_t *data_cpu;
             cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size);
-            gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t), cudaMemcpyDeviceToHost, cudaStream));
+            gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t),
+				      cudaMemcpyDeviceToHost, cudaStream));
             gpuErrChk(cudaStreamSynchronize(cudaStream));
             for (size_t i=0; i<b->size; i++) {
                 tuple_t *t = &(data_cpu[i]);
@@ -664,6 +665,7 @@ int main(int argc, char *argv[]) {
 	pipe->add_stage(a2a, true);
 	pipe->add_stage(new Sink(), true);
 	cout << "Starting pipe with " << pipe->cardinality() << " threads..." << endl;
+	
 	// evaluate topology execution time
 	volatile unsigned long start_time_main_usecs = current_time_usecs();
 	pipe->run_and_wait_end();
