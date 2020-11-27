@@ -11,16 +11,9 @@ OPTFLAGS        = -g -O3
 LDFLAGS         = -pthread
 
 NVXX            = /usr/local/cuda/bin/nvcc
-NVXXFLAGS       = -std=c++14 -x cu
-NVOPTFLAGS      = -w --expt-extended-lambda -O3 -Wno-deprecated-gpu-targets --expt-relaxed-constexpr
-
-ARCH = $(shell arch)
-ifeq ($(ARCH), x86_64)
-	NVOPTFLAGS := $(NVOPTFLAGS) -gencode arch=compute_30,code=sm_30
-endif
-ifeq ($(ARCH), aarch64)
-	NVOPTFLAGS := $(NVOPTFLAGS) -gencode arch=compute_30,code=sm_30
-endif
+NVXXFLAGS       = -std=c++14 -x cu 
+NVOPTFLAGS      = -w --expt-extended-lambda -O3 -g -gencode arch=compute_30,code=sm_30 -Wno-deprecated-gpu-targets --expt-relaxed-constexpr
+NVOPTFLAGS2      = -w --expt-extended-lambda -O3 -g -gencode arch=compute_53,code=sm_53 -Wno-deprecated-gpu-targets --expt-relaxed-constexpr
 
 # gpu_split is removed for now
 all: gpu_map_stateful gpu_map_stateless gpu_filter_stateless gpu_filter_stateful
