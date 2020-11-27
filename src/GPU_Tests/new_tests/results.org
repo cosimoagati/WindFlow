@@ -2,6 +2,8 @@ Configuration: dataset with 80000 tuples, -s 1 -b 10000 -n 1
 Distribution: uniform_int_distribution
 Results are measured in bandwidth: tuples/second.
 
+(N.B.: the 3 least significant digits are rounded down).
+
 Machine: pianosau
 
 | Keys (-k) | map_stateless | map_stateful | filter_stateless | filter_stateful |
@@ -33,13 +35,13 @@ Machine: pianosa
 Machine: Nano
 
 | Keys (-k) | map_stateless | map_stateful | filter_stateless | filter_stateful |
-|           |               |              |                  |                 |
-|           |               |              |                  |                 |
-|           |               |              |                  |                 |
-|           |               |              |                  |                 |
-|           |               |              |                  |                 |
-|           |               |              |                  |                 |
-|           |               |              |                  |                 |
-|           |               |              |                  |                 |
-|           |               |              |                  |                 |
-|           |               |              |                  |                 |
+|         1 |       8355000 |       512000 |          8097000 |          497000 |
+|        10 |       8274000 |      3902000 |          8205000 |         3240000 |
+|       100 |       8348000 |      6762000 |          7740000 |         6138000 |
+|       500 |       8503000 |      7238000 |          8140000 |         6734000 |
+|       960 |       8595000 |      6750000 |          7888000 |         5893000 |
+|      1000 |       7699000 |      6721000 |          7813000 |         6486000 |
+|      2000 |       8270000 |      6053000 |          7998000 |         5847000 |
+|      4000 |       8542000 |      5360000 |          7682000 |         5236000 |
+|      8000 |       7510000 |      5361000 |          6217000 |         4626000 |
+|     10000 |        423000 |      4996000 |           419000 |         4517000 |
