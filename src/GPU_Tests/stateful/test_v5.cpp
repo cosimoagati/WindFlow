@@ -422,8 +422,13 @@ public:
 		gpuErrChk(cudaDeviceGetAttribute(&numSMs, cudaDevAttrMultiProcessorCount, 0));
 		gpuErrChk(cudaDeviceGetAttribute(&max_threads_per_sm, cudaDevAttrMaxThreadsPerMultiProcessor,
 		                                 0));
+#ifdef __aarch64__
+		max_blocks_per_sm = 32;
+
+#elif
 		gpuErrChk(
 		        cudaDeviceGetAttribute(&max_blocks_per_sm, cudaDevAttrMaxBlocksPerMultiprocessor, 0));
+#endif // __aarch64__
 		gpuErrChk(cudaDeviceGetAttribute(&threads_per_warp, cudaDevAttrWarpSize, 0));
 		assert(numSMs > 0);             // 15
 		assert(max_threads_per_sm > 0); // 2048
