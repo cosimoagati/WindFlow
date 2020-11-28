@@ -1,7 +1,7 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
-#include "zipf.hpp"
+#include "../zipf.hpp"
 #include <ff/ff.hpp>
 #include <iostream>
 #include <random>

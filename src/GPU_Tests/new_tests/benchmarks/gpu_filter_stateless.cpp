@@ -17,7 +17,6 @@
 /*
  *  Version with { Sources } -> { Filter } -> Sink. Stateless Filter on GPU.
  */
-
 #include "custom_allocator.hpp"
 #include <algorithm>
 #include <ff/ff.hpp>

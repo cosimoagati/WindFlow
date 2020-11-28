@@ -21,7 +21,7 @@
  */
 
 // includes
-#include "zipf.hpp"
+#include "../zipf.hpp"
 #include <algorithm>
 #include <ff/ff.hpp>
 #include <iostream>

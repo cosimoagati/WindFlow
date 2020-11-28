@@ -1,4 +1,5 @@
 #include "common.hpp"
+#include "../zipf.hpp"
 #include <algorithm>
 #include <ff/ff.hpp>
 #include <iostream>
@@ -164,9 +165,10 @@ batch_t *Sink::svc(batch_t *const b) {
 	// print the throughput per second
 	if (current_time_usecs() - last_time_us > 1000000) {
 		double elapsed_sec = ((double) (current_time_usecs() - start_time_us)) / 1000000;
-		std::cout << "[SINK] time " << elapsed_sec << " received " << received_per_sample << std::endl;
+		std::cout << "[SINK] time " << elapsed_sec << " received " << received_per_sample
+		          << std::endl;
 		received_per_sample = 0;
-		last_time_us    = current_time_usecs();
+		last_time_us        = current_time_usecs();
 	}
 	delete b;
 	cudaFreeHost(data_cpu);
