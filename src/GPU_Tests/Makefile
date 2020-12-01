@@ -6,7 +6,7 @@ FF_INCLUDES		= $(HOME)/fastflow/
 CXX 			= g++
 CXXFLAGS		= -std=c++14
 INCLUDES		= -I $(FF_INCLUDES)
-MACRO           = -DFF_BOUNDED_BUFFER
+MACRO                   = -DFF_BOUNDED_BUFFER
 OPTFLAGS		= -g -O3
 LDFLAGS			= -pthread
 
