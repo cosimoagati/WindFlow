@@ -184,7 +184,7 @@ struct batch_t {
 	// method to check whether the keyby processing is complete
 	bool isKBDone() {
 		assert(kb.ready_counter);
-		size_t old_value = (kb.ready_counter)->fetch_sub(1);
+		const auto old_value = (kb.ready_counter)->fetch_sub(1);
 		if (old_value == 1) {
 			delete kb.ready_counter;
 			return true;
@@ -250,14 +250,14 @@ public:
 	}
 
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *) {
-		bool endGeneration = false;
+		auto endGeneration = false;
 		while (!endGeneration) {
 			if (generated_tuples > 0) {
 				current_time = current_time_nsecs();
 			}
 			generated_tuples++;
 			// prepare the tuple by reading the dataset
-			tuple_t tuple  = dataset.at(next_tuple_idx);
+			auto tuple     = dataset.at(next_tuple_idx);
 			tuple.ts       = current_time - app_start_time;
 			next_tuple_idx = (next_tuple_idx + 1) % dataset.size();
 			// check EOS
@@ -279,8 +279,8 @@ public:
 				allocated_batches++;
 			}
 			// allocate batches to be sent
-			atomic<size_t> *delete_counter = new atomic<size_t>(n_dest);
-			atomic<size_t> *ready_counter  = new atomic<size_t>(n_dest);
+			const auto delete_counter = new atomic<size_t>(n_dest);
+			const auto ready_counter  = new atomic<size_t>(n_dest);
 			for (size_t i = 0; i < n_dest; i++) {
 				bouts[i] = new batch_t<tuple_t, size_t>(batch_size, data_gpu[id_r],
 				                                        data_gpu[id_r], recycle_queue,
@@ -290,19 +290,20 @@ public:
 		// copy the input tuple in the pinned buffer
 		data_cpu[id_r][tuple_id] = t;
 		// copy the key attribute of the input tuple in the pinned buffer in the batch
-		auto key = std::get<0>(t.getControlFields());
+		const auto key = std::get<0>(t.getControlFields());
 		// prepare the distribution
-		auto id_dest = (key % n_dest);
-		auto it      = dist_map.find(key);
+		const auto id_dest = (key % n_dest);
+		const auto it      = dist_map.find(key);
+		auto &     kb      = bouts[id_dest]->kb;
 		if (it == dist_map.end()) {
 			// dist_map.insert(std::make_pair(key, tuple_id));
 			dist_map.insert(robin_hood::pair<size_t, size_t>(key, tuple_id));
-			(bouts[id_dest]->kb).dist_keys_cpu[(bouts[id_dest]->kb).num_dist_keys]  = key;
-			(bouts[id_dest]->kb).start_idxs_cpu[(bouts[id_dest]->kb).num_dist_keys] = tuple_id;
-			(bouts[id_dest]->kb).num_dist_keys++;
+			kb.dist_keys_cpu[kb.num_dist_keys]  = key;
+			kb.start_idxs_cpu[kb.num_dist_keys] = tuple_id;
+			kb.num_dist_keys++;
 		} else {
-			(bouts[id_dest]->kb).map_idxs_cpu[(*it).second] = tuple_id;
-			(*it).second                                    = tuple_id;
+			kb.map_idxs_cpu[it->second] = tuple_id;
+			it->second                  = tuple_id;
 		}
 		tuple_id++;
 		if (tuple_id == batch_size) {
