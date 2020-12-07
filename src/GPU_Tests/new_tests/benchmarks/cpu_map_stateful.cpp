@@ -456,7 +456,7 @@ private:
 	size_t        id_map;
 	size_t        map_degree;
 	size_t        processed;
-	unsigned long received_batch = 0;
+	unsigned long received_batches = 0;
 	// unordered_map<size_t, Window_State*> hashmap;
 	robin_hood::unordered_map<size_t, Window_State *> hashmap;
 	unsigned long                                     app_start_time;
@@ -534,7 +534,7 @@ public:
 	}
 
 	~Map() {
-		if (received_batch > 0) {
+		if (received_batches > 0) {
 			delete records[0];
 			delete records[1];
 		}
@@ -542,10 +542,10 @@ public:
 
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		volatile unsigned long start_time_nsec = current_time_nsecs();
-		received_batch++;
+		received_batches++;
 		processed += b->size;
 		// create the two records (one time only)
-		if (received_batch == 1) {
+		if (received_batches == 1) {
 			records[0] = new record_t(max_batch_len);
 			records[1] = new record_t(max_batch_len);
 		}
@@ -648,9 +648,9 @@ public:
 
 	void svc_end() {
 		printf("[MAP] average service time: %f usec\n",
-		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
+		       (((double) tot_elapsed_nsec) / received_batches) / 1000);
 		printf("[MAP] average number of keys per batch: %f\n",
-		       ((double) num_keys_per_batch) / received_batch);
+		       ((double) num_keys_per_batch) / received_batches);
 	}
 };
 
