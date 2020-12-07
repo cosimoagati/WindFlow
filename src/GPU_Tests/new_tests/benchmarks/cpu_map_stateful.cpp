@@ -170,11 +170,13 @@ struct batch_t {
 		free(kb.dist_keys_cpu);
 		free(kb.start_idxs_cpu);
 		free(kb.map_idxs_cpu);
-		size_t old_value = delete_counter->fetch_sub(1);
+
+		const auto old_value = delete_counter->fetch_sub(1);
 		if (old_value == 1) {
 			// try to push the GPU array into the recycling queue
-			if (!queue->push((void *const) raw_data_gpu)) {
-				cudaFree(raw_data_gpu);
+			if (!queue->push((void *const) raw_data_gpu) && raw_data_gpu) {
+				const auto status = cudaFree(raw_data_gpu);
+				gpuErrChk(status);
 			}
 			delete delete_counter;
 		}
@@ -182,6 +184,7 @@ struct batch_t {
 
 	// method to check whether the keyby processing is complete
 	bool isKBDone() {
+		assert(kb.ready_counter);
 		size_t old_value = (kb.ready_counter)->fetch_sub(1);
 		if (old_value == 1) {
 			delete kb.ready_counter;
@@ -254,22 +257,17 @@ public:
 				current_time = current_time_nsecs();
 			}
 			generated_tuples++;
-			tuple_t t;
 			// prepare the tuple by reading the dataset
-			tuple_t tuple         = dataset.at(next_tuple_idx);
-			t.property_value      = tuple.property_value;
-			t.incremental_average = tuple.incremental_average;
-			t.key                 = tuple.key;
-			t.id                  = tuple.id;
-			t.ts                  = current_time - app_start_time;
-			next_tuple_idx        = (next_tuple_idx + 1) % dataset.size();
+			tuple_t tuple  = dataset.at(next_tuple_idx);
+			tuple.ts       = current_time - app_start_time;
+			next_tuple_idx = (next_tuple_idx + 1) % dataset.size();
 			// check EOS
 			if (current_time - app_start_time >= app_run_time && next_tuple_idx == 0) {
 				sent_tuples.fetch_add(generated_tuples);
 				num_allocated_batches.fetch_add(allocated_batches);
 				endGeneration = true;
 			}
-			prepare_batch(t);
+			prepare_batch(tuple);
 		}
 		return this->EOS;
 	}
