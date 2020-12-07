@@ -564,7 +564,7 @@ public:
 				hashmap.insert(robin_hood::pair<size_t, Window_State *>(key, state_gpu));
 				it = hashmap.find(key);
 			}
-			records[id_r]->state_ptrs_cpu[i] = (*it).second;
+			records[id_r]->state_ptrs_cpu[i] = it->second;
 		}
 		// initialize new allocated states (if any)
 		if (num_new_keys > 0) {
@@ -630,12 +630,12 @@ public:
 		batch_to_be_sent                         = b;
 		id_r                                     = (id_r + 1) % 2;
 		volatile unsigned long end_time_nsec     = current_time_nsecs();
-		unsigned long          elapsed_time_nsec = end_time_nsec - start_time_nsec;
+		const auto             elapsed_time_nsec = end_time_nsec - start_time_nsec;
 		tot_elapsed_nsec += elapsed_time_nsec;
 		return this->GO_ON;
 	}
 
-	void eosnotify(ssize_t id) {
+	void eosnotify(ssize_t) {
 		if (batch_to_be_sent != nullptr) {
 			gpuErrChk(cudaStreamSynchronize(records[(id_r + 1) % 2]->cudaStream));
 			if (batch_to_be_sent->isKBDone()) {
@@ -679,9 +679,10 @@ public:
             gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
             gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t), cudaMemcpyDeviceToHost, cudaStream));
             gpuErrChk(cudaStreamSynchronize(cudaStream));
-            for (size_t i=0; i<b->size; i++) {
+            for (size_t i = 0; i < b->size; i++) {
                 tuple_t *t = &(data_cpu[i]);
-                cout << "Tuple: " << t->key << " " << t->property_value << " " << t->incremental_average << endl;
+                cout << "Tuple: " << t->key << " " << t->property_value << " " << t->incremental_average
+		     << endl;
                 if (received + i >= 100) {
                     break;
                 }
@@ -807,10 +808,9 @@ int main(int argc, char *argv[]) {
 		case 'f':
 			input_file = optarg;
 			break;
-		default: {
+		default:
 			cout << arg_error_message << endl;
 			exit(EXIT_SUCCESS);
-		}
 		}
 	}
 	// data pre-processing
@@ -818,12 +818,12 @@ int main(int argc, char *argv[]) {
 	create_tuples(num_keys);
 	// application starting time
 	unsigned long     app_start_time = current_time_nsecs();
-	ff_pipeline *     pipe           = new ff_pipeline();
-	ff_a2a *          a2a            = new ff_a2a();
+	auto              pipe           = new ff_pipeline();
+	auto              a2a            = new ff_a2a();
 	vector<ff_node *> first_set;
 	for (size_t i = 0; i < num_sources; i++) {
-		ff_pipeline *   pipe_in = new ff_pipeline();
-		MPMC_Ptr_Queue *queue   = new MPMC_Ptr_Queue();
+		auto pipe_in = new ff_pipeline();
+		auto queue   = new MPMC_Ptr_Queue();
 		queue->init(DEFAULT_BUFFER_CAPACITY);
 		pipe_in->add_stage(new Source(map_degree, dataset, batch_size, app_start_time, queue), true);
 		first_set.push_back(pipe_in);
@@ -831,8 +831,8 @@ int main(int argc, char *argv[]) {
 	a2a->add_firstset(first_set, 0, true);
 	vector<ff_node *> second_set;
 	for (size_t i = 0; i < map_degree; i++) {
-		ff_comb *comb_node = new ff_comb(
-		        new dummy_mi(), new Map(i, map_degree, app_start_time, batch_size), true, true);
+		auto comb_node = new ff_comb(new dummy_mi(),
+		                             new Map(i, map_degree, app_start_time, batch_size), true, true);
 		second_set.push_back(comb_node);
 	}
 	a2a->add_secondset(second_set, true);
