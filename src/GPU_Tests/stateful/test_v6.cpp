@@ -437,7 +437,7 @@ public:
 #ifdef __aarch64__
 		max_blocks_per_sm = 32;
 
-#elif
+#else
 		gpuErrChk(
 		        cudaDeviceGetAttribute(&max_blocks_per_sm, cudaDevAttrMaxBlocksPerMultiprocessor, 0));
 #endif // __aarch64__
