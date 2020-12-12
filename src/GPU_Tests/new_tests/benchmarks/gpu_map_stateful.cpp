@@ -403,17 +403,16 @@ __device__ void map_function(tuple_t &t, Window_State &state) {
 __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, size_t *dist_keys, int *start_idxs,
                                            Window_State **states, int num_dist_keys,
                                            int num_active_thread_per_warp) {
-	int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
-	int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
-	int threads_per_worker =
-	        warpSize / num_active_thread_per_warp;      // number of threads composing a worker entity
-	int num_workers = num_threads / threads_per_worker; // number of workers
-	int id_worker   = id / threads_per_worker;          // id of the worker corresponding to this thread
+	const int thread_id          = threadIdx.x + blockIdx.x * blockDim.x;
+	const int num_threads        = gridDim.x * blockDim.x;
+	const int threads_per_worker = warpSize / num_active_thread_per_warp;
+	const int num_workers        = num_threads / threads_per_worker;
+	const int worker_id          = thread_id / threads_per_worker;
 	// only the first thread of each warp works, the others are idle
-	if (id % threads_per_worker == 0) {
-		for (int id_key = id_worker; id_key < num_dist_keys; id_key += num_workers) {
-			size_t key = dist_keys[id_key]; // key used
-			size_t idx = start_idxs[id_key];
+	if (thread_id % threads_per_worker == 0) {
+		for (int id_key = worker_id; id_key < num_dist_keys; id_key += num_workers) {
+			const size_t key = dist_keys[id_key]; // key used
+			size_t       idx = start_idxs[id_key];
 			// execute all the inputs with key in the input batch
 			while (idx != -1) {
 				map_function(tuples[idx], *(states[id_key]));
@@ -427,17 +426,18 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, size_
                                            Window_State **states, int num_dist_keys,
                                            int num_active_thread_per_warp) {
 	extern __shared__ char array[];
-	int id = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
-	int num_threads = gridDim.x * blockDim.x;       // number of threads in the kernel
-	int threads_per_worker =
-	        warpSize / num_active_thread_per_warp;      // number of threads composing a worker entity
-	int num_workers = num_threads / threads_per_worker; // number of workers
-	int id_worker = id / threads_per_worker;            // id of the worker corresponding to this thread
+
+	const int thread_id = threadIdx.x + blockIdx.x * blockDim.x;
+	const int num_threads = gridDim.x * blockDim.x;
+	const int threads_per_worker = warpSize / num_active_thread_per_warp;
+	const int num_workers = num_threads / threads_per_worker;
+	const int worker_id = thread_id / threads_per_worker;
+
 	// only the first thread of each warp works, the others are idle
-	if (id % threads_per_worker == 0) {
+	if (thread_id % threads_per_worker == 0) {
 		Window_State *cached_state = ((Window_State *) array) + (threadIdx.x / threads_per_worker);
-		for (int id_key = id_worker; id_key < num_dist_keys; id_key += num_workers) {
-			size_t key = dist_keys[id_key]; // key used
+		for (int id_key = worker_id; id_key < num_dist_keys; id_key += num_workers) {
+			const size_t key = dist_keys[id_key]; // key used
 			size_t idx = start_idxs[id_key];
 			*cached_state = *(states[id_key]);
 			// execute all the inputs with key in the input batch
@@ -453,8 +453,8 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, size_
 
 // CUDA Kernel to initialize the states of new keys
 __global__ void Initialize_States_Kernel(Window_State **new_states, size_t num_states) {
-	int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
-	int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
+	const int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
+	const int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
 	for (size_t i = id; i < num_states; i += num_threads)
 		new (new_states[i]) Window_State();
 }

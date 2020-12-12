@@ -382,15 +382,14 @@ public:
 
 __global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, Map_Functor _func,
                                             int num_active_thread_per_warp) {
-	int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
-	int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
-	int threads_per_worker =
-	        warpSize / num_active_thread_per_warp;      // number of threads composing a worker entity
-	int num_workers = num_threads / threads_per_worker; // number of workers
-	int id_worker   = id / threads_per_worker;          // id of the worker corresponding to this thread
+	const int thread_id          = threadIdx.x + blockIdx.x * blockDim.x;
+	const int num_threads        = gridDim.x * blockDim.x;
+	const int threads_per_worker = warpSize / num_active_thread_per_warp;
+	const int num_workers        = num_threads / threads_per_worker;
+	const int worker_id          = thread_id / threads_per_worker;
 	// only "num_active_thread_per_warp" threads per warp work, the others are idle
-	if (id % threads_per_worker == 0) {
-		for (size_t i = id_worker; i < len; i += num_workers)
+	if (thread_id % threads_per_worker == 0) {
+		for (size_t i = worker_id; i < len; i += num_workers)
 			_func(tuples[i]);
 	}
 }
