@@ -127,7 +127,6 @@ inline unsigned long current_time_nsecs() {
 	return (t.tv_sec) * 1000000000L + t.tv_nsec;
 }
 
-// assert function on GPU
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
 	if (code != cudaSuccess) {
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
@@ -403,7 +402,6 @@ __device__ bool map_function(tuple_t &t, Window_State &state) {
 	return (t.incremental_average > 19.5);
 }
 
-// CUDA Kernel Stateful_Processing_Kernel
 #if !defined(__SHARED__)
 __global__ void Stateful_Processing_Kernel(tuple_t *tuples, bool *flags, int *map_idxs, size_t *dist_keys,
                                            int *start_idxs, Window_State **states, int num_dist_keys,
