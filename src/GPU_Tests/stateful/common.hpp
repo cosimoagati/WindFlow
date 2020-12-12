@@ -12,8 +12,8 @@
 // number of CUDA threads per block
 static constexpr auto threads_per_block = 256;
 
-// assert function on GPU
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = false) {
+#ifndef NDEBUG
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
 	if (code != cudaSuccess) {
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
 		if (abort)
@@ -21,9 +21,15 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort =
 	}
 }
 
-// gpuErrChk macro
 #define gpuErrChk(ans)                                                                                       \
-	{ gpuAssert((ans), __FILE__, __LINE__); }
+	do {                                                                                                 \
+		gpuAssert((ans), __FILE__, __LINE__);                                                        \
+	} while (0)
+#else
+// Unlike the standard C assert macro, gpuErrChk simply expands to the statement itself if NDEBUG is defined,
+// making it suitable to be used with expressions producing side effects.
+#define gpuErrChk(ans) (ans)
+#endif // NDEBUG
 
 // struct used by sort_by_key
 struct key_less_than_op {

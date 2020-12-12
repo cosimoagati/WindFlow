@@ -127,6 +127,7 @@ inline unsigned long current_time_nsecs() {
 	return (t.tv_sec) * 1000000000L + t.tv_nsec;
 }
 
+#ifndef NDEBUG
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
 	if (code != cudaSuccess) {
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
@@ -139,6 +140,11 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort =
 	do {                                                                                                 \
 		gpuAssert((ans), __FILE__, __LINE__);                                                        \
 	} while (0)
+#else
+// Unlike the standard C assert macro, gpuErrChk simply expands to the statement itself if NDEBUG is defined,
+// making it suitable to be used with expressions producing side effects.
+#define gpuErrChk(ans) (ans)
+#endif // NDEBUG
 
 template<typename in_t, typename key_t = std::false_type>
 struct batch_t {
@@ -432,25 +438,25 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, bool *flags, int *ma
                                            int num_active_thread_per_warp) {
 	extern __shared__ char array[];
 
-	const int thread_id = threadIdx.x + blockIdx.x * blockDim.x;
-	const int num_threads = gridDim.x * blockDim.x;
+	const int thread_id          = threadIdx.x + blockIdx.x * blockDim.x;
+	const int num_threads        = gridDim.x * blockDim.x;
 	const int threads_per_worker = warpSize / num_active_thread_per_warp;
-	const int num_workers = num_threads / threads_per_worker;
-	const int worker_id = thread_id / threads_per_worker;
+	const int num_workers        = num_threads / threads_per_worker;
+	const int worker_id          = thread_id / threads_per_worker;
 
 	// only the first thread of each warp works, the others are idle
 	if (thread_id % threads_per_worker == 0) {
 		Window_State *cached_state = ((Window_State *) array) + (threadIdx.x / threads_per_worker);
 		for (int id_key = worker_id; id_key < num_dist_keys; id_key += num_workers) {
 			const size_t key = dist_keys[id_key]; // key used
-			size_t idx = start_idxs[id_key];
-			*cached_state = *(states[id_key]);
+			size_t       idx = start_idxs[id_key];
+			*cached_state    = *(states[id_key]);
 			// execute all the inputs with key in the input batch
 			while (idx != -1) {
 				// tuples[idx].incremental_average =
 				// states[id_key]->compute(tuples[idx].property_value);
 				flags[idx] = map_function(tuples[idx], *cached_state);
-				idx = map_idxs[idx];
+				idx        = map_idxs[idx];
 			}
 			*(states[id_key]) = *cached_state;
 		}

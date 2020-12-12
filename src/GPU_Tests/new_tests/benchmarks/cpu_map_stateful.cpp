@@ -123,7 +123,7 @@ inline unsigned long current_time_nsecs() {
 	return (t.tv_sec) * 1000000000L + t.tv_nsec;
 }
 
-// assert function on GPU
+#ifndef NDEBUG
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
 	if (code != cudaSuccess) {
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
@@ -136,6 +136,11 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort =
 	do {                                                                                                 \
 		gpuAssert((ans), __FILE__, __LINE__);                                                        \
 	} while (0)
+#else
+// Unlike the standard C assert macro, gpuErrChk simply expands to the statement itself if NDEBUG is defined,
+// making it suitable to be used with expressions producing side effects.
+#define gpuErrChk(ans) (ans)
+#endif // NDEBUG
 
 template<typename in_t, typename key_t = std::false_type>
 struct batch_t {
