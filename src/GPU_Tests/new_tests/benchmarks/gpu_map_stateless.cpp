@@ -175,9 +175,9 @@ struct batch_t {
 #if __RECYCLE__
 			// try to push the GPU array into the recycling queue
 			if (!queue->push((void *const) raw_data_gpu))
-				cudaFree(raw_data_gpu);
+				gpuErrChk(cudaFree(raw_data_gpu));
 #else
-			cudaFree(raw_data_gpu);
+			gpuErrChk(cudaFree(raw_data_gpu));
 #endif
 			delete delete_counter;
 		}
@@ -225,8 +225,8 @@ public:
 	          recycle_queue(_recycle_queue) {
 		interval = 1000000L;
 		// allocate data_cpus in pinned memory
-		cudaMallocHost(&data_cpu[0], sizeof(tuple_t) * batch_size);
-		cudaMallocHost(&data_cpu[1], sizeof(tuple_t) * batch_size);
+		gpuErrChk(cudaMallocHost(&data_cpu[0], sizeof(tuple_t) * batch_size));
+		gpuErrChk(cudaMallocHost(&data_cpu[1], sizeof(tuple_t) * batch_size));
 		// initialize CUDA streams
 		gpuErrChk(cudaStreamCreate(&cudaStreams[0]));
 		gpuErrChk(cudaStreamCreate(&cudaStreams[1]));
@@ -234,8 +234,8 @@ public:
 
 	~Source() {
 		// deallocate data_cpus from pinned memory
-		cudaFreeHost(data_cpu[0]);
-		cudaFreeHost(data_cpu[1]);
+		gpuErrChk(cudaFreeHost(data_cpu[0]));
+		gpuErrChk(cudaFreeHost(data_cpu[1]));
 		// deallocate CUDA streams
 		gpuErrChk(cudaStreamDestroy(cudaStreams[0]));
 		gpuErrChk(cudaStreamDestroy(cudaStreams[1]));
@@ -272,11 +272,11 @@ public:
 #ifdef __RECYCLE__
 			// try to recycle previously allocated GPU array
 			if (!recycle_queue->pop((void **) &(data_gpu[id_r]))) {
-				cudaMalloc(&(data_gpu[id_r]), sizeof(tuple_t) * batch_size);
+				gpuErrChk(cudaMalloc(&(data_gpu[id_r]), sizeof(tuple_t) * batch_size));
 				allocated_batches++;
 			}
 #else
-			cudaMalloc(&(data_gpu[id_r]), sizeof(tuple_t) * batch_size);
+			gpuErrChk(cudaMalloc(&(data_gpu[id_r]), sizeof(tuple_t) * batch_size));
 			allocated_batches++;
 #endif
 			// allocate the new batch
@@ -317,7 +317,7 @@ public:
 		tuple_t *ptr = nullptr;
 		while (!end) {
 			if (recycle_queue->pop((void **) &ptr))
-				cudaFree(ptr);
+				gpuErrChk(cudaFree(ptr));
 			else
 				end = true;
 		}
@@ -351,13 +351,13 @@ public:
 			table_cpu[i].value = dist(rng);
 		}
 		// copy the table on gpu
-		cudaMalloc(&table_gpu, sizeof(node_t) * size);
-		cudaMemcpy(table_gpu, table_cpu, sizeof(node_t) * size, cudaMemcpyHostToDevice);
+		gpuErrChk(cudaMalloc(&table_gpu, sizeof(node_t) * size));
+		gpuErrChk(cudaMemcpy(table_gpu, table_cpu, sizeof(node_t) * size, cudaMemcpyHostToDevice));
 	}
 
 	~Map_Functor() {
 		// free(table_cpu);
-		// cudaFree(table_gpu);
+		// gpuErrChk(cudaFree(table_gpu));
 	}
 
 	__device__ size_t get_value(const size_t key) {
@@ -439,7 +439,7 @@ public:
 		assert(max_blocks_per_sm > 0);  // 16
 		assert(threads_per_warp > 0);   // 32
 		// allocate the functor object on GPU
-		cudaMalloc(&mapF_gpu, sizeof(Map_Functor));
+		gpuErrChk(cudaMalloc(&mapF_gpu, sizeof(Map_Functor)));
 		// copy the functor object on GPU
 		gpuErrChk(cudaMemcpyAsync(mapF_gpu, &mapF, sizeof(Map_Functor), cudaMemcpyHostToDevice,
 		                          cudaStream));
@@ -499,7 +499,7 @@ public:
 #if 0
         if (received < 100) {
             tuple_t *data_cpu;
-            cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size);
+            gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
             gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t),
 				      cudaMemcpyDeviceToHost, cudaStream));
             gpuErrChk(cudaStreamSynchronize(cudaStream));
@@ -509,7 +509,7 @@ public:
                 if (received + i >= 100)
                     break;
             }
-            cudaFreeHost(data_cpu);
+            gpuErrChk(cudaFreeHost(data_cpu));
         }
 #endif
 		received += b->size;

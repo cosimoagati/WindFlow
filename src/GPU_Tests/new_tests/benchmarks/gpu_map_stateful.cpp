@@ -177,9 +177,9 @@ struct batch_t {
 #if __RECYCLE__
 			// try to push the GPU array into the recycling queue
 			if (!queue->push((void *const) raw_data_gpu))
-				cudaFree(raw_data_gpu);
+				gpuErrChk(cudaFree(raw_data_gpu));
 #else
-			cudaFree(raw_data_gpu);
+			gpuErrChk(cudaFree(raw_data_gpu));
 #endif
 			delete delete_counter;
 		}
@@ -229,8 +229,8 @@ public:
 	          recycle_queue(_recycle_queue) {
 		interval = 1000000L;
 		// allocate data_cpus in pinned memory
-		cudaMallocHost(&data_cpu[0], sizeof(tuple_t) * batch_size);
-		cudaMallocHost(&data_cpu[1], sizeof(tuple_t) * batch_size);
+		gpuErrChk(cudaMallocHost(&data_cpu[0], sizeof(tuple_t) * batch_size));
+		gpuErrChk(cudaMallocHost(&data_cpu[1], sizeof(tuple_t) * batch_size));
 		// initialize CUDA streams
 		gpuErrChk(cudaStreamCreate(&cudaStreams[0]));
 		gpuErrChk(cudaStreamCreate(&cudaStreams[1]));
@@ -242,8 +242,8 @@ public:
 
 	~Source() {
 		// deallocate data_cpus from pinned memory
-		cudaFreeHost(data_cpu[0]);
-		cudaFreeHost(data_cpu[1]);
+		gpuErrChk(cudaFreeHost(data_cpu[0]));
+		gpuErrChk(cudaFreeHost(data_cpu[1]));
 		// deallocate CUDA streams
 		gpuErrChk(cudaStreamDestroy(cudaStreams[0]));
 		gpuErrChk(cudaStreamDestroy(cudaStreams[1]));
@@ -283,11 +283,11 @@ public:
 #ifdef __RECYCLE__
 			// try to recycle previously allocated GPU array
 			if (!recycle_queue->pop((void **) &(data_gpu[id_r]))) {
-				cudaMalloc(&(data_gpu[id_r]), sizeof(tuple_t) * batch_size);
+				gpuErrChk(cudaMalloc(&(data_gpu[id_r]), sizeof(tuple_t) * batch_size));
 				allocated_batches++;
 			}
 #else
-			cudaMalloc(&(data_gpu[id_r]), sizeof(tuple_t) * batch_size);
+			gpuErrChk(cudaMalloc(&(data_gpu[id_r]), sizeof(tuple_t) * batch_size));
 			allocated_batches++;
 #endif
 			// allocate batches to be sent
@@ -353,7 +353,7 @@ public:
 		tuple_t *ptr = nullptr;
 		while (!end) {
 			if (recycle_queue->pop((void **) &ptr))
-				cudaFree(ptr);
+				gpuErrChk(cudaFree(ptr));
 			else
 				end = true;
 		}
@@ -493,27 +493,27 @@ private:
 			// initialize CUDA stream
 			gpuErrChk(cudaStreamCreate(&cudaStream));
 			// create arrays on GPU
-			cudaMalloc(&state_ptrs_gpu, _size * sizeof(Window_State *));
-			cudaMalloc(&new_state_ptrs_gpu, _size * sizeof(Window_State *));
-			cudaMalloc(&dist_keys_gpu, _size * sizeof(size_t));
-			cudaMalloc(&start_idxs_gpu, _size * sizeof(int));
-			cudaMalloc(&map_idxs_gpu, _size * sizeof(int));
+			gpuErrChk(cudaMalloc(&state_ptrs_gpu, _size * sizeof(Window_State *)));
+			gpuErrChk(cudaMalloc(&new_state_ptrs_gpu, _size * sizeof(Window_State *)));
+			gpuErrChk(cudaMalloc(&dist_keys_gpu, _size * sizeof(size_t)));
+			gpuErrChk(cudaMalloc(&start_idxs_gpu, _size * sizeof(int)));
+			gpuErrChk(cudaMalloc(&map_idxs_gpu, _size * sizeof(int)));
 			// create arrays on pinned memory
-			cudaMallocHost(&state_ptrs_cpu, _size * sizeof(Window_State *));
-			cudaMallocHost(&new_state_ptrs_cpu, _size * sizeof(Window_State *));
+			gpuErrChk(cudaMallocHost(&state_ptrs_cpu, _size * sizeof(Window_State *)));
+			gpuErrChk(cudaMallocHost(&new_state_ptrs_cpu, _size * sizeof(Window_State *)));
 		}
 
 		// Destructor
 		~record_t() {
 			// deallocate arrays from GPU
-			cudaFree(state_ptrs_gpu);
-			cudaFree(new_state_ptrs_gpu);
-			cudaFree(dist_keys_gpu);
-			cudaFree(start_idxs_gpu);
-			cudaFree(map_idxs_gpu);
+			gpuErrChk(cudaFree(state_ptrs_gpu));
+			gpuErrChk(cudaFree(new_state_ptrs_gpu));
+			gpuErrChk(cudaFree(dist_keys_gpu));
+			gpuErrChk(cudaFree(start_idxs_gpu));
+			gpuErrChk(cudaFree(map_idxs_gpu));
 			// deallocate arrays from pinned memory
-			cudaFreeHost(state_ptrs_cpu);
-			cudaFreeHost(new_state_ptrs_cpu);
+			gpuErrChk(cudaFreeHost(state_ptrs_cpu));
+			gpuErrChk(cudaFreeHost(new_state_ptrs_cpu));
 			// deallocate CUDA stream
 			gpuErrChk(cudaStreamDestroy(cudaStream));
 		}
@@ -567,7 +567,7 @@ public:
 			if (it == hashmap.end()) {
 				// allocate the memory for the new state on GPU
 				Window_State *state_gpu = nullptr;
-				cudaMalloc(&state_gpu, sizeof(Window_State));
+				gpuErrChk(cudaMalloc(&state_gpu, sizeof(Window_State)));
 				records[id_r]->new_state_ptrs_cpu[num_new_keys] = state_gpu;
 				num_new_keys++;
 				// hashmap.insert(std::make_pair(key, state_gpu));
@@ -683,7 +683,7 @@ public:
 #if 0
         if (received < 100) {
             tuple_t *data_cpu;
-            cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size);
+            gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
             gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t),
 				      cudaMemcpyDeviceToHost, cudaStream));
             gpuErrChk(cudaStreamSynchronize(cudaStream));
@@ -694,7 +694,7 @@ public:
                 if (received + i >= 100)
                     break;
             }
-            cudaFreeHost(data_cpu);
+            gpuErrChk(cudaFreeHost(data_cpu));
         }
 #endif
 		received += b->size;
