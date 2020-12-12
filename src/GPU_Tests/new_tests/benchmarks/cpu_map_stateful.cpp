@@ -127,14 +127,15 @@ inline unsigned long current_time_nsecs() {
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
 	if (code != cudaSuccess) {
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-		if (abort) {
+		if (abort)
 			exit(code);
-		}
 	}
 }
 
 #define gpuErrChk(ans)                                                                                       \
-	{ gpuAssert((ans), __FILE__, __LINE__); }
+	do {                                                                                                 \
+		gpuAssert((ans), __FILE__, __LINE__);                                                        \
+	} while (0)
 
 template<typename in_t, typename key_t = std::false_type>
 struct batch_t {
@@ -174,9 +175,8 @@ struct batch_t {
 		const auto old_value = delete_counter->fetch_sub(1);
 		if (old_value == 1) {
 			// try to push the GPU array into the recycling queue
-			if (!queue->push((void *const) raw_data_gpu) && raw_data_gpu) {
+			if (!queue->push((void *const) raw_data_gpu) && raw_data_gpu)
 				gpuErrChk(cudaFree(raw_data_gpu));
-			}
 			delete delete_counter;
 		}
 	}
@@ -252,9 +252,8 @@ public:
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *) {
 		auto endGeneration = false;
 		while (!endGeneration) {
-			if (generated_tuples > 0) {
+			if (generated_tuples > 0)
 				current_time = current_time_nsecs();
-			}
 			generated_tuples++;
 			// prepare the tuple by reading the dataset
 			auto tuple     = dataset.at(next_tuple_idx);
@@ -292,7 +291,7 @@ public:
 		// copy the key attribute of the input tuple in the pinned buffer in the batch
 		const auto key = std::get<0>(t.getControlFields());
 		// prepare the distribution
-		const auto id_dest = (key % n_dest);
+		const auto id_dest = key % n_dest;
 		const auto it      = dist_map.find(key);
 		auto &     kb      = bouts[id_dest]->kb;
 		if (it == dist_map.end()) {
@@ -309,9 +308,8 @@ public:
 		if (tuple_id == batch_size) {
 			if (generated_batches > 0) {
 				gpuErrChk(cudaStreamSynchronize(cudaStreams[(id_r + 1) % 2]));
-				for (size_t i = 0; i < n_dest; i++) {
+				for (size_t i = 0; i < n_dest; i++)
 					this->ff_send_out_to(previous_bouts[i], i);
-				}
 			}
 			generated_batches++;
 			// copy the tuples in the GPU area
@@ -332,9 +330,8 @@ public:
 	void eosnotify(ssize_t) {
 		if (generated_batches > 0) {
 			gpuErrChk(cudaStreamSynchronize(cudaStreams[(id_r + 1) % 2]));
-			for (size_t i = 0; i < n_dest; i++) {
+			for (size_t i = 0; i < n_dest; i++)
 				this->ff_send_out_to(previous_bouts[i], i);
-			}
 		}
 	}
 
@@ -342,11 +339,10 @@ public:
 		bool     end = false;
 		tuple_t *ptr = nullptr;
 		while (!end) {
-			if (recycle_queue->pop((void **) &ptr)) {
+			if (recycle_queue->pop((void **) &ptr))
 				gpuErrChk(cudaFree(ptr));
-			} else {
+			else
 				end = true;
-			}
 		}
 	}
 };
@@ -418,9 +414,10 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, size_
                                            Window_State **states, int num_dist_keys,
                                            int num_active_thread_per_warp) {
 	extern __shared__ char array[];
-	int                    id = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
-	int                    num_threads = gridDim.x * blockDim.x;       // number of threads in the kernel
-	int                    threads_per_worker =
+
+	int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
+	int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
+	int threads_per_worker =
 	        warpSize / num_active_thread_per_warp;      // number of threads composing a worker entity
 	int num_workers = num_threads / threads_per_worker; // number of workers
 	int id_worker   = id / threads_per_worker;          // id of the worker corresponding to this thread
@@ -428,15 +425,15 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, size_
 	if (id % threads_per_worker == 0) {
 		Window_State *cached_state = ((Window_State *) array) + (threadIdx.x / threads_per_worker);
 		for (int id_key = id_worker; id_key < num_dist_keys; id_key += num_workers) {
-			size_t key      = dist_keys[id_key]; // key used
-			size_t idx      = start_idxs[id_key];
-			*(cached_state) = *(states[id_key]);
+			size_t key    = dist_keys[id_key]; // key used
+			size_t idx    = start_idxs[id_key];
+			*cached_state = *(states[id_key]);
 			// execute all the inputs with key in the input batch
 			while (idx != -1) {
-				map_function(tuples[idx], *(cached_state));
+				map_function(tuples[idx], *cached_state);
 				idx = map_idxs[idx];
 			}
-			*(states[id_key]) = *(cached_state);
+			*(states[id_key]) = *cached_state;
 		}
 	}
 }
@@ -446,9 +443,8 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, size_
 __global__ void Initialize_States_Kernel(Window_State **new_states, size_t num_states) {
 	int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
 	int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
-	for (size_t i = id; i < num_states; i += num_threads) {
+	for (size_t i = id; i < num_states; i += num_threads)
 		new (new_states[i]) Window_State();
-	}
 }
 
 class Map : public ff_node_t<batch_t<tuple_t, size_t>> {
@@ -522,7 +518,7 @@ public:
 #ifdef __aarch64__
 		max_blocks_per_sm = 32;
 
-#elif
+#else
 		gpuErrChk(
 		        cudaDeviceGetAttribute(&max_blocks_per_sm, cudaDevAttrMaxBlocksPerMultiprocessor, 0));
 #endif // __aarch64__
@@ -593,19 +589,17 @@ public:
 		int tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
 		// compute how many threads should be active per warps
 		int32_t x = (int32_t) ceil(((double) (b->kb).num_dist_keys) / tot_num_warps);
-		if (x > 1) {
+		if (x > 1)
 			x = next_power_of_two(x);
-		}
 		int num_active_thread_per_warp = std::min(x, threads_per_warp);
 		int num_blocks = std::min((int) ceil(((double) (b->kb).num_dist_keys) / warps_per_block),
 		                          numSMs * max_blocks_per_sm);
 		if (batch_to_be_sent != nullptr) {
 			gpuErrChk(cudaStreamSynchronize(records[(id_r + 1) % 2]->cudaStream));
-			if (batch_to_be_sent->isKBDone()) {
+			if (batch_to_be_sent->isKBDone())
 				this->ff_send_out(batch_to_be_sent);
-			} else {
+			else
 				delete batch_to_be_sent;
-			}
 		}
 #if !defined(__SHARED__)
 		Stateful_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp, 0,
@@ -625,8 +619,8 @@ public:
 		// Stateful_Processing_Kernel<<<num_blocks, warps_per_block*threads_per_warp,
 		// sizeof(Window_State) * num_active_thread_per_warp * warps_per_block,
 		// records[id_r]->cudaStream>>>(b->data_gpu, records[id_r]->map_idxs_gpu,
-		// records[id_r]->dist_keys_gpu, records[id_r]->start_idxs_gpu, records[id_r]->state_ptrs_gpu,
-		// (b->kb).num_dist_keys, num_active_thread_per_warp);
+		// records[id_r]->dist_keys_gpu, records[id_r]->start_idxs_gpu,
+		// records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys, num_active_thread_per_warp);
 		batch_to_be_sent                         = b;
 		id_r                                     = (id_r + 1) % 2;
 		volatile unsigned long end_time_nsec     = current_time_nsecs();
@@ -638,11 +632,10 @@ public:
 	void eosnotify(ssize_t) {
 		if (batch_to_be_sent != nullptr) {
 			gpuErrChk(cudaStreamSynchronize(records[(id_r + 1) % 2]->cudaStream));
-			if (batch_to_be_sent->isKBDone()) {
+			if (batch_to_be_sent->isKBDone())
 				this->ff_send_out(batch_to_be_sent);
-			} else {
+			else
 				delete batch_to_be_sent;
-			}
 		}
 	}
 
@@ -671,15 +664,16 @@ public:
         if (received < 100) {
             tuple_t *data_cpu;
             gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
-            gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t), cudaMemcpyDeviceToHost, cudaStream));
+            gpuErrChk(
+		    cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t), cudaMemcpyDeviceToHost,
+				    cudaStream));
             gpuErrChk(cudaStreamSynchronize(cudaStream));
             for (size_t i = 0; i < b->size; i++) {
                 tuple_t *t = &(data_cpu[i]);
                 cout << "Tuple: " << t->key << " " << t->property_value << " " << t->incremental_average
 		     << endl;
-                if (received + i >= 100) {
+                if (received + i >= 100)
                     break;
-                }
             }
             gpuErrChk(cudaFreeHost(data_cpu));
         }
@@ -723,13 +717,11 @@ void parse_dataset(const string &file_path) {
 			           atof(tokens.at(LIGHT_FIELD).c_str()), atof(tokens.at(VOLT_FIELD).c_str()));
 			parsed_file.push_back(r);
 			// insert the key device_id in the map (if it is not present)
-			if (key_occ.find(get<DEVICE_ID_FIELD>(r)) == key_occ.end()) {
+			if (key_occ.find(get<DEVICE_ID_FIELD>(r)) == key_occ.end())
 				key_occ.insert(make_pair(get<DEVICE_ID_FIELD>(r), 0));
-			}
 		} else {
 			incomplete_records++;
 		}
-
 		all_records++;
 	}
 	file.close();
@@ -743,22 +735,21 @@ void create_tuples(int num_keys) {
 		// create tuple
 		auto    record = parsed_file.at(next_tuple_idx);
 		tuple_t t;
-		// select the value of the field the user chose to monitor (parameter set in constants.hpp)
-		if (_field == TEMPERATURE) {
+		// select the value of the field the user chose to monitor (parameter set in
+		// constants.hpp)
+		if (_field == TEMPERATURE)
 			t.property_value = get<TEMP_FIELD>(record);
-		} else if (_field == HUMIDITY) {
+		else if (_field == HUMIDITY)
 			t.property_value = get<HUMID_FIELD>(record);
-		} else if (_field == LIGHT) {
+		else if (_field == LIGHT)
 			t.property_value = get<LIGHT_FIELD>(record);
-		} else if (_field == VOLTAGE) {
+		else if (_field == VOLTAGE)
 			t.property_value = get<VOLT_FIELD>(record);
-		}
 		t.incremental_average = 0;
-		if (num_keys > 0) {
+		if (num_keys > 0)
 			t.key = dist(rng);
-		} else {
+		else
 			t.key = get<DEVICE_ID_FIELD>(record);
-		}
 		t.id = (key_occ.find(get<DEVICE_ID_FIELD>(record)))->second++;
 		t.ts = 0L;
 		dataset.insert(dataset.end(), t);

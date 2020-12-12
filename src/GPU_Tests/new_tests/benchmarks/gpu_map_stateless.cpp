@@ -126,14 +126,15 @@ inline unsigned long current_time_nsecs() {
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = false) {
 	if (code != cudaSuccess) {
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-		if (abort) {
+		if (abort)
 			exit(code);
-		}
 	}
 }
 
 #define gpuErrChk(ans)                                                                                       \
-	{ gpuAssert((ans), __FILE__, __LINE__); }
+	do {                                                                                                 \
+		gpuAssert((ans), __FILE__, __LINE__);                                                        \
+	} while (0)
 
 template<typename in_t, typename key_t = std::false_type>
 struct batch_t {
@@ -173,9 +174,8 @@ struct batch_t {
 		if (old_value == 1) {
 #if __RECYCLE__
 			// try to push the GPU array into the recycling queue
-			if (!queue->push((void *const) raw_data_gpu)) {
+			if (!queue->push((void *const) raw_data_gpu))
 				cudaFree(raw_data_gpu);
-			}
 #else
 			cudaFree(raw_data_gpu);
 #endif
@@ -244,9 +244,8 @@ public:
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *) {
 		bool endGeneration = false;
 		while (!endGeneration) {
-			if (generated_tuples > 0) {
+			if (generated_tuples > 0)
 				current_time = current_time_nsecs();
-			}
 			generated_tuples++;
 			tuple_t t;
 			// prepare the tuple by reading the dataset
@@ -317,11 +316,10 @@ public:
 		bool     end = false;
 		tuple_t *ptr = nullptr;
 		while (!end) {
-			if (recycle_queue->pop((void **) &ptr)) {
+			if (recycle_queue->pop((void **) &ptr))
 				cudaFree(ptr);
-			} else {
+			else
 				end = true;
-			}
 		}
 	}
 };
@@ -366,14 +364,12 @@ public:
 		int ind = key & mask;
 		int i   = ind;
 		for (; i < size; i++) {
-			if (table_gpu[i].key == key) {
+			if (table_gpu[i].key == key)
 				return table_gpu[i].value;
-			}
 		}
 		for (i = 0; i < ind; i++) {
-			if (table_gpu[i].key == key) {
+			if (table_gpu[i].key == key)
 				return table_gpu[i].value;
-			}
 		}
 		return 0;
 	}
@@ -394,9 +390,8 @@ __global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, Map_Fun
 	int id_worker   = id / threads_per_worker;          // id of the worker corresponding to this thread
 	// only "num_active_thread_per_warp" threads per warp work, the others are idle
 	if (id % threads_per_worker == 0) {
-		for (size_t i = id_worker; i < len; i += num_workers) {
+		for (size_t i = id_worker; i < len; i += num_workers)
 			_func(tuples[i]);
-		}
 	}
 }
 
@@ -435,7 +430,7 @@ public:
 #ifdef __aarch64__
 		max_blocks_per_sm = 32;
 
-#elif
+#else
 		gpuErrChk(
 		        cudaDeviceGetAttribute(&max_blocks_per_sm, cudaDevAttrMaxBlocksPerMultiprocessor, 0));
 #endif // __aarch64__
@@ -462,9 +457,8 @@ public:
 		int tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
 		// compute how many threads should be active per warps
 		int32_t x = (int32_t) ceil(((double) (b->size)) / tot_num_warps);
-		if (x > 1) {
+		if (x > 1)
 			x = next_power_of_two(x);
-		}
 		int num_active_thread_per_warp = std::min(x, threads_per_warp);
 		int num_blocks                 = std::min((int) ceil(((double) (b->size)) / warps_per_block),
                                           numSMs * max_blocks_per_sm);
@@ -513,9 +507,8 @@ public:
             for (size_t i=0; i<b->size; i++) {
                 tuple_t *t = &(data_cpu[i]);
                 cout << "Tuple: " << t->key << " " << t->property_value << " " << t->id << endl;
-                if (received + i >= 100) {
+                if (received + i >= 100)
                     break;
-                }
             }
             cudaFreeHost(data_cpu);
         }
@@ -559,9 +552,8 @@ void parse_dataset(const string &file_path) {
 			           atof(tokens.at(LIGHT_FIELD).c_str()), atof(tokens.at(VOLT_FIELD).c_str()));
 			parsed_file.push_back(r);
 			// insert the key device_id in the map (if it is not present)
-			if (key_occ.find(get<DEVICE_ID_FIELD>(r)) == key_occ.end()) {
+			if (key_occ.find(get<DEVICE_ID_FIELD>(r)) == key_occ.end())
 				key_occ.insert(make_pair(get<DEVICE_ID_FIELD>(r), 0));
-			}
 		} else {
 			incomplete_records++;
 		}
@@ -579,21 +571,19 @@ void create_tuples(int num_keys) {
 		auto    record = parsed_file.at(next_tuple_idx);
 		tuple_t t;
 		// select the value of the field the user chose to monitor (parameter set in constants.hpp)
-		if (_field == TEMPERATURE) {
+		if (_field == TEMPERATURE)
 			t.property_value = get<TEMP_FIELD>(record);
-		} else if (_field == HUMIDITY) {
+		else if (_field == HUMIDITY)
 			t.property_value = get<HUMID_FIELD>(record);
-		} else if (_field == LIGHT) {
+		else if (_field == LIGHT)
 			t.property_value = get<LIGHT_FIELD>(record);
-		} else if (_field == VOLTAGE) {
+		else if (_field == VOLTAGE)
 			t.property_value = get<VOLT_FIELD>(record);
-		}
 		t.incremental_average = 0;
-		if (num_keys > 0) {
+		if (num_keys > 0)
 			t.key = dist(rng);
-		} else {
+		else
 			t.key = get<DEVICE_ID_FIELD>(record);
-		}
 		t.id = 0;
 		t.ts = 0L;
 		dataset.insert(dataset.end(), t);
@@ -637,10 +627,9 @@ int main(int argc, char *argv[]) {
 		case 'f':
 			input_file = optarg;
 			break;
-		default: {
+		default:
 			cout << arg_error_message << endl;
 			exit(EXIT_SUCCESS);
-		}
 		}
 	}
 	// data pre-processing
