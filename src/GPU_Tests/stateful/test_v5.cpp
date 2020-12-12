@@ -20,7 +20,6 @@
  *  the allocation of state objects for the next batch.
  */
 
-// includes
 #include "../zipf.hpp"
 #include <algorithm>
 #include <ff/ff.hpp>
@@ -66,10 +65,6 @@ int32_t next_power_of_two(int32_t n) {
 	n |= n >> 16;
 	return n + 1;
 }
-
-// gpuErrChk macro
-#define gpuErrChk(ans)                                                                                       \
-	{ gpuAssert((ans), __FILE__, __LINE__); }
 
 #ifndef NDEBUG
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
@@ -138,7 +133,6 @@ struct batch_t {
 	bool            cleanup = true;
 	atomic<size_t> *counter = nullptr;
 
-	// constructor I
 	batch_t(size_t _size) : size(_size) {
 		gpuErrChk(cudaMalloc(&data_gpu, size * sizeof(tuple_t)));
 		gpuErrChk(cudaMalloc(&keys_gpu, size * sizeof(size_t)));
@@ -148,7 +142,6 @@ struct batch_t {
 		raw_keys_cpu = keys_cpu;
 	}
 
-	// constructor II
 	batch_t(size_t _size, tuple_t *_data_gpu, size_t *_keys_gpu, size_t *_keys_cpu, size_t _offset,
 	        atomic<size_t> *_counter) {
 		size         = _size;
@@ -161,7 +154,6 @@ struct batch_t {
 		counter      = _counter;
 	}
 
-	// destructor
 	~batch_t() {
 		if (counter != nullptr) {
 			size_t old_cnt = counter->fetch_sub(1);
@@ -186,7 +178,6 @@ struct state_t {
 	int index;
 	int buffer[100];
 
-	// constructor
 	__host__ __device__ state_t() {
 		index = 0;
 		memset(buffer, 0, sizeof(int) * 100);
@@ -221,7 +212,6 @@ __device__ void process(tuple_t *t, state_t *state) {
 	}
 }
 
-// CUDA Kernel Stateful_Processing_Kernel
 __global__ void Stateful_Processing_Kernel(tuple_t *tuples, size_t *keys, size_t *dist_keys_gpu,
                                            size_t num_dist_keys, state_t **states, size_t len,
                                            int num_active_thread_per_warp) {
@@ -244,7 +234,6 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, size_t *keys, size_t
 	}
 }
 
-// Source class
 class Source : public ff_node_t<batch_t> {
 public:
 	long stream_len;
@@ -259,7 +248,6 @@ public:
 	size_t *                                                 keys_cpu = nullptr;
 	tuple_t *                                                data_cpu = nullptr;
 
-	// constructor
 	Source(long _stream_len, long _num_keys, long _batch_len)
 	        : stream_len(_stream_len), num_keys(_num_keys), batch_len(_batch_len), dist(0, _num_keys - 1),
 	          dist2(0, 2000) {
@@ -274,14 +262,12 @@ public:
 		gpuErrChk(cudaStreamCreate(&cudaStream));
 	}
 
-	// destructor
 	~Source() {
 		gpuErrChk(cudaFreeHost(keys_cpu));
 		gpuErrChk(cudaFreeHost(data_cpu));
 		gpuErrChk(cudaStreamDestroy(cudaStream));
 	}
 
-	// svc method
 	batch_t *svc(batch_t *) {
 		// generation loop
 		long sent = 0;
@@ -314,7 +300,6 @@ public:
 	}
 };
 
-// Emitter class
 class Emitter : public ff_monode_t<batch_t> {
 public:
 	size_t        n_dest;
@@ -325,7 +310,6 @@ public:
 	size_t *      unique_dests_cpu = nullptr;
 	int *         freqs_dests_cpu  = nullptr;
 
-	// constructor
 	Emitter(size_t _n_dest, size_t _batch_len) : n_dest(_n_dest), batch_len(_batch_len) {
 		// allocate unique_keys_cpu array
 		gpuErrChk(cudaMallocHost(&unique_dests_cpu, sizeof(size_t) * n_dest));
@@ -335,14 +319,12 @@ public:
 		gpuErrChk(cudaStreamCreate(&cudaStream));
 	}
 
-	// destructor
 	~Emitter() {
 		gpuErrChk(cudaFreeHost(unique_dests_cpu));
 		gpuErrChk(cudaFreeHost(freqs_dests_cpu));
 		gpuErrChk(cudaStreamDestroy(cudaStream));
 	}
 
-	// svc method
 	batch_t *svc(batch_t *const b) {
 		volatile unsigned long start_time_nsec = current_time_nsecs();
 		received++;
@@ -398,7 +380,6 @@ public:
 		return this->GO_ON;
 	}
 
-	// svc_end method
 	void svc_end() {
 		std::cout << "[Emitter] average service time: "
 		          << (((double) tot_elapsed_nsec) / received) / 1000 << " usec" << std::endl;
@@ -450,10 +431,8 @@ public:
 		}
 	}
 
-	// destructor
 	~Worker() { gpuErrChk(cudaStreamDestroy(cudaStream)); }
 
-	// svc method
 	batch_t *svc(batch_t *b) {
 		volatile unsigned long start_time_nsec = current_time_nsecs();
 		received_batch++;
@@ -529,7 +508,6 @@ public:
 		return this->GO_ON;
 	}
 
-	// eosnotify method
 	void eosnotify(ssize_t id) {
 		if (batch_to_be_sent != nullptr) {
 			gpuErrChk(cudaStreamSynchronize(cudaStream));
@@ -539,7 +517,6 @@ public:
 		}
 	}
 
-	// svc_end method
 	void svc_end() {
 		printf("[Worker] average service time: %f usec\n",
 		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
@@ -548,7 +525,6 @@ public:
 	}
 };
 
-// Sink class
 class Sink : public ff_minode_t<batch_t> {
 public:
 	size_t                 received        = 0; // counter of received tuples
@@ -558,16 +534,13 @@ public:
 	cudaStream_t           cudaStream;
 	unsigned long          correctness = 0;
 
-	// constructor
 	Sink() : start_time_us(current_time_usecs()), last_time_us(current_time_usecs()) {
 		// initialize CUDA stream
 		gpuErrChk(cudaStreamCreate(&cudaStream));
 	}
 
-	// destructor
 	~Sink() { gpuErrChk(cudaStreamDestroy(cudaStream)); }
 
-	// svc method
 	batch_t *svc(batch_t *b) {
 		received += b->size;
 		received_sample += b->size;
@@ -602,7 +575,6 @@ public:
 	}
 };
 
-// main
 int main(int argc, char *argv[]) {
 	int    option     = 0;
 	size_t stream_len = 0;
