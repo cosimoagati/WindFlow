@@ -71,7 +71,6 @@ __host__ __device__ state_t::state_t() {
 	memset(buffer, 0, sizeof(int) * 100);
 }
 
-// constructor
 Emitter::Emitter(const size_t _n_dest, const size_t _batch_len) : n_dest(_n_dest), batch_len(_batch_len) {
 	// allocate unique_keys_cpu array
 	cudaMallocHost(&unique_dests_cpu, sizeof(size_t) * n_dest);
@@ -87,7 +86,6 @@ Emitter::~Emitter() {
 	gpuErrChk(cudaStreamDestroy(cudaStream));
 }
 
-// svc method
 batch_t *Emitter::svc(batch_t *const b) {
 	volatile unsigned long start_time_nsec = current_time_nsecs();
 	received++;

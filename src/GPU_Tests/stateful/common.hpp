@@ -9,7 +9,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-// number of CUDA threads per block
 static constexpr auto threads_per_block = 256;
 
 #ifndef NDEBUG
@@ -126,7 +125,6 @@ public:
 	}
 
 	batch_t *svc(batch_t *) {
-		// generation loop
 		long sent = 0;
 		while (sent < stream_len) {
 			const auto b = create_batch();
@@ -230,7 +228,6 @@ inline unsigned long current_time_nsecs() {
 // 	}
 // }
 
-// CUDA Kernel Stateful_Processing_Kernel
 __global__ void Stateful_Processing_Kernel(tuple_t *tuples, std::size_t *keys, state_t **states,
                                            std::size_t len);
 
