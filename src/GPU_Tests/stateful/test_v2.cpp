@@ -122,7 +122,7 @@ public:
 		received_batch++;
 		received += b->size;
 		size_t *keys_cpu = nullptr;
-		cudaMallocHost(&keys_cpu, sizeof(size_t) * b->size);
+		gpuErrChk(cudaMallocHost(&keys_cpu, sizeof(size_t) * b->size));
 		// copy keys_gpu to keys_cpu
 		gpuErrChk(cudaMemcpyAsync(keys_cpu, b->keys_gpu, b->size * sizeof(size_t),
 		                          cudaMemcpyDeviceToHost, cudaStream));
@@ -147,8 +147,8 @@ public:
 			if (it == hashmap.end()) {
 				// create the state of that key
 				state_t *state = nullptr;
-				cudaMalloc(&state, sizeof(state_t));
-				cudaMemsetAsync(state, 0, sizeof(state_t), cudaStream);
+				gpuErrChk(cudaMalloc(&state, sizeof(state_t)));
+				gpuErrChk(cudaMemsetAsync(state, 0, sizeof(state_t), cudaStream));
 				hashmap.insert(std::make_pair(key, state));
 				it = hashmap.find(key);
 			}
@@ -163,13 +163,13 @@ public:
 		}
 		// copy state_ptrs_cpu to state_ptrs_gpu
 		state_t **state_ptrs_gpu = nullptr;
-		cudaMalloc(&state_ptrs_gpu, b->size * sizeof(state_t *));
+		gpuErrChk(cudaMalloc(&state_ptrs_gpu, b->size * sizeof(state_t *)));
 		gpuErrChk(cudaMemcpyAsync(state_ptrs_gpu, state_ptrs_cpu, b->size * sizeof(state_t *),
 		                          cudaMemcpyHostToDevice, cudaStream));
 
 		// copy distinct keys on GPU
 		size_t *dist_keys_gpu = nullptr;
-		cudaMalloc(&dist_keys_gpu, sizeof(size_t) * num_dist_keys);
+		gpuErrChk(cudaMalloc(&dist_keys_gpu, sizeof(size_t) * num_dist_keys));
 		gpuErrChk(cudaMemcpyAsync(dist_keys_gpu, dist_keys_cpu, num_dist_keys * sizeof(size_t),
 		                          cudaMemcpyHostToDevice, cudaStream));
 
@@ -182,9 +182,9 @@ public:
 		        b->data_gpu, b->keys_gpu, dist_keys_gpu, num_dist_keys, state_ptrs_gpu, b->size);
 		free(state_ptrs_cpu);
 		free(dist_keys_cpu);
-		cudaFree(state_ptrs_gpu);
-		cudaFree(dist_keys_gpu);
-		cudaFreeHost(keys_cpu);
+		gpuErrChk(cudaFree(state_ptrs_gpu));
+		gpuErrChk(cudaFree(dist_keys_gpu));
+		gpuErrChk(cudaFreeHost(keys_cpu));
 		gpuErrChk(cudaStreamSynchronize(cudaStream));
 
 		volatile unsigned long end_time_nsec     = current_time_nsecs();

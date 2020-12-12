@@ -131,9 +131,9 @@ struct batch_t {
 
 	// constructor I
 	batch_t(size_t _size) : size(_size) {
-		cudaMalloc(&data_gpu, size * sizeof(tuple_t));
-		cudaMalloc(&keys_gpu, size * sizeof(size_t));
-		cudaMallocHost(&keys_cpu, sizeof(size_t) * size);
+		gpuErrChk(cudaMalloc(&data_gpu, size * sizeof(tuple_t)));
+		gpuErrChk(cudaMalloc(&keys_gpu, size * sizeof(size_t)));
+		gpuErrChk(cudaMallocHost(&keys_cpu, sizeof(size_t) * size));
 		raw_data_gpu = data_gpu;
 		raw_keys_gpu = keys_gpu;
 		raw_keys_cpu = keys_cpu;
@@ -158,16 +158,16 @@ struct batch_t {
 			size_t old_cnt = counter->fetch_sub(1);
 			if (old_cnt == 1) {
 				if (cleanup) {
-					cudaFree(raw_data_gpu);
-					cudaFree(raw_keys_gpu);
-					cudaFreeHost(raw_keys_cpu);
+					gpuErrChk(cudaFree(raw_data_gpu));
+					gpuErrChk(cudaFree(raw_keys_gpu));
+					gpuErrChk(cudaFreeHost(raw_keys_cpu));
 				}
 				delete counter;
 			}
 		} else if (cleanup) {
-			cudaFree(raw_data_gpu);
-			cudaFree(raw_keys_gpu);
-			cudaFreeHost(raw_keys_cpu);
+			gpuErrChk(cudaFree(raw_data_gpu));
+			gpuErrChk(cudaFree(raw_keys_gpu));
+			gpuErrChk(cudaFreeHost(raw_keys_cpu));
 		}
 	}
 };
@@ -259,16 +259,16 @@ public:
 		// rng2.seed(std::random_device()());
 		rng.seed(0);
 		rng2.seed(0);
-		cudaMallocHost(&keys_cpu, sizeof(size_t) * batch_len);
-		cudaMallocHost(&data_cpu, sizeof(tuple_t) * batch_len);
+		gpuErrChk(cudaMallocHost(&keys_cpu, sizeof(size_t) * batch_len));
+		gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * batch_len));
 		// initialize CUDA stream
 		gpuErrChk(cudaStreamCreate(&cudaStream));
 	}
 
 	// destructor
 	~Source() {
-		cudaFreeHost(keys_cpu);
-		cudaFreeHost(data_cpu);
+		gpuErrChk(cudaFreeHost(keys_cpu));
+		gpuErrChk(cudaFreeHost(data_cpu));
 		gpuErrChk(cudaStreamDestroy(cudaStream));
 	}
 
@@ -319,17 +319,17 @@ public:
 	// constructor
 	Emitter(size_t _n_dest, size_t _batch_len) : n_dest(_n_dest), batch_len(_batch_len) {
 		// allocate unique_keys_cpu array
-		cudaMallocHost(&unique_dests_cpu, sizeof(size_t) * n_dest);
+		gpuErrChk(cudaMallocHost(&unique_dests_cpu, sizeof(size_t) * n_dest));
 		// allocate freqs_keys_cpu array
-		cudaMallocHost(&freqs_dests_cpu, sizeof(int) * n_dest);
+		gpuErrChk(cudaMallocHost(&freqs_dests_cpu, sizeof(int) * n_dest));
 		// initialize CUDA stream
 		gpuErrChk(cudaStreamCreate(&cudaStream));
 	}
 
 	// destructor
 	~Emitter() {
-		cudaFreeHost(unique_dests_cpu);
-		cudaFreeHost(freqs_dests_cpu);
+		gpuErrChk(cudaFreeHost(unique_dests_cpu));
+		gpuErrChk(cudaFreeHost(freqs_dests_cpu));
 		gpuErrChk(cudaStreamDestroy(cudaStream));
 	}
 
@@ -469,8 +469,8 @@ public:
 			if (it == hashmap.end()) {
 				// create the state of that key
 				state_t *state = nullptr;
-				cudaMalloc(&state, sizeof(state_t));
-				cudaMemsetAsync(state, 0, sizeof(state_t), cudaStream);
+				gpuErrChk(cudaMalloc(&state, sizeof(state_t)));
+				gpuErrChk(cudaMemsetAsync(state, 0, sizeof(state_t), cudaStream));
 				hashmap.insert(std::make_pair(key, state));
 				it = hashmap.find(key);
 			}
@@ -485,16 +485,16 @@ public:
 		}
 		if (batch_to_be_sent != nullptr) {
 			gpuErrChk(cudaStreamSynchronize(cudaStream));
-			cudaFree(state_ptrs_gpu);
-			cudaFree(dist_keys_gpu);
+			gpuErrChk(cudaFree(state_ptrs_gpu));
+			gpuErrChk(cudaFree(dist_keys_gpu));
 			this->ff_send_out(batch_to_be_sent);
 		}
 		// copy state_ptrs_cpu to state_ptrs_gpu
-		cudaMalloc(&state_ptrs_gpu, b->size * sizeof(state_t *));
+		gpuErrChk(cudaMalloc(&state_ptrs_gpu, b->size * sizeof(state_t *)));
 		gpuErrChk(cudaMemcpyAsync(state_ptrs_gpu, state_ptrs_cpu, b->size * sizeof(state_t *),
 		                          cudaMemcpyHostToDevice, cudaStream));
 		// copy distinct keys on GPU
-		cudaMalloc(&dist_keys_gpu, sizeof(size_t) * num_dist_keys);
+		gpuErrChk(cudaMalloc(&dist_keys_gpu, sizeof(size_t) * num_dist_keys));
 		gpuErrChk(cudaMemcpyAsync(dist_keys_gpu, dist_keys_cpu, num_dist_keys * sizeof(size_t),
 		                          cudaMemcpyHostToDevice, cudaStream));
 		// launch the kernel to compute the results
@@ -524,8 +524,8 @@ public:
 	void eosnotify(ssize_t id) {
 		if (batch_to_be_sent != nullptr) {
 			gpuErrChk(cudaStreamSynchronize(cudaStream));
-			cudaFree(state_ptrs_gpu);
-			cudaFree(dist_keys_gpu);
+			gpuErrChk(cudaFree(state_ptrs_gpu));
+			gpuErrChk(cudaFree(dist_keys_gpu));
 			this->ff_send_out(batch_to_be_sent);
 		}
 	}
@@ -563,7 +563,7 @@ public:
 		received += b->size;
 		received_sample += b->size;
 		tuple_t *data_cpu = nullptr;
-		cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size);
+		gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
 		gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t),
 		                          cudaMemcpyDeviceToHost, cudaStream));
 		gpuErrChk(cudaStreamSynchronize(cudaStream));
@@ -579,7 +579,7 @@ public:
 			received_sample = 0;
 			last_time_us    = current_time_usecs();
 		}
-		cudaFreeHost(data_cpu);
+		gpuErrChk(cudaFreeHost(data_cpu));
 		delete b;
 		return this->GO_ON;
 	}
