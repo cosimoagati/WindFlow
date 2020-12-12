@@ -33,8 +33,8 @@ __host__ __device__ tuple_t::tuple_t() : key(0), value(0) {}
 tuple_t::tuple_t(const size_t _key, const int64_t _value) : key(_key), value(_value) {}
 
 batch_t::batch_t(const size_t _size) : size(_size) {
-	cudaMalloc(&data_gpu, size * sizeof(tuple_t));
-	cudaMalloc(&keys_gpu, size * sizeof(size_t));
+	gpuErrChk(cudaMalloc(&data_gpu, size * sizeof(tuple_t)));
+	gpuErrChk(cudaMalloc(&keys_gpu, size * sizeof(size_t)));
 	raw_data_gpu = data_gpu;
 	raw_keys_gpu = keys_gpu;
 }
@@ -55,14 +55,14 @@ batch_t::~batch_t() {
 		size_t old_cnt = counter->fetch_sub(1);
 		if (old_cnt == 1) {
 			if (cleanup) {
-				cudaFree(raw_data_gpu);
-				cudaFree(raw_keys_gpu);
+				gpuErrChk(cudaFree(raw_data_gpu));
+				gpuErrChk(cudaFree(raw_keys_gpu));
 			}
 			delete counter;
 		}
 	} else if (cleanup) {
-		cudaFree(raw_data_gpu);
-		cudaFree(raw_keys_gpu);
+		gpuErrChk(cudaFree(raw_data_gpu));
+		gpuErrChk(cudaFree(raw_keys_gpu));
 	}
 }
 
@@ -73,16 +73,16 @@ __host__ __device__ state_t::state_t() {
 
 Emitter::Emitter(const size_t _n_dest, const size_t _batch_len) : n_dest(_n_dest), batch_len(_batch_len) {
 	// allocate unique_keys_cpu array
-	cudaMallocHost(&unique_dests_cpu, sizeof(size_t) * n_dest);
+	gpuErrChk(cudaMallocHost(&unique_dests_cpu, sizeof(size_t) * n_dest));
 	// allocate freqs_keys_cpu array
-	cudaMallocHost(&freqs_dests_cpu, sizeof(int) * n_dest);
+	gpuErrChk(cudaMallocHost(&freqs_dests_cpu, sizeof(int) * n_dest));
 	// initialize CUDA stream
 	gpuErrChk(cudaStreamCreate(&cudaStream));
 }
 
 Emitter::~Emitter() {
-	cudaFreeHost(unique_dests_cpu);
-	cudaFreeHost(freqs_dests_cpu);
+	gpuErrChk(cudaFreeHost(unique_dests_cpu));
+	gpuErrChk(cudaFreeHost(freqs_dests_cpu));
 	gpuErrChk(cudaStreamDestroy(cudaStream));
 }
 
@@ -153,7 +153,7 @@ batch_t *Sink::svc(batch_t *const b) {
 	received += b->size;
 	received_per_sample += b->size;
 	tuple_t *data_cpu = nullptr;
-	cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size);
+	gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
 	gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t), cudaMemcpyDeviceToHost,
 	                          cudaStream));
 	gpuErrChk(cudaStreamSynchronize(cudaStream));
@@ -169,7 +169,7 @@ batch_t *Sink::svc(batch_t *const b) {
 		last_time_us        = current_time_usecs();
 	}
 	delete b;
-	cudaFreeHost(data_cpu);
+	gpuErrChk(cudaFreeHost(data_cpu));
 	return this->GO_ON;
 }
 
