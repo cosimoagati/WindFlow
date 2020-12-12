@@ -73,19 +73,24 @@ int32_t next_power_of_two(int32_t n) {
 	return n + 1;
 }
 
-// assert function on GPU
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = false) {
+#ifndef NDEBUG
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
 	if (code != cudaSuccess) {
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-		if (abort) {
+		if (abort)
 			exit(code);
-		}
 	}
 }
 
-// gpuErrChk macro
 #define gpuErrChk(ans)                                                                                       \
-	{ gpuAssert((ans), __FILE__, __LINE__); }
+	do {                                                                                                 \
+		gpuAssert((ans), __FILE__, __LINE__);                                                        \
+	} while (0)
+#else
+// Unlike the standard C assert macro, gpuErrChk simply expands to the statement itself if NDEBUG is defined,
+// making it suitable to be used with expressions producing side effects.
+#define gpuErrChk(ans) (ans)
+#endif // NDEBUG
 
 // functor to compare two keys (less than)
 struct key_less_than_op {
