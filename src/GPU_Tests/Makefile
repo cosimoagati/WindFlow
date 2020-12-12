@@ -18,7 +18,7 @@ NVOPTFLAGS      = -w --expt-extended-lambda -O3 -Wno-deprecated-gpu-targets --ex
 
 ARCH = $(shell arch)
 ifeq ($(ARCH), x86_64)
-	NVOPTFLAGS := $(NVOPTFLAGS) -gencode arch=compute_30,code=sm_30
+	NVOPTFLAGS := $(NVOPTFLAGS) -gencode arch=compute_53,code=sm_53
 endif
 ifeq ($(ARCH), aarch64)
 	NVOPTFLAGS := $(NVOPTFLAGS) -gencode arch=compute_53,code=sm_53
