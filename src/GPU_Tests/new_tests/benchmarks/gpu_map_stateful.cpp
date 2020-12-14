@@ -688,22 +688,22 @@ public:
 
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		received_batches++;
-#if 0
-        if (received < 100) {
-            tuple_t *data_cpu;
-            gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
-            gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t),
-				      cudaMemcpyDeviceToHost, cudaStream));
-            gpuErrChk(cudaStreamSynchronize(cudaStream));
-            for (size_t i=0; i<b->size; i++) {
-                tuple_t *t = &(data_cpu[i]);
-                cout << "Tuple: " << t->key << " " << t->property_value << " " << t->incremental_average
-		     << endl;
-                if (received + i >= 100)
-                    break;
-            }
-            gpuErrChk(cudaFreeHost(data_cpu));
-        }
+#ifndef NDEBUG
+		if (received < 100) {
+			tuple_t *data_cpu;
+			gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
+			gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t),
+			                          cudaMemcpyDeviceToHost, cudaStream));
+			gpuErrChk(cudaStreamSynchronize(cudaStream));
+			for (size_t i = 0; i < b->size; i++) {
+				tuple_t *t = &(data_cpu[i]);
+				cout << "Tuple: " << t->key << " " << t->property_value << " "
+				     << t->incremental_average << endl;
+				if (received + i >= 100)
+					break;
+			}
+			gpuErrChk(cudaFreeHost(data_cpu));
+		}
 #endif
 		received += b->size;
 		delete b;
