@@ -445,15 +445,16 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, bool *flags, int *ma
 
 	// only the first thread of each warp works, the others are idle
 	if (thread_id % threads_per_worker == 0) {
+		Window_State *cached_state = ((Window_State *) array) + (threadIdx.x / threads_per_worker);
 		for (int key_id = worker_id; key_id < num_dist_keys; key_id += num_workers) {
-			size_t idx          = start_idxs[key_id];
-			auto   cached_state = *(states[key_id]);
+			size_t idx    = start_idxs[key_id];
+			*cached_state = *(states[key_id]);
 			// execute all the inputs with key in the input batch
 			while (idx != -1) {
-				flags[idx] = map_function(tuples[idx], cached_state);
+				flags[idx] = map_function(tuples[idx], *cached_state);
 				idx        = map_idxs[idx];
 			}
-			*(states[key_id]) = cached_state;
+			*(states[key_id]) = *cached_state;
 		}
 	}
 }
