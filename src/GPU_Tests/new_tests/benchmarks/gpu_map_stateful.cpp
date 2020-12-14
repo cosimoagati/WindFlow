@@ -429,7 +429,7 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *
 	}
 }
 #else
-__global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, size_t *dist_keys, int *start_idxs,
+__global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *start_idxs,
                                            Window_State **states, int num_dist_keys,
                                            int num_active_thread_per_warp) {
 	extern __shared__ char array[];
