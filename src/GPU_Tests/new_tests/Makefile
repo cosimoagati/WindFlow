@@ -30,22 +30,22 @@ debug: all
 all: cpu_map_stateful gpu_map_stateful gpu_map_stateless gpu_filter_stateless gpu_filter_stateful
 
 cpu_map_stateful.o: benchmarks/cpu_map_stateful.cpp
-	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) -c $< -o cpu_map_stateful.o
+	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o cpu_map_stateful.o
 
 gpu_map_stateful.o: benchmarks/gpu_map_stateful.cpp
-	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) -c $< -o gpu_map_stateful.o
+	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o gpu_map_stateful.o
 
 gpu_map_stateless.o: benchmarks/gpu_map_stateless.cpp
-	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) -c $< -o gpu_map_stateless.o
+	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o gpu_map_stateless.o
 
 gpu_filter_stateless.o: benchmarks/gpu_filter_stateless.cpp
-	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) -c $< -o gpu_filter_stateless.o
+	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o gpu_filter_stateless.o
 
 gpu_filter_stateful.o: benchmarks/gpu_filter_stateful.cpp
-	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) -c $< -o gpu_filter_stateful.o
+	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o gpu_filter_stateful.o
 
 # gpu_split.o: benchmarks/gpu_split.cpp
-# 	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) -c $< -o gpu_split.o
+# 	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o gpu_split.o
 
 cpu_map_stateful: cpu_map_stateful.o
 	$(NVXX) cpu_map_stateful.o -o cpu_map_stateful
