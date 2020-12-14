@@ -11,10 +11,8 @@ OPTFLAGS		= -g -O3
 LDFLAGS			= -pthread
 
 NVXX 			= /usr/local/cuda/bin/nvcc
-NVXXFLAGS		= -std=c++14 -x cu 
-# NVOPTFLAGS		= -w --expt-extended-lambda -O3 -g -gencode arch=compute_30,code=sm_30 -Wno-deprecated-gpu-targets
-
-NVOPTFLAGS      = -w --expt-extended-lambda -O3 -Wno-deprecated-gpu-targets --expt-relaxed-constexpr
+NVXXFLAGS               = -std=c++14 -x cu --compiler-options "-Wall -Wextra -Wpedantic"
+NVOPTFLAGS              = -w --expt-extended-lambda -O3 -Wno-deprecated-gpu-targets --expt-relaxed-constexpr
 
 ARCH = $(shell arch)
 ifeq ($(ARCH), x86_64)

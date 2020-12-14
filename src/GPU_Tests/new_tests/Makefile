@@ -11,7 +11,7 @@ OPTFLAGS        = -g -O3
 LDFLAGS         = -pthread
 
 NVXX            = /usr/local/cuda/bin/nvcc
-NVXXFLAGS       = -std=c++14 -x cu
+NVXXFLAGS       = -std=c++14 -x cu --compiler-options "-Wall -Wextra -Wpedantic"
 NVOPTFLAGS      = -w --expt-extended-lambda -O3 -Wno-deprecated-gpu-targets --expt-relaxed-constexpr
 
 ARCH = $(shell arch)
