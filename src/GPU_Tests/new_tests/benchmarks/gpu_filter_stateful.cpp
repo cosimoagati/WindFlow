@@ -412,12 +412,14 @@ __device__ bool map_function(tuple_t &t, Window_State &state) {
 __global__ void Stateful_Processing_Kernel(tuple_t *tuples, bool *flags, int *map_idxs, size_t *dist_keys,
                                            int *start_idxs, Window_State **states, int num_dist_keys,
                                            int num_active_thread_per_warp) {
-	const int thread_id          = threadIdx.x + blockIdx.x * blockDim.x;
-	const int num_threads        = gridDim.x * blockDim.x;
+	const int thread_id   = threadIdx.x + blockIdx.x * blockDim.x;
+	const int num_threads = gridDim.x * blockDim.x;
+
+	// A "worker" is a thread that is actually doing work.
 	const int threads_per_worker = warpSize / num_active_thread_per_warp;
 	const int num_workers        = num_threads / threads_per_worker;
 	const int worker_id          = thread_id / threads_per_worker;
-	// only the first thread of each warp works, the others are idle
+	// only one thread each threads_per_worker threads works, the others are idle
 	if (thread_id % threads_per_worker == 0) {
 		for (int id_key = worker_id; id_key < num_dist_keys; id_key += num_workers) {
 			const size_t key = dist_keys[id_key]; // key used
