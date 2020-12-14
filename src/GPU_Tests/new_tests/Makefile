@@ -6,7 +6,7 @@ FF_INCLUDES     = $(HOME)/fastflow/
 CXX             = g++
 CXXFLAGS        = -std=c++14
 INCLUDES        = -I $(FF_INCLUDES)
-MACRO           = -DFF_BOUNDED_BUFFER -DDEFAULT_BUFFER_CAPACITY=16 -D__RECYCLE__
+MACRO           = -DFF_BOUNDED_BUFFER -DDEFAULT_BUFFER_CAPACITY=16 -D__RECYCLE__ -DNDEBUG
 OPTFLAGS        = -g -O3
 LDFLAGS         = -pthread
 
@@ -21,6 +21,10 @@ endif
 ifeq ($(ARCH), aarch64)
 	NVOPTFLAGS := $(NVOPTFLAGS) -gencode arch=compute_53,code=sm_53
 endif
+
+debug: MACRO := $(MACRO) -UNDEBUG
+debug: OPTFLAGS := $(OPTFLAGS) -gtoggle
+debug: all
 
 # gpu_split is removed for now
 all: cpu_map_stateful gpu_map_stateful gpu_map_stateless gpu_filter_stateless gpu_filter_stateful

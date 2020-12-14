@@ -6,7 +6,7 @@ FF_INCLUDES		= $(HOME)/fastflow/
 CXX 			= g++
 CXXFLAGS		= -std=c++14
 INCLUDES		= -I $(FF_INCLUDES)
-MACRO                   = -DFF_BOUNDED_BUFFER
+MACRO                   = -DFF_BOUNDED_BUFFER -DNDEBUG
 OPTFLAGS		= -g -O3
 LDFLAGS			= -pthread
 
@@ -24,6 +24,9 @@ ifeq ($(ARCH), aarch64)
 	NVOPTFLAGS := $(NVOPTFLAGS) -gencode arch=compute_53,code=sm_53
 endif
 
+debug: MACRO := $(MACRO) -UNDEBUG
+debug: OPTFLAGS := $(OPTFLAGS) -gtoggle
+debug: all
 
 all: test_scatter_v1 test_scatter_v2 test_scatter_v3 test_scatter_v4 test_stateful_v1 test_stateful_v2 test_stateful_v3 test_stateful_v4 test_stateful_v5 test_stateful_v6
 
