@@ -406,7 +406,7 @@ __device__ void map_function(tuple_t &t, Window_State &state) {
 }
 
 #if !defined(__SHARED__)
-__global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, size_t *dist_keys, int *start_idxs,
+__global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *start_idxs,
                                            Window_State **states, int num_dist_keys,
                                            int num_active_thread_per_warp) {
 	const int thread_id   = threadIdx.x + blockIdx.x * blockDim.x;
@@ -419,8 +419,8 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, size_
 	// only one thread each threads_per_worker threads works, the others are idle
 	if (thread_id % threads_per_worker == 0) {
 		for (int key_id = worker_id; key_id < num_dist_keys; key_id += num_workers) {
-			const size_t key = dist_keys[key_id]; // key used
-			size_t       idx = start_idxs[key_id];
+
+			size_t idx = start_idxs[key_id];
 			// execute all the inputs with key in the input batch
 			while (idx != -1) {
 				map_function(tuples[idx], *(states[key_id]));
@@ -626,9 +626,8 @@ public:
 #if !defined(__SHARED__)
 		Stateful_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp, 0,
 		                             records[id_r]->cudaStream>>>(
-		        b->data_gpu, records[id_r]->map_idxs_gpu, records[id_r]->dist_keys_gpu,
-		        records[id_r]->start_idxs_gpu, records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys,
-		        num_active_thread_per_warp);
+		        b->data_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
+		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys, num_active_thread_per_warp);
 #else
 		Stateful_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp,
 		                             sizeof(Window_State) * num_active_thread_per_warp
