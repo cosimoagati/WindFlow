@@ -458,8 +458,8 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *
 
 // CUDA Kernel to initialize the states of new keys
 __global__ void Initialize_States_Kernel(Window_State **new_states, size_t num_states) {
-	const int id          = threadIdx.x + blockIdx.x * blockDim.x; // id of the thread in the kernel
-	const int num_threads = gridDim.x * blockDim.x;                // number of threads in the kernel
+	const int id          = threadIdx.x + blockIdx.x * blockDim.x;
+	const int num_threads = gridDim.x * blockDim.x;
 	for (size_t i = id; i < num_states; i += num_threads)
 		new (new_states[i]) Window_State();
 }
