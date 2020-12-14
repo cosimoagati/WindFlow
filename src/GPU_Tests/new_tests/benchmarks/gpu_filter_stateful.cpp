@@ -658,7 +658,7 @@ public:
 #else
 		Stateful_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp,
 		                             sizeof(Window_State) * num_active_thread_per_warp
-		                                     * warps_per_block *,
+		                                     * warps_per_block,
 		                             records[id_r]->cudaStream>>>(
 		        b->data_gpu, flags_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
 		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys, num_active_thread_per_warp);
