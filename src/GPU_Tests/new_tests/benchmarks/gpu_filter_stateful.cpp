@@ -437,24 +437,25 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, bool *flags, int *ma
                                            int num_active_thread_per_warp) {
 	extern __shared__ char array[];
 
-	const int thread_id          = threadIdx.x + blockIdx.x * blockDim.x;
-	const int num_threads        = gridDim.x * blockDim.x;
-	const int threads_per_worker = warpSize / num_active_thread_per_warp;
-	const int num_workers        = num_threads / threads_per_worker;
-	const int worker_id          = thread_id / threads_per_worker;
+	const int  thread_id          = threadIdx.x + blockIdx.x * blockDim.x;
+	const int  num_threads        = gridDim.x * blockDim.x;
+	const int  threads_per_worker = warpSize / num_active_thread_per_warp;
+	const int  num_workers        = num_threads / threads_per_worker;
+	const int  worker_id          = thread_id / threads_per_worker;
+	const auto cached_states      = reinterpret_cast<Window_State *>(array);
 
 	// only the first thread of each warp works, the others are idle
 	if (thread_id % threads_per_worker == 0) {
-		Window_State *cached_state = ((Window_State *) array) + (threadIdx.x / threads_per_worker);
+		auto &cached_state = cached_states[threadIdx.x / threads_per_worker];
 		for (int key_id = worker_id; key_id < num_dist_keys; key_id += num_workers) {
-			size_t idx    = start_idxs[key_id];
-			*cached_state = *(states[key_id]);
+			size_t idx   = start_idxs[key_id];
+			cached_state = *(states[key_id]);
 			// execute all the inputs with key in the input batch
 			while (idx != -1) {
-				flags[idx] = map_function(tuples[idx], *cached_state);
+				flags[idx] = map_function(tuples[idx], cached_state);
 				idx        = map_idxs[idx];
 			}
-			*(states[key_id]) = *cached_state;
+			*(states[key_id]) = cached_state;
 		}
 	}
 }
