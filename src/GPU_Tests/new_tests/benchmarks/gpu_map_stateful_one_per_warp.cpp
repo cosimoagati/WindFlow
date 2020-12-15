@@ -606,7 +606,7 @@ public:
 		int32_t x = (int32_t) ceil(((double) (b->kb).num_dist_keys) / tot_num_warps);
 		if (x > 1)
 			x = next_power_of_two(x);
-		int num_blocks = std::min((int) ceil(((double) (b->kb).num_dist_keys) / warps_per_block),
+		const int num_blocks = std::min((int) ceil(((double) (b->kb).num_dist_keys) / warps_per_block),
 		                          numSMs * max_blocks_per_sm);
 		if (batch_to_be_sent != nullptr) {
 			gpuErrChk(cudaStreamSynchronize(records[(id_r + 1) % 2]->cudaStream));

@@ -590,15 +590,16 @@ public:
 		                          records[id_r]->cudaStream));
 		num_keys_per_batch += (b->kb).num_dist_keys;
 		// launch the kernel to compute the results
-		int warps_per_block = ((max_threads_per_sm / max_blocks_per_sm) / threads_per_warp);
-		int tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
+		const int warps_per_block = ((max_threads_per_sm / max_blocks_per_sm) / threads_per_warp);
+		const int tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
 		// compute how many threads should be active per warps
 		int32_t x = (int32_t) ceil(((double) (b->kb).num_dist_keys) / tot_num_warps);
 		if (x > 1)
 			x = next_power_of_two(x);
-		int num_active_thread_per_warp = std::min(x, threads_per_warp);
-		int num_blocks = std::min((int) ceil(((double) (b->kb).num_dist_keys) / warps_per_block),
-		                          numSMs * max_blocks_per_sm);
+		const int num_active_thread_per_warp = std::min(x, threads_per_warp);
+		const int num_blocks =
+		        std::min((int) ceil(((double) (b->kb).num_dist_keys) / warps_per_block),
+		                 numSMs * max_blocks_per_sm);
 		if (batch_to_be_sent != nullptr) {
 			gpuErrChk(cudaStreamSynchronize(records[(id_r + 1) % 2]->cudaStream));
 			if (batch_to_be_sent->isKBDone())
