@@ -711,7 +711,7 @@ public:
 
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		received_batches++;
-#if NDEBUG
+#ifndef NDEBUG
 		if (received < 100) {
 			tuple_t *data_cpu;
 			gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
