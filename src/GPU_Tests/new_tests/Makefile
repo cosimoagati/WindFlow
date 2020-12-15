@@ -27,7 +27,7 @@ debug: OPTFLAGS := $(OPTFLAGS) -gtoggle
 debug: all
 
 # gpu_split is removed for now
-all: cpu_map_stateful gpu_map_stateful gpu_map_stateless gpu_filter_stateless gpu_filter_stateful
+all: cpu_map_stateful gpu_map_stateful gpu_map_stateless gpu_filter_stateless gpu_filter_stateful gpu_map_stateful_one_per_warp
 
 cpu_map_stateful.o: benchmarks/cpu_map_stateful.cpp
 	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o cpu_map_stateful.o
@@ -43,6 +43,9 @@ gpu_filter_stateless.o: benchmarks/gpu_filter_stateless.cpp
 
 gpu_filter_stateful.o: benchmarks/gpu_filter_stateful.cpp
 	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o gpu_filter_stateful.o
+
+gpu_map_stateful_one_per_warp.o: benchmarks/gpu_map_stateful_one_per_warp.cpp
+	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o gpu_map_stateful_one_per_warp.o
 
 # gpu_split.o: benchmarks/gpu_split.cpp
 # 	$(NVXX) $(NVXXFLAGS) $(INCLUDES) $(MACRO) $(NVOPTFLAGS) $(USER_DEFINES) -c $< -o gpu_split.o
@@ -61,6 +64,9 @@ gpu_filter_stateless: gpu_filter_stateless.o
 
 gpu_filter_stateful: gpu_filter_stateful.o
 	$(NVXX) gpu_filter_stateful.o -o gpu_filter_stateful
+
+gpu_map_stateful_one_per_warp: gpu_map_stateful_one_per_warp.o
+	$(NVXX) gpu_map_stateful_one_per_warp.o -o gpu_map_stateful_one_per_warp
 
 # gpu_split: gpu_split.o
 # 	$(NVXX) gpu_split.o -o gpu_split
