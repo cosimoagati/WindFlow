@@ -312,7 +312,7 @@ public:
 		}
 	}
 
-	void eosnotify(ssize_t id) {
+	void eosnotify(ssize_t) {
 		if (generated_batches > 0) {
 			gpuErrChk(cudaStreamSynchronize(cudaStreams[(id_r + 1) % 2]));
 			this->ff_send_out(batch_to_be_sent);

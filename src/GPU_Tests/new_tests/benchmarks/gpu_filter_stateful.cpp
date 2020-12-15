@@ -348,7 +348,7 @@ public:
 		}
 	}
 
-	void eosnotify(ssize_t id) {
+	void eosnotify(ssize_t) {
 		if (generated_batches > 0) {
 			gpuErrChk(cudaStreamSynchronize(cudaStreams[(id_r + 1) % 2]));
 			for (size_t i = 0; i < n_dest; i++)
