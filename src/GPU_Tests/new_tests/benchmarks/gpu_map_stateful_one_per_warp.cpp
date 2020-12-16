@@ -18,7 +18,6 @@
  *  Version with { Sources } -> { Map } -> Sink. Stateful Map on GPU.
  */
 
-// includes
 #include "../../zipf.hpp"
 #include "robin.hpp"
 #include <algorithm>
@@ -166,7 +165,7 @@ struct batch_t {
 		free(kb.dist_keys_cpu);
 		free(kb.start_idxs_cpu);
 		free(kb.map_idxs_cpu);
-		size_t old_value = delete_counter->fetch_sub(1);
+		const size_t old_value = delete_counter->fetch_sub(1);
 		if (old_value == 1) {
 #if __RECYCLE__
 			// try to push the GPU array into the recycling queue
@@ -181,7 +180,7 @@ struct batch_t {
 
 	// method to check whether the keyby processing is complete
 	bool isKBDone() {
-		size_t old_value = (kb.ready_counter)->fetch_sub(1);
+		const size_t old_value = (kb.ready_counter)->fetch_sub(1);
 		if (old_value == 1) {
 			delete kb.ready_counter;
 			return true;
@@ -254,7 +253,7 @@ public:
 			generated_tuples++;
 			tuple_t t;
 			// prepare the tuple by reading the dataset
-			tuple_t tuple         = dataset.at(next_tuple_idx);
+			const auto tuple      = dataset.at(next_tuple_idx);
 			t.property_value      = tuple.property_value;
 			t.incremental_average = tuple.incremental_average;
 			t.key                 = tuple.key;
@@ -285,8 +284,8 @@ public:
 			allocated_batches++;
 #endif
 			// allocate batches to be sent
-			atomic<size_t> *delete_counter = new atomic<size_t>(n_dest);
-			atomic<size_t> *ready_counter  = new atomic<size_t>(n_dest);
+			const auto delete_counter = new atomic<size_t>(n_dest);
+			const auto ready_counter  = new atomic<size_t>(n_dest);
 			for (size_t i = 0; i < n_dest; i++) {
 				bouts[i] = new batch_t<tuple_t, size_t>(batch_size, data_gpu[id_r],
 				                                        data_gpu[id_r], recycle_queue,
@@ -296,7 +295,7 @@ public:
 		// copy the input tuple in the pinned buffer
 		data_cpu[id_r][tuple_id] = t;
 		// copy the key attribute of the input tuple in the pinned buffer in the batch
-		auto key = std::get<0>(t.getControlFields());
+		const auto key = std::get<0>(t.getControlFields());
 		// prepare the distribution
 		const auto id_dest = (key % n_dest);
 		auto       it      = dist_map.find(key);
@@ -565,9 +564,10 @@ public:
 		}
 		// initialize new allocated states (if any)
 		if (num_new_keys > 0) {
-			int threads_per_block = 128;
-			int num_blocks = std::min((int) ceil(((double) num_new_keys) / threads_per_block),
-			                          numSMs * max_blocks_per_sm);
+			const int threads_per_block = 128;
+			const int num_blocks =
+			        std::min((int) ceil(((double) num_new_keys) / threads_per_block),
+			                 numSMs * max_blocks_per_sm);
 			Initialize_States_Kernel<<<num_blocks, threads_per_block, 0,
 			                           records[id_r]->cudaStream>>>(
 			        records[id_r]->new_state_ptrs_cpu, num_new_keys);
@@ -586,8 +586,8 @@ public:
 		                          records[id_r]->cudaStream));
 		num_keys_per_batch += (b->kb).num_dist_keys;
 		// launch the kernel to compute the results
-		int       warps_per_block = ((max_threads_per_sm / max_blocks_per_sm) / threads_per_warp);
-		int       tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
+		const int warps_per_block = ((max_threads_per_sm / max_blocks_per_sm) / threads_per_warp);
+		const int tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
 		const int num_blocks =
 		        std::min((int) ceil(((double) (b->kb).num_dist_keys) / warps_per_block),
 		                 numSMs * max_blocks_per_sm);
@@ -614,7 +614,7 @@ public:
 		batch_to_be_sent                         = b;
 		id_r                                     = (id_r + 1) % 2;
 		volatile unsigned long end_time_nsec     = current_time_nsecs();
-		unsigned long          elapsed_time_nsec = end_time_nsec - start_time_nsec;
+		const unsigned long    elapsed_time_nsec = end_time_nsec - start_time_nsec;
 		tot_elapsed_nsec += elapsed_time_nsec;
 		return this->GO_ON;
 	}
@@ -658,9 +658,9 @@ public:
 			                          cudaMemcpyDeviceToHost, cudaStream));
 			gpuErrChk(cudaStreamSynchronize(cudaStream));
 			for (size_t i = 0; i < b->size; i++) {
-				tuple_t *t = &(data_cpu[i]);
-				cout << "Tuple: " << t->key << " " << t->property_value << " "
-				     << t->incremental_average << endl;
+				const auto &t = data_cpu[i];
+				cout << "Tuple: " << t.key << " " << t.property_value << " "
+				     << t.incremental_average << endl;
 				if (received + i >= 100)
 					break;
 			}
@@ -699,11 +699,12 @@ void parse_dataset(const string &file_path) {
 		// a record is valid if it contains at least 8 values (one for each field of interest)
 		if (token_count >= 8) {
 			// save parsed file
-			record_t r(tokens.at(DATE_FIELD), tokens.at(TIME_FIELD),
-			           atoi(tokens.at(EPOCH_FIELD).c_str()),
-			           atoi(tokens.at(DEVICE_ID_FIELD).c_str()),
-			           atof(tokens.at(TEMP_FIELD).c_str()), atof(tokens.at(HUMID_FIELD).c_str()),
-			           atof(tokens.at(LIGHT_FIELD).c_str()), atof(tokens.at(VOLT_FIELD).c_str()));
+			const record_t r(
+			        tokens.at(DATE_FIELD), tokens.at(TIME_FIELD),
+			        atoi(tokens.at(EPOCH_FIELD).c_str()),
+			        atoi(tokens.at(DEVICE_ID_FIELD).c_str()), atof(tokens.at(TEMP_FIELD).c_str()),
+			        atof(tokens.at(HUMID_FIELD).c_str()), atof(tokens.at(LIGHT_FIELD).c_str()),
+			        atof(tokens.at(VOLT_FIELD).c_str()));
 			parsed_file.push_back(r);
 			// insert the key device_id in the map (if it is not present)
 			if (key_occ.find(get<DEVICE_ID_FIELD>(r)) == key_occ.end()) {
@@ -764,7 +765,6 @@ int main(int argc, char *argv[]) {
 	// arguments from command line
 	if (argc != 11) {
 		cout << arg_error_message << endl;
-
 		exit(EXIT_SUCCESS);
 	}
 	while ((option = getopt(argc, argv, "s:k:b:n:f:")) != -1) {
