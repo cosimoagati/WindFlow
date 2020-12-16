@@ -367,11 +367,12 @@ public:
 };
 
 struct Window_State {
-	double values[1000];
-	double sum;
-	size_t first;
-	size_t last;
-	size_t count;
+	static constexpr auto values_size = 1000;
+	double                values[values_size];
+	double                sum;
+	size_t                first;
+	size_t                last;
+	size_t                count;
 
 	__device__ Window_State() {
 		sum   = 0;
@@ -381,15 +382,15 @@ struct Window_State {
 	}
 
 	__device__ double compute(double next_value) {
-		if (count == 1000) {
+		if (count == values_size) {
 			sum -= values[first];
-			first = (first + 1) % 1000;
+			first = (first + 1) % values_size;
 			sum += next_value;
 			values[last] = next_value;
-			last         = (last + 1) % 1000;
+			last         = (last + 1) % values_size;
 		} else {
 			values[last] = next_value;
-			last         = (last + 1) % 1000;
+			last         = (last + 1) % values_size;
 			sum += next_value;
 			count++;
 		}
