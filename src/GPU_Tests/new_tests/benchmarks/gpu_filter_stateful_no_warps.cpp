@@ -452,7 +452,6 @@ private:
 	int                                               numSMs             = 0;
 	int                                               max_threads_per_sm = 0;
 	int                                               max_blocks_per_sm  = 0;
-	int                                               threads_per_warp   = 0;
 	int                                               num_keys_per_batch = 0;
 	batch_t<tuple_t, size_t> *                        batch_to_be_sent   = nullptr;
 	int                                               eos_received       = 0;
@@ -517,11 +516,11 @@ public:
 		gpuErrChk(
 		        cudaDeviceGetAttribute(&max_blocks_per_sm, cudaDevAttrMaxBlocksPerMultiprocessor, 0));
 #endif // __aarch64__
-		gpuErrChk(cudaDeviceGetAttribute(&threads_per_warp, cudaDevAttrWarpSize, 0));
+
 		assert(numSMs > 0);             // 1
 		assert(max_threads_per_sm > 0); // 2048
 		assert(max_blocks_per_sm > 0);  // 16
-		assert(threads_per_warp > 0);   // 32
+
 		gpuErrChk(cudaMalloc(&new_data_gpu, sizeof(tuple_t) * max_batch_len));
 	}
 
