@@ -41,18 +41,6 @@ struct dummy_mi : ff_minode {
 	void *svc(void *t) { return t; }
 };
 
-// compute the next power of two greater than a 32-bit integer
-int32_t next_power_of_two(int32_t n) {
-	assert(n > 0);
-	--n;
-	n |= n >> 1;
-	n |= n >> 2;
-	n |= n >> 4;
-	n |= n >> 8;
-	n |= n >> 16;
-	return n + 1;
-}
-
 // information contained in each record in the dataset
 typedef enum {
 	DATE_FIELD,

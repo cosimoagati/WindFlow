@@ -42,18 +42,6 @@ struct dummy_mi : ff_minode {
 	void *svc(void *t) { return t; }
 };
 
-// compute the next power of two greater than a 32-bit integer
-int32_t next_power_of_two(int32_t n) {
-	assert(n > 0);
-	--n;
-	n |= n >> 1;
-	n |= n >> 2;
-	n |= n >> 4;
-	n |= n >> 8;
-	n |= n >> 16;
-	return n + 1;
-}
-
 // information contained in each record in the dataset
 typedef enum {
 	DATE_FIELD,
@@ -614,10 +602,6 @@ public:
 		// launch the kernel to compute the results
 		const int warps_per_block = ((max_threads_per_sm / max_blocks_per_sm) / threads_per_warp);
 		const int tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
-		// compute how many threads should be active per warps
-		int32_t x = (int32_t) ceil(((double) (b->kb).num_dist_keys) / tot_num_warps);
-		if (x > 1)
-			x = next_power_of_two(x);
 		const int num_blocks =
 		        std::min((int) ceil(((double) (b->kb).num_dist_keys) / warps_per_block),
 		                 numSMs * max_blocks_per_sm);
