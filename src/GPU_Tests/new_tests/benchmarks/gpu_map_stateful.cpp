@@ -18,7 +18,6 @@
  *  Version with { Sources } -> { Map } -> Sink. Stateful Map on GPU.
  */
 
-// includes
 #include "../../zipf.hpp"
 #include "robin.hpp"
 #include <algorithm>
