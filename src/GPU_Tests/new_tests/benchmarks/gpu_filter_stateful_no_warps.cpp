@@ -467,7 +467,6 @@ private:
 		int *          map_idxs_gpu       = nullptr;
 		cudaStream_t   cudaStream;
 
-		// Constructor
 		record_t(size_t _size) {
 			// initialize CUDA stream
 			gpuErrChk(cudaStreamCreate(&cudaStream));
@@ -482,7 +481,6 @@ private:
 			gpuErrChk(cudaMallocHost(&new_state_ptrs_cpu, _size * sizeof(Window_State *)));
 		}
 
-		// Destructor
 		~record_t() {
 			// deallocate arrays from GPU
 			gpuErrChk(cudaFree(state_ptrs_gpu));
@@ -659,15 +657,9 @@ private:
 	cudaStream_t cudaStream;
 
 public:
-	Sink() : received(0), received_batches(0) {
-		// initialize CUDA stream
-		gpuErrChk(cudaStreamCreate(&cudaStream));
-	}
+	Sink() : received(0), received_batches(0) { gpuErrChk(cudaStreamCreate(&cudaStream)); }
 
-	~Sink() {
-		// deallocate CUDA stream
-		gpuErrChk(cudaStreamDestroy(cudaStream));
-	}
+	~Sink() { gpuErrChk(cudaStreamDestroy(cudaStream)); }
 
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		received_batches++;

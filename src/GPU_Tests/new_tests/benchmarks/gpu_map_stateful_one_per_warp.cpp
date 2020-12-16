@@ -646,15 +646,9 @@ private:
 	cudaStream_t cudaStream;
 
 public:
-	Sink() : received(0), received_batches(0) {
-		// initialize CUDA stream
-		gpuErrChk(cudaStreamCreate(&cudaStream));
-	}
+	Sink() : received(0), received_batches(0) { gpuErrChk(cudaStreamCreate(&cudaStream)); }
 
-	~Sink() {
-		// deallocate CUDA stream
-		gpuErrChk(cudaStreamDestroy(cudaStream));
-	}
+	~Sink() { gpuErrChk(cudaStreamDestroy(cudaStream)); }
 
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		received_batches++;
