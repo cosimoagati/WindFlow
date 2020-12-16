@@ -304,7 +304,6 @@ public:
 		auto       it      = dist_map.find(key);
 		auto &     kb      = bouts[id_dest]->kb;
 		if (it == dist_map.end()) {
-			// dist_map.insert(std::make_pair(key, tuple_id));
 			dist_map.insert(robin_hood::pair<size_t, size_t>(key, tuple_id));
 			kb.dist_keys_cpu[kb.num_dist_keys]  = key;
 			kb.start_idxs_cpu[kb.num_dist_keys] = tuple_id;
@@ -358,15 +357,12 @@ public:
 
 struct Window_State {
 	double values[1000];
-	// double *values=nullptr;
 	double sum;
 	size_t first;
 	size_t last;
 	size_t count;
 
 	__device__ Window_State() {
-		// values = (double *) malloc(1000 * sizeof(double));
-		// assert(values != nullptr); // malloc in device code can fail!
 		sum   = 0;
 		first = 0;
 		last  = 0;
@@ -525,7 +521,7 @@ public:
 #endif // __aarch64__
 		gpuErrChk(cudaDeviceGetAttribute(&threads_per_warp, cudaDevAttrWarpSize, 0));
 		assert(numSMs > 0);             // 1
-		assert(max_threads_per_sm > 0); //  2048
+		assert(max_threads_per_sm > 0); // 2048
 		assert(max_blocks_per_sm > 0);  // 16
 		assert(threads_per_warp > 0);   // 32
 		gpuErrChk(cudaMalloc(&new_data_gpu, sizeof(tuple_t) * max_batch_len));
@@ -560,7 +556,6 @@ public:
 				gpuErrChk(cudaMalloc(&state_gpu, sizeof(Window_State)));
 				records[id_r]->new_state_ptrs_cpu[num_new_keys] = state_gpu;
 				num_new_keys++;
-				// hashmap.insert(std::make_pair(key, state_gpu));
 				hashmap.insert(robin_hood::pair<size_t, Window_State *>(key, state_gpu));
 				it = hashmap.find(key);
 			}
@@ -775,7 +770,7 @@ int main(int argc, char *argv[]) {
 	const auto arg_error_message = string {argv[0]}
 	                               + " -s [num sources] -k [num keys] -b [batch length] "
 	                                 "-n [map degree] -f [input file]";
-	/// parse arguments from command line
+	// parse arguments from command line
 	int    option = 0;
 	int    index  = 0;
 	string file_path;

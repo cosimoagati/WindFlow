@@ -512,7 +512,7 @@ public:
 #endif // __aarch64__
 		gpuErrChk(cudaDeviceGetAttribute(&threads_per_warp, cudaDevAttrWarpSize, 0));
 		assert(numSMs > 0);             // 1
-		assert(max_threads_per_sm > 0); //  2048
+		assert(max_threads_per_sm > 0); // 2048
 		assert(max_blocks_per_sm > 0);  // 16
 		assert(threads_per_warp > 0);   // 32
 	}
@@ -544,7 +544,6 @@ public:
 				gpuErrChk(cudaMalloc(&state_gpu, sizeof(Window_State)));
 				records[id_r]->new_state_ptrs_cpu[num_new_keys] = state_gpu;
 				num_new_keys++;
-				// hashmap.insert(std::make_pair(key, state_gpu));
 				hashmap.insert(robin_hood::pair<size_t, Window_State *>(key, state_gpu));
 				it = hashmap.find(key);
 			}
@@ -595,11 +594,6 @@ public:
 		        b->data_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
 		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys);
 #endif
-		// Stateful_Processing_Kernel<<<num_blocks, warps_per_block*threads_per_warp,
-		// sizeof(Window_State) * num_active_thread_per_warp * warps_per_block,
-		// records[id_r]->cudaStream>>>(b->data_gpu, records[id_r]->map_idxs_gpu,
-		// records[id_r]->dist_keys_gpu, records[id_r]->start_idxs_gpu, records[id_r]->state_ptrs_gpu,
-		// (b->kb).num_dist_keys, num_active_thread_per_warp);
 		batch_to_be_sent                         = b;
 		id_r                                     = (id_r + 1) % 2;
 		volatile unsigned long end_time_nsec     = current_time_nsecs();

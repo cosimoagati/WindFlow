@@ -527,7 +527,7 @@ public:
 #endif // __aarch64__
 		gpuErrChk(cudaDeviceGetAttribute(&threads_per_warp, cudaDevAttrWarpSize, 0));
 		assert(numSMs > 0);             // 1
-		assert(max_threads_per_sm > 0); //  2048
+		assert(max_threads_per_sm > 0); // 2048
 		assert(max_blocks_per_sm > 0);  // 16
 		assert(threads_per_warp > 0);   // 32
 	}
@@ -588,8 +588,8 @@ public:
 		                          records[id_r]->cudaStream));
 		num_keys_per_batch += (b->kb).num_dist_keys;
 		// launch the kernel to compute the results
-		int warps_per_block = ((max_threads_per_sm / max_blocks_per_sm) / threads_per_warp);
-		int tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
+		int       warps_per_block = ((max_threads_per_sm / max_blocks_per_sm) / threads_per_warp);
+		int       tot_num_warps   = warps_per_block * max_blocks_per_sm * numSMs;
 		const int num_blocks =
 		        std::min((int) ceil(((double) (b->kb).num_dist_keys) / warps_per_block),
 		                 numSMs * max_blocks_per_sm);
@@ -613,11 +613,6 @@ public:
 		        b->data_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
 		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys);
 #endif
-		// Stateful_Processing_Kernel<<<num_blocks, warps_per_block*threads_per_warp,
-		// sizeof(Window_State) * num_active_thread_per_warp * warps_per_block,
-		// records[id_r]->cudaStream>>>(b->data_gpu, records[id_r]->map_idxs_gpu,
-		// records[id_r]->dist_keys_gpu, records[id_r]->start_idxs_gpu, records[id_r]->state_ptrs_gpu,
-		// (b->kb).num_dist_keys, num_active_thread_per_warp);
 		batch_to_be_sent                         = b;
 		id_r                                     = (id_r + 1) % 2;
 		volatile unsigned long end_time_nsec     = current_time_nsecs();
@@ -763,7 +758,7 @@ int main(int argc, char *argv[]) {
 	const auto arg_error_message = string {argv[0]}
 	                               + " -s [num sources] -k [num keys] -b [batch length] "
 	                                 "-n [map degree] -f [input file]";
-	/// parse arguments from command line
+	// parse arguments from command line
 	int    option = 0;
 	int    index  = 0;
 	string file_path;

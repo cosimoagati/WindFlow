@@ -536,7 +536,7 @@ public:
 #endif // __aarch64__
 		gpuErrChk(cudaDeviceGetAttribute(&threads_per_warp, cudaDevAttrWarpSize, 0));
 		assert(numSMs > 0);             // 1
-		assert(max_threads_per_sm > 0); //  2048
+		assert(max_threads_per_sm > 0); // 2048
 		assert(max_blocks_per_sm > 0);  // 16
 		assert(threads_per_warp > 0);   // 32
 		gpuErrChk(cudaMalloc(&new_data_gpu, sizeof(tuple_t) * max_batch_len));
