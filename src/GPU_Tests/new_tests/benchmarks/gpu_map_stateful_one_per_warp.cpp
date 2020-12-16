@@ -356,15 +356,12 @@ public:
 
 struct Window_State {
 	double values[1000];
-	// double *values=nullptr;
 	double sum;
 	size_t first;
 	size_t last;
 	size_t count;
 
 	__device__ Window_State() {
-		// values = (double *) malloc(1000 * sizeof(double));
-		// assert(values != nullptr); // malloc in device code can fail!
 		sum   = 0;
 		first = 0;
 		last  = 0;

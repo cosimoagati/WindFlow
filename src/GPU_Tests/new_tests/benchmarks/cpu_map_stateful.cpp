@@ -354,15 +354,12 @@ public:
 
 struct Window_State {
 	double values[1000];
-	// double *values=nullptr;
 	double sum;
 	size_t first;
 	size_t last;
 	size_t count;
 
 	__device__ Window_State() {
-		// values = (double *) malloc(1000 * sizeof(double));
-		// assert(values != nullptr); // malloc in device code can fail!
 		sum   = 0;
 		first = 0;
 		last  = 0;
@@ -622,11 +619,6 @@ public:
 		        records[id_r]->start_idxs_gpu, records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys,
 		        num_active_thread_per_warp);
 #endif
-		// Stateful_Processing_Kernel<<<num_blocks, warps_per_block*threads_per_warp,
-		// sizeof(Window_State) * num_active_thread_per_warp * warps_per_block,
-		// records[id_r]->cudaStream>>>(b->data_gpu, records[id_r]->map_idxs_gpu,
-		// records[id_r]->dist_keys_gpu, records[id_r]->start_idxs_gpu,
-		// records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys, num_active_thread_per_warp);
 		batch_to_be_sent                         = b;
 		id_r                                     = (id_r + 1) % 2;
 		volatile unsigned long end_time_nsec     = current_time_nsecs();
