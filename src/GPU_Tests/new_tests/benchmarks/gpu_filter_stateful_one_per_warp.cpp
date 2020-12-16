@@ -212,7 +212,6 @@ private:
 	batch_t<tuple_t, size_t> **previous_bouts = nullptr;
 	cudaStream_t               cudaStreams[2];
 	MPMC_Ptr_Queue *           recycle_queue = nullptr;
-	// unordered_map<size_t, size_t> dist_map;
 	robin_hood::unordered_map<size_t, size_t> dist_map;
 	int                                       id_r = 0;
 
@@ -304,7 +303,6 @@ public:
 		auto       it      = dist_map.find(key);
 		auto &     kb      = bouts[id_dest]->kb;
 		if (it == dist_map.end()) {
-			// dist_map.insert(std::make_pair(key, tuple_id));
 			dist_map.insert(robin_hood::pair<size_t, size_t>(key, tuple_id));
 			kb.dist_keys_cpu[kb.num_dist_keys]  = key;
 			kb.start_idxs_cpu[kb.num_dist_keys] = tuple_id;
@@ -358,15 +356,12 @@ public:
 
 struct Window_State {
 	double values[1000];
-	// double *values=nullptr;
 	double sum;
 	size_t first;
 	size_t last;
 	size_t count;
 
 	__device__ Window_State() {
-		// values = (double *) malloc(1000 * sizeof(double));
-		// assert(values != nullptr); // malloc in device code can fail!
 		sum   = 0;
 		first = 0;
 		last  = 0;
@@ -459,7 +454,6 @@ private:
 	size_t        map_degree;
 	size_t        processed;
 	unsigned long received_batch = 0;
-	// unordered_map<size_t, Window_State*> hashmap;
 	robin_hood::unordered_map<size_t, Window_State *> hashmap;
 	unsigned long                                     app_start_time;
 	unsigned long                                     current_time;
@@ -569,7 +563,6 @@ public:
 				gpuErrChk(cudaMalloc(&state_gpu, sizeof(Window_State)));
 				records[id_r]->new_state_ptrs_cpu[num_new_keys] = state_gpu;
 				num_new_keys++;
-				// hashmap.insert(std::make_pair(key, state_gpu));
 				hashmap.insert(robin_hood::pair<size_t, Window_State *>(key, state_gpu));
 				it = hashmap.find(key);
 			}
