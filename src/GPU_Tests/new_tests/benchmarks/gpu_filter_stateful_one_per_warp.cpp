@@ -195,23 +195,23 @@ struct batch_t {
 
 class Source : public ff_monode_t<batch_t<tuple_t, size_t>> {
 private:
-	size_t                     n_dest;
-	vector<tuple_t> &          dataset;
-	size_t                     next_tuple_idx;
-	long                       generated_tuples;
-	size_t                     batch_size;
-	size_t                     generated_batches;
-	size_t                     allocated_batches;
-	unsigned long              app_start_time;
-	unsigned long              current_time;
-	unsigned long              interval;
-	size_t                     tuple_id       = 0;
-	tuple_t *                  data_cpu[2]    = {nullptr};
-	tuple_t *                  data_gpu[2]    = {nullptr};
-	batch_t<tuple_t, size_t> **bouts          = nullptr;
-	batch_t<tuple_t, size_t> **previous_bouts = nullptr;
-	cudaStream_t               cudaStreams[2];
-	MPMC_Ptr_Queue *           recycle_queue = nullptr;
+	size_t                                    n_dest;
+	vector<tuple_t> &                         dataset;
+	size_t                                    next_tuple_idx;
+	long                                      generated_tuples;
+	size_t                                    batch_size;
+	size_t                                    generated_batches;
+	size_t                                    allocated_batches;
+	unsigned long                             app_start_time;
+	unsigned long                             current_time;
+	unsigned long                             interval;
+	size_t                                    tuple_id       = 0;
+	tuple_t *                                 data_cpu[2]    = {nullptr};
+	tuple_t *                                 data_gpu[2]    = {nullptr};
+	batch_t<tuple_t, size_t> **               bouts          = nullptr;
+	batch_t<tuple_t, size_t> **               previous_bouts = nullptr;
+	cudaStream_t                              cudaStreams[2];
+	MPMC_Ptr_Queue *                          recycle_queue = nullptr;
 	robin_hood::unordered_map<size_t, size_t> dist_map;
 	int                                       id_r = 0;
 
@@ -450,10 +450,10 @@ __global__ void Initialize_States_Kernel(Window_State **new_states, size_t num_s
 
 class Filter : public ff_node_t<batch_t<tuple_t, size_t>> {
 private:
-	size_t        id_map;
-	size_t        map_degree;
-	size_t        processed;
-	unsigned long received_batch = 0;
+	size_t                                            id_map;
+	size_t                                            map_degree;
+	size_t                                            processed;
+	unsigned long                                     received_batch = 0;
 	robin_hood::unordered_map<size_t, Window_State *> hashmap;
 	unsigned long                                     app_start_time;
 	unsigned long                                     current_time;
@@ -742,9 +742,9 @@ void parse_dataset(const string &file_path) {
 }
 
 void create_tuples(int num_keys) {
-	// std::uniform_int_distribution<std::mt19937::result_type> dist(0, num_keys - 1);
-	shifted_zipf_distribution<std::mt19937::result_type> dist {0, num_keys - 1};
-	mt19937                                              rng;
+	std::uniform_int_distribution<std::mt19937::result_type> dist(0, num_keys - 1);
+	// shifted_zipf_distribution<std::mt19937::result_type> dist {0, num_keys - 1};
+	mt19937 rng;
 	rng.seed(0);
 	for (int next_tuple_idx = 0; next_tuple_idx < parsed_file.size(); next_tuple_idx++) {
 		// create tuple
