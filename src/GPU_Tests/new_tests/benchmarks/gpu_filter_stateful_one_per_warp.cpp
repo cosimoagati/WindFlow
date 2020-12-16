@@ -789,7 +789,7 @@ int main(int argc, char *argv[]) {
 	const auto arg_error_message = string {argv[0]}
 	                               + " -s [num sources] -k [num keys] -b [batch length] "
 	                                 "-n [map degree] -f [input file]";
-	/// parse arguments from command line
+	// parse arguments from command line
 	int    option = 0;
 	int    index  = 0;
 	string file_path;
