@@ -393,7 +393,9 @@ __device__ void map_function(tuple_t &t, Window_State &state) {
 #if !defined(__SHARED__)
 __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *start_idxs,
                                            Window_State **states, int num_dist_keys) {
-	for (int key_id = threadIdx.x; key_id < num_dist_keys; key_id += blockDim.x) {
+	const int thread_id   = threadIdx.x + blockIdx.x * blockDim.x;
+	const int num_threads = gridDim.x * blockDim.x;
+	for (int key_id = thread_id; key_id < num_dist_keys; key_id += num_threads) {
 		auto idx = start_idxs[key_id];
 		// execute all the inputs with key in the input batch
 		while (idx != -1) {
@@ -408,10 +410,12 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *
                                            int num_active_thread_per_warp) {
 	extern __shared__ char array[];
 
+	const int  thread_id     = threadIdx.x + blockIdx.x * blockDim.x;
+	const int  num_threads   = gridDim.x * blockDim.x;
 	const auto cached_states = reinterpret_cast<Window_State *>(array);
 	auto &     cached_state  = cached_states[threadIdx.x];
 
-	for (int key_id = threadIdx.x; key_id < num_dist_keys; key_id += blockDim.x) {
+	for (int key_id = thread_id; key_id < num_dist_keys; key_id += num_threads) {
 		auto idx     = start_idxs[key_id];
 		cached_state = *(states[key_id]);
 		// execute all the inputs with key in the input batch
