@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import subprocess
+from subprocess import run, PIPE
 import sys
+from statistics import mean
 
 FILE = 'testresults.txt'
 STATELESS_TESTS = ['gpu_map_stateless', 'gpu_filter_stateless']
@@ -53,10 +54,12 @@ if __name__ == '__main__':
                            str(keynum), '-f', DATASET_FILE]
                 print(arglist)
                 output_file.write(str(arglist) + '\n')
-                output_file.flush()
-
-                subprocess.run(arglist, stdout=output_file, check=True)
-                output_file.write('\n')
+                run_results = []
+                for i in range(3):
+                    # PIPE needed to capture output on Python < 3.7
+                    output = run(arglist, stdout=PIPE, check=True)
+                    run_results.append(int(output.stdout))
+                output_file.write(str(round(mean(run_results))) + '\n')
                 output_file.flush()
 
             output_file.write('\n\n')
