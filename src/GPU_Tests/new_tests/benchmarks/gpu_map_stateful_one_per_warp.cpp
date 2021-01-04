@@ -630,10 +630,12 @@ public:
 	}
 
 	void svc_end() {
+#ifndef TEST
 		printf("[MAP] average service time: %f usec\n",
 		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
 		printf("[MAP] average number of keys per batch: %f\n",
 		       ((double) num_keys_per_batch) / received_batch);
+#endif
 	}
 };
 
@@ -672,7 +674,11 @@ public:
 		return this->GO_ON;
 	}
 
-	void svc_end() { cout << "[SINK] received " << received << " inputs" << endl; }
+	void svc_end() {
+#ifndef TEST
+		cout << "[SINK] received " << received << " inputs" << endl;
+#endif
+	}
 };
 
 void parse_dataset(const string &file_path) {
@@ -815,15 +821,21 @@ int main(int argc, char *argv[]) {
 	a2a->add_secondset(second_set, true);
 	pipe->add_stage(a2a, true);
 	pipe->add_stage(new Sink(), true);
+#ifndef TEST
 	cout << "Starting pipe with " << pipe->cardinality() << " threads..." << endl;
+#endif
 	// evaluate topology execution time
 	volatile unsigned long start_time_main_usecs = current_time_usecs();
 	pipe->run_and_wait_end();
 	volatile unsigned long end_time_main_usecs = current_time_usecs();
 	double elapsed_time_seconds = (end_time_main_usecs - start_time_main_usecs) / (1000000.0);
 	double throughput           = sent_tuples / elapsed_time_seconds;
+#ifdef TEST
+	cout << (int) throughput << endl;
+#else
 	cout << "Measured throughput: " << (int) throughput << " tuples/second" << endl;
 	cout << "Allocated batches: " << (int) num_allocated_batches << endl;
 	cout << "...end" << endl;
+#endif
 	return 0;
 }

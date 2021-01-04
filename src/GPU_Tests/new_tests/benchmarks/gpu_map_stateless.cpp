@@ -664,7 +664,6 @@ int main(int argc, char *argv[]) {
 #ifndef TEST
 	cout << "Starting pipe with " << pipe->cardinality() << " threads..." << endl;
 #endif
-
 	// evaluate topology execution time
 	volatile unsigned long start_time_main_usecs = current_time_usecs();
 	pipe->run_and_wait_end();
