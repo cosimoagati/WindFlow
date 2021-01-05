@@ -643,7 +643,7 @@ public:
 	}
 
 	void svc_end() {
-#ifdef TEST
+#ifndef TEST
 		printf("[FILTER] average service time: %f usec\n",
 		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
 		printf("[FILTER] average number of keys per batch: %f\n",
