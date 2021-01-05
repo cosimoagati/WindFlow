@@ -687,7 +687,11 @@ public:
 		return this->GO_ON;
 	}
 
-	void svc_end() { cout << "[SINK] received " << received << " inputs" << endl; }
+	void svc_end() {
+#ifndef TEST
+		cout << "[SINK] received " << received << " inputs" << endl;
+#endif
+	}
 };
 
 void parse_dataset(const string &file_path) {
