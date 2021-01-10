@@ -17,6 +17,8 @@
 /*
  *  Version with { Sources } -> { Filter } -> Sink. Stateless Filter on GPU.
  */
+
+#include "../../zipf.hpp"
 #include "custom_allocator.hpp"
 #include <algorithm>
 #include <ff/ff.hpp>
@@ -592,7 +594,8 @@ void parse_dataset(const string &file_path) {
 
 void create_tuples(int num_keys) {
 	std::uniform_int_distribution<std::mt19937::result_type> dist(0, num_keys - 1);
-	mt19937                                                  rng;
+	// shifted_zipf_distribution<std::mt19937::result_type> dist {0, num_keys - 1};
+	mt19937                                              rng;
 	rng.seed(0);
 	for (int next_tuple_idx = 0; next_tuple_idx < parsed_file.size(); next_tuple_idx++) {
 		// create tuple

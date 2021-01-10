@@ -17,6 +17,7 @@
 /*
  *  Version with { Sources } -> { Filter } -> Sink. Stateful Filter on GPU.
  */
+
 #include "../../zipf.hpp"
 #include "custom_allocator.hpp"
 #include "robin.hpp"
