@@ -406,8 +406,7 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *
 }
 #else
 __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *start_idxs,
-                                           Window_State **states, int num_dist_keys,
-                                           int num_active_thread_per_warp) {
+                                           Window_State **states, int num_dist_keys) {
 	extern __shared__ char array[];
 
 	const int  thread_id     = threadIdx.x + blockIdx.x * blockDim.x;

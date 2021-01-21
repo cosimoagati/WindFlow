@@ -417,7 +417,7 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, bool *flags, int *ma
 	const int  thread_id     = threadIdx.x + blockIdx.x * blockDim.x;
 	const int  num_threads   = gridDim.x * blockDim.x;
 	const auto cached_states = reinterpret_cast<Window_State *>(array);
-	auto &     cached_state  = cached_states[threadIdx.x / threads_per_worker];
+	auto &     cached_state  = cached_states[threadIdx.x];
 
 	for (int key_id = thread_id; key_id < num_dist_keys; key_id += num_threads) {
 		size_t idx   = start_idxs[key_id];

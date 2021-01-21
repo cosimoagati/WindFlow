@@ -563,8 +563,8 @@ public:
 			records[id_r]->state_ptrs_cpu[i] = (*it).second;
 		}
 		// initialize new allocated states (if any)
+		const int threads_per_block = 128;
 		if (num_new_keys > 0) {
-			const int threads_per_block = 128;
 			const int num_blocks =
 			        std::min((int) ceil(((double) num_new_keys) / threads_per_block),
 			                 numSMs * max_blocks_per_sm);
@@ -605,8 +605,7 @@ public:
 		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys);
 #else
 		Stateful_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp,
-		                             sizeof(Window_State) * num_active_thread_per_warp
-		                                     * warps_per_block,
+		                             sizeof(Window_State) * warps_per_block,
 		                             records[id_r]->cudaStream>>>(
 		        b->data_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
 		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys);
