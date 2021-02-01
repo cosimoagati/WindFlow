@@ -11,9 +11,9 @@ EXTRA_MAP_TESTS = ['gpu_map_stateful_one_per_warp',
 EXTRA_FILTER_TESTS = ['gpu_filter_stateful_one_per_warp',
                       'gpu_filter_stateful_no_warps']
 KEY_AMOUNTS = [1, 10, 100, 500, 960, 1000, 2000, 4000, 8000, 10000]
-SOURCES_NUM = 2
+SOURCES_NUMS = [1, 2, 4, 6, 8, 10, 12, 14]
 STREAM_LENGTH = 50000000
-BATCH_LENGTH = 10000
+BATCH_LENGTHS = [1000, 5000, 10000]
 WORKER_NUM = 1
 DATASET_FILE = 'sensors.dat'
 
@@ -48,19 +48,21 @@ if __name__ == '__main__':
     print('Starting tests, writing results to ' + FILE)
     with open(FILE, 'w') as output_file:
         for test in tests:
-            for keynum in KEY_AMOUNTS:
-                arglist = ['./' + test, '-s', str(SOURCES_NUM), '-b',
-                           str(BATCH_LENGTH), '-n', str(WORKER_NUM), '-k',
-                           str(keynum), '-f', DATASET_FILE]
-                print(arglist)
-                output_file.write(str(arglist) + '\n')
-                run_results = []
-                for i in range(3):
-                    # PIPE needed to capture output on Python < 3.7
-                    output = run(arglist, stdout=PIPE, check=True)
-                    run_results.append(int(output.stdout))
-                output_file.write(str(round(mean(run_results))) + '\n')
-                output_file.flush()
+            for batch_length in BATCH_LENGTHS:
+                for sources in SOURCES_NUMS:
+                    for keynum in KEY_AMOUNTS:
+                        arglist = ['./' + test, '-s', str(sources), '-b',
+                                   str(batch_length), '-n', str(WORKER_NUM), '-k',
+                                   str(keynum), '-f', DATASET_FILE]
+                        print(arglist)
+                        output_file.write(str(arglist) + '\n')
+                        run_results = []
+                        for i in range(3):
+                            # PIPE needed to capture output on Python < 3.7
+                            output = run(arglist, stdout=PIPE, check=True)
+                            run_results.append(int(output.stdout))
+                            output_file.write(str(round(mean(run_results))) + '\n')
+                            output_file.flush()
 
             output_file.write('\n\n')
             output_file.flush()
