@@ -52,8 +52,8 @@ if __name__ == '__main__':
                 for sources in SOURCES_NUMS:
                     for keynum in KEY_AMOUNTS:
                         arglist = ['./' + test, '-s', str(sources), '-b',
-                                   str(batch_length), '-n', str(WORKER_NUM), '-k',
-                                   str(keynum), '-f', DATASET_FILE]
+                                   str(batch_length), '-n', str(WORKER_NUM),
+                                   '-k', str(keynum), '-f', DATASET_FILE]
                         print(arglist)
                         output_file.write(str(arglist) + '\n')
                         run_results = []
@@ -61,7 +61,8 @@ if __name__ == '__main__':
                             # PIPE needed to capture output on Python < 3.7
                             output = run(arglist, stdout=PIPE, check=True)
                             run_results.append(int(output.stdout))
-                            output_file.write(str(round(mean(run_results))) + '\n')
+                            output_file.write(str(round(mean(run_results))) +
+                                              '\n')
                             output_file.flush()
 
             output_file.write('\n\n')
