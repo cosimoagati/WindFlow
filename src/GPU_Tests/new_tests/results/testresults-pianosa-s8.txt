@@ -1,0 +1,176 @@
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '1', '-f', 'sensors.dat']
+128015595
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '10', '-f', 'sensors.dat']
+128541197
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '100', '-f', 'sensors.dat']
+128473119
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '500', '-f', 'sensors.dat']
+128567822
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '960', '-f', 'sensors.dat']
+100458668
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '1000', '-f', 'sensors.dat']
+128602732
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '2000', '-f', 'sensors.dat']
+117863713
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '4000', '-f', 'sensors.dat']
+68921788
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '8000', '-f', 'sensors.dat']
+38336509
+['./gpu_map_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '10000', '-f', 'sensors.dat']
+1830653
+
+
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '1', '-f', 'sensors.dat']
+127372100
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '10', '-f', 'sensors.dat']
+125239808
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '100', '-f', 'sensors.dat']
+95797980
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '500', '-f', 'sensors.dat']
+103380947
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '960', '-f', 'sensors.dat']
+77551376
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '1000', '-f', 'sensors.dat']
+98833255
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '2000', '-f', 'sensors.dat']
+84031590
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '4000', '-f', 'sensors.dat']
+70249137
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '8000', '-f', 'sensors.dat']
+50122052
+['./gpu_filter_stateless', '-s', '8', '-b', '10000', '-n', '1', '-k', '10000', '-f', 'sensors.dat']
+2583997
+
+
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '1', '-f', 'sensors.dat']
+439766
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '10', '-f', 'sensors.dat']
+4091493
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '100', '-f', 'sensors.dat']
+32262159
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '500', '-f', 'sensors.dat']
+92036331
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '960', '-f', 'sensors.dat']
+90823665
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '1000', '-f', 'sensors.dat']
+90642086
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '2000', '-f', 'sensors.dat']
+86355096
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '4000', '-f', 'sensors.dat']
+81855045
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '8000', '-f', 'sensors.dat']
+58614792
+['./gpu_map_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '10000', '-f', 'sensors.dat']
+51985706
+
+
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '1', '-f', 'sensors.dat']
+433953
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '10', '-f', 'sensors.dat']
+3939676
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '100', '-f', 'sensors.dat']
+26519691
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '500', '-f', 'sensors.dat']
+55773657
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '960', '-f', 'sensors.dat']
+62343837
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '1000', '-f', 'sensors.dat']
+61982499
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '2000', '-f', 'sensors.dat']
+58898054
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '4000', '-f', 'sensors.dat']
+53501658
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '8000', '-f', 'sensors.dat']
+40705907
+['./gpu_filter_stateful', '-s', '8', '-b', '10000', '-n', '1', '-k', '10000', '-f', 'sensors.dat']
+36600827
+
+
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '1', '-f', 'sensors.dat']
+439629
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '10', '-f', 'sensors.dat']
+4095182
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '100', '-f', 'sensors.dat']
+32293967
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '500', '-f', 'sensors.dat']
+92362312
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '960', '-f', 'sensors.dat']
+90539477
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '1000', '-f', 'sensors.dat']
+90684718
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '2000', '-f', 'sensors.dat']
+86651787
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '4000', '-f', 'sensors.dat']
+81178979
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '8000', '-f', 'sensors.dat']
+58306726
+['./gpu_map_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '10000', '-f', 'sensors.dat']
+50366811
+
+
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '1', '-f', 'sensors.dat']
+449209
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '10', '-f', 'sensors.dat']
+2349212
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '100', '-f', 'sensors.dat']
+10225115
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '500', '-f', 'sensors.dat']
+41555796
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '960', '-f', 'sensors.dat']
+68060351
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '1000', '-f', 'sensors.dat']
+70175324
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '2000', '-f', 'sensors.dat']
+85352013
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '4000', '-f', 'sensors.dat']
+81404255
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '8000', '-f', 'sensors.dat']
+57933027
+['./gpu_map_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '10000', '-f', 'sensors.dat']
+51670316
+
+
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '1', '-f', 'sensors.dat']
+432868
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '10', '-f', 'sensors.dat']
+3923137
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '100', '-f', 'sensors.dat']
+26409168
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '500', '-f', 'sensors.dat']
+56359090
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '960', '-f', 'sensors.dat']
+61927969
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '1000', '-f', 'sensors.dat']
+57746289
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '2000', '-f', 'sensors.dat']
+59210045
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '4000', '-f', 'sensors.dat']
+53368769
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '8000', '-f', 'sensors.dat']
+41745035
+['./gpu_filter_stateful_one_per_warp', '-s', '8', '-b', '10000', '-n', '1', '-k', '10000', '-f', 'sensors.dat']
+36522464
+
+
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '1', '-f', 'sensors.dat']
+441284
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '10', '-f', 'sensors.dat']
+2219608
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '100', '-f', 'sensors.dat']
+9279624
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '500', '-f', 'sensors.dat']
+31018000
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '960', '-f', 'sensors.dat']
+44147548
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '1000', '-f', 'sensors.dat']
+44708500
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '2000', '-f', 'sensors.dat']
+58607778
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '4000', '-f', 'sensors.dat']
+53455259
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '8000', '-f', 'sensors.dat']
+39529938
+['./gpu_filter_stateful_no_warps', '-s', '8', '-b', '10000', '-n', '1', '-k', '10000', '-f', 'sensors.dat']
+37073604
+
+
