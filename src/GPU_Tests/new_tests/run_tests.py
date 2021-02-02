@@ -12,7 +12,7 @@ EXTRA_FILTER_TESTS = ['gpu_filter_stateful_one_per_warp',
                       'gpu_filter_stateful_no_warps']
 KEY_AMOUNTS = [1, 10, 100, 500, 960, 1000, 2000, 4000, 8000, 10000]
 SOURCES_NUMS = [1, 2, 4, 6, 8, 10, 12, 14]
-STREAM_LENGTH = 50000000
+# STREAM_LENGTH = 50000000
 BATCH_LENGTHS = [1000, 5000, 10000]
 WORKER_NUM = 1
 DATASET_FILE = 'sensors.dat'
