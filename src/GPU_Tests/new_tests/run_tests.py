@@ -61,9 +61,8 @@ if __name__ == '__main__':
                             # PIPE needed to capture output on Python < 3.7
                             output = run(arglist, stdout=PIPE, check=True)
                             run_results.append(int(output.stdout))
-                            output_file.write(str(round(mean(run_results))) +
-                                              '\n')
-                            output_file.flush()
+                        output_file.write(str(round(mean(run_results))) + '\n')
+                        output_file.flush()
 
             output_file.write('\n\n')
             output_file.flush()
