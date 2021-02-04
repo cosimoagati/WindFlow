@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-from subprocess import run, PIPE
 import sys
+from subprocess import run, PIPE
+from itertools import product
 from statistics import mean
 
 FILE = 'testresults.txt'
@@ -47,22 +48,17 @@ if __name__ == '__main__':
 
     print('Starting tests, writing results to ' + FILE)
     with open(FILE, 'w') as output_file:
-        for test in tests:
-            for batch_length in BATCH_LENGTHS:
-                for sources in SOURCES_NUMS:
-                    for keynum in KEY_AMOUNTS:
-                        arglist = ['./' + test, '-s', str(sources), '-b',
-                                   str(batch_length), '-n', str(WORKER_NUM),
-                                   '-k', str(keynum), '-f', DATASET_FILE]
-                        print(arglist)
-                        output_file.write(str(arglist) + '\n')
-                        run_results = []
-                        for i in range(3):
-                            # PIPE needed to capture output on Python < 3.7
-                            output = run(arglist, stdout=PIPE, check=True)
-                            run_results.append(int(output.stdout))
-                        output_file.write(str(round(mean(run_results))) + '\n')
-                        output_file.flush()
-
-            output_file.write('\n\n')
+        params = product(tests, BATCH_LENGTHS, SOURCES_NUMS, KEY_AMOUNTS)
+        for test, batch_length, sources, keynum in params:
+            arglist = ['./' + test, '-s', str(sources), '-b',
+                       str(batch_length), '-n', str(WORKER_NUM),
+                       '-k', str(keynum), '-f', DATASET_FILE]
+            print(arglist)
+            output_file.write(str(arglist) + '\n')
+            run_results = []
+            for i in range(3):
+                # PIPE needed to capture output on Python < 3.7
+                output = run(arglist, stdout=PIPE, check=True)
+                run_results.append(int(output.stdout))
+            output_file.write(str(round(mean(run_results))) + '\n')
             output_file.flush()
