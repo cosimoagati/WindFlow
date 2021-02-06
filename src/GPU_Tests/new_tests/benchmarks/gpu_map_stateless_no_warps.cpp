@@ -386,7 +386,7 @@ public:
 	}
 };
 
-__global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, const Map_Functor &_func) {
+__global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, Map_Functor _func) {
 	const int thread_id   = threadIdx.x + blockIdx.x * blockDim.x;
 	const int num_threads = gridDim.x * blockDim.x;
 
@@ -413,7 +413,6 @@ private:
 	size_t                    max_batch_len      = 0;
 	cudaStream_t              cudaStream;
 	Map_Functor               mapF;
-	Map_Functor *             mapF_gpu;
 
 public:
 	Map(size_t _id_map, size_t _map_degree, const unsigned long _app_start_time, size_t _max_batch_len,
@@ -438,11 +437,6 @@ public:
 		assert(max_threads_per_sm > 0); //  2048
 		assert(max_blocks_per_sm > 0);  // 16
 		assert(threads_per_warp > 0);   // 32
-		// allocate the functor object on GPU
-		gpuErrChk(cudaMalloc(&mapF_gpu, sizeof(Map_Functor)));
-		// copy the functor object on GPU
-		gpuErrChk(cudaMemcpyAsync(mapF_gpu, &mapF, sizeof(Map_Functor), cudaMemcpyHostToDevice,
-		                          cudaStream));
 	}
 
 	~Map() { gpuErrChk(cudaStreamDestroy(cudaStream)); }
@@ -491,7 +485,7 @@ public:
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		received_batches++;
 #ifndef NDEBUG
-		if (received < 100) {
+		if (received < 100 && b->size > 0) {
 			tuple_t *data_cpu;
 			gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
 			gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t),

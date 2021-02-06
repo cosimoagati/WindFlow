@@ -425,7 +425,6 @@ private:
 	size_t                    max_batch_len      = 0;
 	cudaStream_t              cudaStream;
 	Filter_Functor            filterF;
-	Filter_Functor *          filterF_gpu;
 	bool *                    flags_gpu    = nullptr;
 	tuple_t *                 new_data_gpu = nullptr;
 	cached_allocator          alloc;
@@ -455,11 +454,6 @@ public:
 		assert(threads_per_warp > 0);   // 32
 		gpuErrChk(cudaMalloc(&flags_gpu, sizeof(bool) * max_batch_len));
 		gpuErrChk(cudaMalloc(&new_data_gpu, sizeof(tuple_t) * max_batch_len));
-		// allocate the functor object on GPU
-		gpuErrChk(cudaMalloc(&filterF_gpu, sizeof(Filter_Functor)));
-		// copy the functor object on GPU
-		gpuErrChk(cudaMemcpyAsync(filterF_gpu, &filterF, sizeof(Filter_Functor),
-		                          cudaMemcpyHostToDevice, cudaStream));
 	}
 
 	~Filter() {
@@ -482,7 +476,7 @@ public:
 		int num_blocks = std::min((int) ceil(((double) (b->size)) / warps_per_block),
 		                          numSMs * max_blocks_per_sm);
 		Stateless_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp, 0,
-		                              cudaStream>>>(b->data_gpu, flags_gpu, b->size, *filterF_gpu);
+		                              cudaStream>>>(b->data_gpu, flags_gpu, b->size, filterF);
 		// compact the output batch
 		thrust::device_ptr<bool>    th_flags_gpu    = thrust::device_pointer_cast(flags_gpu);
 		thrust::device_ptr<tuple_t> th_data_gpu     = thrust::device_pointer_cast(b->data_gpu);
@@ -523,7 +517,7 @@ public:
 	batch_t<tuple_t, size_t> *svc(batch_t<tuple_t, size_t> *b) {
 		received_batches++;
 #ifndef NDEBUG
-		if (received < 100) {
+		if (received < 100 && b->size > 0) {
 			tuple_t *data_cpu;
 			gpuErrChk(cudaMallocHost(&data_cpu, sizeof(tuple_t) * b->size));
 			gpuErrChk(cudaMemcpyAsync(data_cpu, b->data_gpu, b->size * sizeof(tuple_t),
