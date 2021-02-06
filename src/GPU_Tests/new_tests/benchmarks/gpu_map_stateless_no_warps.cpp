@@ -380,13 +380,13 @@ public:
 		return 0;
 	}
 
-	__device__ void operator()(tuple_t &t) {
+	__device__ void operator()(tuple_t &t) const {
 		size_t value = get_value(std::get<0>(t.getControlFields()));
 		t.id         = value;
 	}
 };
 
-__global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, Map_Functor _func) {
+__global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, const Map_Functor &_func) {
 	const int thread_id   = threadIdx.x + blockIdx.x * blockDim.x;
 	const int num_threads = gridDim.x * blockDim.x;
 

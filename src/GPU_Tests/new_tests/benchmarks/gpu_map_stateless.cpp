@@ -380,13 +380,13 @@ public:
 		return 0;
 	}
 
-	__device__ void operator()(tuple_t &t) {
+	__device__ void operator()(tuple_t &t) const {
 		size_t value = get_value(std::get<0>(t.getControlFields()));
 		t.id         = value;
 	}
 };
 
-__global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, Map_Functor _func,
+__global__ void Stateless_Processing_Kernel(tuple_t *tuples, size_t len, const Map_Functor &_func,
                                             int num_active_thread_per_warp) {
 	const int thread_id          = threadIdx.x + blockIdx.x * blockDim.x;
 	const int num_threads        = gridDim.x * blockDim.x;
@@ -569,7 +569,7 @@ void parse_dataset(const string &file_path) {
 void create_tuples(int num_keys) {
 	std::uniform_int_distribution<std::mt19937::result_type> dist(0, num_keys - 1);
 	// shifted_zipf_distribution<std::mt19937::result_type> dist {0, num_keys - 1};
-	mt19937                                              rng;
+	mt19937 rng;
 	rng.seed(0);
 	for (int next_tuple_idx = 0; next_tuple_idx < parsed_file.size(); next_tuple_idx++) {
 		// create tuple

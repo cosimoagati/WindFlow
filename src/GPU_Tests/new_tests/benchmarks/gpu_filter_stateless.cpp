@@ -383,14 +383,14 @@ public:
 		return 0;
 	}
 
-	__device__ bool operator()(tuple_t &t) {
+	__device__ bool operator()(tuple_t &t) const {
 		size_t value = get_value(std::get<0>(t.getControlFields()));
 		t.id         = value;
 		return (value < 100);
 	}
 };
 
-__global__ void Stateless_Processing_Kernel(tuple_t *tuples, bool *flags, size_t len, Filter_Functor &_func,
+__global__ void Stateless_Processing_Kernel(tuple_t *tuples, bool *flags, size_t len, const Filter_Functor &_func,
                                             int num_active_thread_per_warp) {
 	const int thread_id          = threadIdx.x + blockIdx.x * blockDim.x;
 	const int num_threads        = gridDim.x * blockDim.x;
@@ -398,8 +398,9 @@ __global__ void Stateless_Processing_Kernel(tuple_t *tuples, bool *flags, size_t
 	const int num_workers        = num_threads / threads_per_worker;
 	const int worker_id          = thread_id / threads_per_worker; // Unused?
 	// only "num_active_thread_per_warp" threads per warp work, the others are idle
+
 	if (thread_id % threads_per_worker == 0) {
-		for (size_t i = thread_id; i < len; i += num_threads)
+		for (size_t i = worker_id; i < len; i += num_workers)
 			flags[i] = _func(tuples[i]);
 	}
 }
