@@ -366,7 +366,7 @@ public:
 		// gpuErrChk(cudaFree(table_gpu));
 	}
 
-	__device__ size_t get_value(const size_t key) {
+	__device__ size_t get_value(const size_t key) const {
 		int ind = key & mask;
 		int i   = ind;
 		for (; i < size; i++) {
