@@ -19,6 +19,7 @@ KEY_AMOUNTS = [1, 10, 100, 500, 960, 1000, 2000, 4000, 8000, 10000]
 SOURCES_NUMS = [1, 2, 4, 6, 8, 10, 12, 14]
 # STREAM_LENGTH = 50000000
 BATCH_LENGTHS = [1000, 5000, 10000]
+RUNS_NUM = 1
 WORKER_NUM = 1
 DATASET_FILE = 'sensors.dat'
 
@@ -53,7 +54,7 @@ if __name__ == '__main__':
             print(arglist)
             output_file.write(str(arglist) + '\n')
             run_results = []
-            for i in range(3):
+            for i in range(RUNS_NUM):
                 # PIPE needed to capture output on Python < 3.7
                 output = run(arglist, stdout=PIPE, check=True)
                 run_results.append(int(output.stdout))
