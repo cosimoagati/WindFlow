@@ -390,8 +390,7 @@ public:
 	}
 };
 
-__global__ void Stateless_Processing_Kernel(tuple_t *tuples, bool *flags, size_t len,
-                                            const Filter_Functor &_func) {
+__global__ void Stateless_Processing_Kernel(tuple_t *tuples, bool *flags, size_t len, Filter_Functor _func) {
 	const int thread_id   = threadIdx.x + blockIdx.x * blockDim.x;
 	const int num_threads = gridDim.x * blockDim.x;
 
