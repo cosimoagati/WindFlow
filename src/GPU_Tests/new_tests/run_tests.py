@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import sys
-from subprocess import run, PIPE
 from itertools import product
+from socket import gethostname
 from statistics import mean
+from subprocess import run, PIPE
 
 FILE = 'testresults.txt'
 STATELESS_TESTS = ['gpu_map_stateless', 'gpu_filter_stateless']
@@ -16,7 +17,8 @@ EXTRA_MAP_TESTS = ['gpu_map_stateful_one_per_warp',
 EXTRA_FILTER_TESTS = ['gpu_filter_stateful_one_per_warp',
                       'gpu_filter_stateful_no_warps']
 KEY_AMOUNTS = [1, 10, 100, 500, 960, 1000, 2000, 4000, 8000, 10000]
-SOURCES_NUMS = [1, 2, 4, 6, 8, 10, 12, 14]
+SOURCES_NUMS = ([1, 2, 4, 6, 8, 10, 12, 14] if gethostname() == 'pianosa' else
+                [1, 2])
 # STREAM_LENGTH = 50000000
 BATCH_LENGTHS = [1000, 5000, 10000]
 RUNS_NUM = 1
