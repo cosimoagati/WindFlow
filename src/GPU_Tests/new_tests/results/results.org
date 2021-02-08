@@ -385,16 +385,16 @@ more than two sources on the Nano, since it only has 4 cores.
 **** Measure: Keys - 1 source, 10000 tuples per batch
 
 | Keys (-k) | Map (Adaptive) | Map (One per warp) | Map (No warps) |
-|         1 |                |                    |                |
-|        10 |                |                    |                |
-|       100 |                |                    |                |
-|       500 |                |                    |                |
-|       960 |                |                    |                |
-|      1000 |                |                    |                |
-|      2000 |                |                    |                |
-|      4000 |                |                    |                |
-|      8000 |                |                    |                |
-|     10000 |                |                    |                |
+|         1 |       15766020 |           15819864 |       15941045 |
+|        10 |       15826778 |           15817716 |       15742627 |
+|       100 |       15880321 |           15757758 |       15829583 |
+|       500 |       15733101 |           15961366 |       15803647 |
+|       960 |       15796161 |           15923072 |       15801382 |
+|      1000 |       15804109 |           15813043 |       15804536 |
+|      2000 |       15863190 |           15817506 |       15812708 |
+|      4000 |       15809460 |           15924472 |       15829634 |
+|      8000 |       15878028 |           13330277 |       15860098 |
+|     10000 |        1834322 |             459260 |        2081052 |
 
 | Keys (-k) | Filter (Adaptive) | Filter (One per warp) | Filter (No warps) |
 |         1 |          15815195 |              15843303 |          15730278 |
@@ -414,9 +414,9 @@ more than two sources on the Nano, since it only has 4 cores.
 Values are in tuples per second.
 
 | Batch length (-b) | Map (Stateless) | Map (One per warp) | Map (No warps) |
-|              1000 |                 |                    |                |
-|              5000 |                 |                    |                |
-|             10000 |                 |                    |                |
+|              1000 |        13944417 |           13779453 |       13928726 |
+|              5000 |        15629456 |           15692059 |       15685792 |
+|             10000 |        15770825 |           15799296 |       15950752 |
 
 | Batch length (-b) | Filter (Adaptive) | Filter (One per warp) | Filter (No warps) |
 |              1000 |          14249680 |              13276732 |          13471252 |
@@ -430,14 +430,14 @@ Values are in tuples per second.  It doesn't make sense to have
 more than two sources on the Nano, since it only has 4 cores.     
 
 | Sources (-s) | Map (Adaptive) | Map (One per warp) | Map (No warps) |
-|            1 |                |                    |                |
-|            2 |                |                    |                |
-|            4 |                |                    |                |
-|            6 |                |                    |                |
-|            8 |                |                    |                |
-|           10 |                |                    |                |
-|           12 |                |                    |                |
-|           14 |                |                    |                |
+|            1 |       15794892 |           15905959 |       15952164 |
+|            2 |       31607677 |           31568120 |       31550530 |
+|            4 |       64059152 |           63977237 |       64164930 |
+|            6 |       95841456 |           95782536 |       96077155 |
+|            8 |      127697402 |          126418688 |      127834540 |
+|           10 |      147630180 |          126210740 |      147065085 |
+|           12 |      147664162 |          126100248 |      147558662 |
+|           14 |      147729927 |          126744909 |      147725699 |
 
 | Sources (-s) | Filter (Adaptive) | Filter (One per warp) | Filter (No warps) |
 |            1 |          15815164 |              15906418 |          15776215 |
