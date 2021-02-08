@@ -379,3 +379,72 @@ more than two sources on the Nano, since it only has 4 cores.
 |            1 |           7900302 |               7901494 |           8121770 |
 |            2 |          12166886 |               7875166 |          11684490 |
 
+
+*** Pianosa
+
+**** Measure: Keys - 1 source, 10000 tuples per batch
+
+| Keys (-k) | Map (Adaptive) | Map (One per warp) | Map (No warps) |
+|         1 |                |                    |                |
+|        10 |                |                    |                |
+|       100 |                |                    |                |
+|       500 |                |                    |                |
+|       960 |                |                    |                |
+|      1000 |                |                    |                |
+|      2000 |                |                    |                |
+|      4000 |                |                    |                |
+|      8000 |                |                    |                |
+|     10000 |                |                    |                |
+
+| Keys (-k) | Filter (Adaptive) | Filter (One per warp) | Filter (No warps) |
+|         1 |          15815195 |              15843303 |          15730278 |
+|        10 |          15833209 |              15739485 |          15730682 |
+|       100 |          15855323 |              15880016 |          15772390 |
+|       500 |          15815164 |              15906418 |          15776215 |
+|       960 |          15873735 |              15973308 |          15892454 |
+|      1000 |          15845531 |              15772257 |          15901946 |
+|      2000 |          15840830 |              16029924 |          15909081 |
+|      4000 |          15831120 |              16050242 |          15885674 |
+|      8000 |          16111410 |              12315871 |          16003775 |
+|     10000 |           1814823 |                453745 |           2072374 |
+
+
+**** Measure: Batch length - 500 keys, 1 source
+
+Values are in tuples per second.
+
+| Batch length (-b) | Map (Stateless) | Map (One per warp) | Map (No warps) |
+|              1000 |                 |                    |                |
+|              5000 |                 |                    |                |
+|             10000 |                 |                    |                |
+
+| Batch length (-b) | Filter (Adaptive) | Filter (One per warp) | Filter (No warps) |
+|              1000 |          14249680 |              13276732 |          13471252 |
+|              5000 |          15735220 |              15666936 |          15669721 |
+|             10000 |          15815164 |              15906418 |          15776215 |
+
+
+**** Measure: Sources - 10000 tuples per batch, 500 keys
+
+Values are in tuples per second.  It doesn't make sense to have
+more than two sources on the Nano, since it only has 4 cores.     
+
+| Sources (-s) | Map (Adaptive) | Map (One per warp) | Map (No warps) |
+|            1 |                |                    |                |
+|            2 |                |                    |                |
+|            4 |                |                    |                |
+|            6 |                |                    |                |
+|            8 |                |                    |                |
+|           10 |                |                    |                |
+|           12 |                |                    |                |
+|           14 |                |                    |                |
+
+| Sources (-s) | Filter (Adaptive) | Filter (One per warp) | Filter (No warps) |
+|            1 |          15815164 |              15906418 |          15776215 |
+|            2 |          32070393 |              32083159 |          31558376 |
+|            4 |          64545146 |              64395886 |          63903539 |
+|            6 |          96739731 |              75245147 |          95881741 |
+|            8 |          99238098 |              74143134 |         100732251 |
+|           10 |          98434105 |              74123596 |         100584544 |
+|           12 |          98680734 |              74702844 |         100498977 |
+|           14 |          96554241 |              73956939 |          99561198 |
