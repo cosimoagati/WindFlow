@@ -326,41 +326,51 @@ irrelevant, hence the relatively low variance.
 
 **** Measure: Keys - 1 source, 10000 tuples per batch
 
-| Keys (-k) | Map (Stateless) |
-|         1 |         8113731 |
-|        10 |         8308307 |
-|       100 |         8448787 |
-|       500 |         8436646 |
-|       960 |         8410549 |
-|      1000 |         8606700 |
-|      2000 |         8509144 |
-|      4000 |         8450967 |
-|      8000 |         7534965 |
-|     10000 |          422816 |
+| Keys (-k) | Map (Adaptive) | Map (One per warp) | Map (No warps) |
+|         1 |        8523685 |            8620809 |        8427848 |
+|        10 |        8299342 |            8510979 |        8307281 |
+|       100 |        8462811 |            7379101 |        8535448 |
+|       500 |        8430318 |            8165479 |        8574062 |
+|       960 |        8306032 |            4239702 |        8520762 |
+|      1000 |        8445980 |            7886717 |        8825226 |
+|      2000 |        7285115 |            5011908 |        8175625 |
+|      4000 |        8520147 |            3063936 |        8509028 |
+|      8000 |        7607754 |            1726115 |        7493692 |
+|     10000 |         423328 |              72093 |         422546 |
 
-| Keys (-k) | Filter (Stateless) |
-|         1 |            8077970 |
-|        10 |            7825387 |
-|       100 |            7939100 |
-|       500 |            8168414 |
-|       960 |            8175451 |
-|      1000 |            7953574 |
-|      2000 |            8122794 |
-|      4000 |            8136413 |
-|      8000 |            6298765 |
-|     10000 |             418992 |
+| Keys (-k) | Filter (Stateless) | Filter (One per warp) | Filter (No warps) |
+|         1 |            8077970 |                       |                   |
+|        10 |            7825387 |                       |                   |
+|       100 |            7939100 |                       |                   |
+|       500 |            8168414 |                       |                   |
+|       960 |            8175451 |                       |                   |
+|      1000 |            7953574 |                       |                   |
+|      2000 |            8122794 |                       |                   |
+|      4000 |            8136413 |                       |                   |
+|      8000 |            6298765 |                       |                   |
+|     10000 |             418992 |                       |                   |
 
 
 **** Measure: Batch length - 500 keys, 1 source
 
 Values are in tuples per second.
 
-| Batch length (-b) | Map (Stateless) |
-|              1000 |         4837020 |
-|              5000 |         7588236 |
-|             10000 |         8436646 |
+| Batch length (-b) | Map (Stateless) | Map (One per warp) | Map (No warps) |
+|              1000 |         4721917 |            4574673 |        5341444 |
+|              5000 |         7799193 |            7911064 |        8310345 |
+|             10000 |         8430318 |            8165479 |        8574062 |
 
-| Batch length (-b) | Filter (Stateless) |
-|              1000 |            2058779 |
-|              5000 |            7000820 |
-|             10000 |            8168414 |
+| Batch length (-b) | Filter (Stateless) | Filter (One per warp) | Filter (No warps) |
+|              1000 |            2058779 |                       |                   |
+|              5000 |            7000820 |                       |                   |
+|             10000 |            8168414 |                       |                   |
+
+
+**** Measure: Sources - 10000 tuples per batch, 500 keys
+
+Values are in tuples per second.  It doesn't make sense to have
+more than two sources on the Nano, since it only has 4 cores.     
+
+| Sources (-s) | Map (Adaptive) | Map (One per warp) | Map (No warps) |
+|            1 |        8430318 |            8165479 |        8574062 |
+|            2 |       15315367 |           11087785 |       15257164 |
