@@ -178,7 +178,7 @@ struct batch_t {
 		free(kb.map_idxs_cpu);
 		size_t old_value = delete_counter->fetch_sub(1);
 		if (old_value == 1) {
-#if __RECYCLE__
+#ifdef __RECYCLE__
 			// try to push the GPU array into the recycling queue
 			if (!queue->push((void *const) raw_data_gpu))
 				gpuErrChk(cudaFree(raw_data_gpu));

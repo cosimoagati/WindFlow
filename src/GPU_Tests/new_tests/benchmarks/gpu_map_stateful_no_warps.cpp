@@ -167,7 +167,7 @@ struct batch_t {
 		free(kb.map_idxs_cpu);
 		const size_t old_value = delete_counter->fetch_sub(1);
 		if (old_value == 1) {
-#if __RECYCLE__
+#ifdef __RECYCLE__
 			// try to push the GPU array into the recycling queue
 			if (!queue->push((void *const) raw_data_gpu))
 				gpuErrChk(cudaFree(raw_data_gpu));
@@ -395,6 +395,7 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *
                                            Window_State **states, int num_dist_keys) {
 	const int thread_id   = threadIdx.x + blockIdx.x * blockDim.x;
 	const int num_threads = gridDim.x * blockDim.x;
+
 	for (int key_id = thread_id; key_id < num_dist_keys; key_id += num_threads) {
 		auto idx = start_idxs[key_id];
 		// execute all the inputs with key in the input batch
