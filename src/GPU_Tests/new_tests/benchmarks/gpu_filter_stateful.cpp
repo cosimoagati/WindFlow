@@ -446,7 +446,7 @@ __global__ void Stateful_Processing_Kernel(tuple_t *tuples, bool *flags, int *ma
 	if (thread_id % threads_per_worker == 0) {
 		auto &cached_state = cached_states[threadIdx.x / threads_per_worker];
 		for (int key_id = worker_id; key_id < num_dist_keys; key_id += num_workers) {
-			auto idx   = start_idxs[key_id];
+			auto idx     = start_idxs[key_id];
 			cached_state = *(states[key_id]);
 			// execute all the inputs with key in the input batch
 			while (idx != -1) {
