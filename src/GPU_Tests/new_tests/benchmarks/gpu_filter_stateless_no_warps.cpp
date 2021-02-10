@@ -469,6 +469,7 @@ public:
 		                          numSMs * max_blocks_per_sm);
 		Stateless_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp, 0,
 		                              cudaStream>>>(b->data_gpu, flags_gpu, b->size, filterF);
+		assert(cudaGetLastError() == cudaSuccess);
 		// compact the output batch
 		thrust::device_ptr<bool>    th_flags_gpu    = thrust::device_pointer_cast(flags_gpu);
 		thrust::device_ptr<tuple_t> th_data_gpu     = thrust::device_pointer_cast(b->data_gpu);

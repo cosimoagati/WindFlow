@@ -659,6 +659,12 @@ public:
 		        b->data_gpu, flags_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
 		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys, num_active_thread_per_warp);
 #else
+		cout << num_blocks << endl;
+		cout << sizeof(Window_State) << endl;
+		cout << "threads_per_warp: " << threads_per_warp << endl;
+		cout << num_active_thread_per_warp << endl;
+		cout << warps_per_block << endl;
+		cout << num_blocks * sizeof(Window_State) * num_active_thread_per_warp * warps_per_block << endl;
 		Stateful_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp,
 		                             sizeof(Window_State) * num_active_thread_per_warp
 		                                     * warps_per_block,
@@ -666,6 +672,7 @@ public:
 		        b->data_gpu, flags_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
 		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys, num_active_thread_per_warp);
 #endif
+		assert(cudaGetLastError() == cudaSuccess);
 		batch_to_be_sent                         = b;
 		id_r                                     = (id_r + 1) % 2;
 		volatile unsigned long end_time_nsec     = current_time_nsecs();

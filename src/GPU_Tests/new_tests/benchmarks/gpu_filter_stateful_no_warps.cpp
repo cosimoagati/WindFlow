@@ -569,6 +569,7 @@ public:
 			Initialize_States_Kernel<<<num_blocks, threads_per_block, 0,
 			                           records[id_r]->cudaStream>>>(
 			        records[id_r]->new_state_ptrs_cpu, num_new_keys);
+			assert(cudaGetLastError() == cudaSuccess);
 		}
 		gpuErrChk(cudaMemcpyAsync(records[id_r]->state_ptrs_gpu, records[id_r]->state_ptrs_cpu,
 		                          (b->kb).num_dist_keys * sizeof(Window_State *),
@@ -625,6 +626,7 @@ public:
 		        b->data_gpu, flags_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
 		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys);
 #endif
+		assert(cudaGetLastError() == cudaSuccess);
 		batch_to_be_sent                         = b;
 		id_r                                     = (id_r + 1) % 2;
 		volatile unsigned long end_time_nsec     = current_time_nsecs();

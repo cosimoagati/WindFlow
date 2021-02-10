@@ -621,6 +621,7 @@ public:
 		        records[id_r]->start_idxs_gpu, records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys,
 		        num_active_thread_per_warp);
 #endif
+		assert(cudaGetLastError() == cudaSuccess);
 		batch_to_be_sent                         = b;
 		id_r                                     = (id_r + 1) % 2;
 		volatile unsigned long end_time_nsec     = current_time_nsecs();

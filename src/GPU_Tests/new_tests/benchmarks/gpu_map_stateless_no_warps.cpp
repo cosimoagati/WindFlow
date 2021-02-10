@@ -456,6 +456,7 @@ public:
 		                          numSMs * max_blocks_per_sm);
 		Stateless_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp, 0,
 		                              cudaStream>>>(b->data_gpu, b->size, mapF);
+		assert(cudaGetLastError() == cudaSuccess);
 		gpuErrChk(cudaStreamSynchronize(cudaStream));
 		volatile unsigned long end_time_nsec     = current_time_nsecs();
 		unsigned long          elapsed_time_nsec = end_time_nsec - start_time_nsec;
