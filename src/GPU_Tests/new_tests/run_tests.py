@@ -42,7 +42,6 @@ if __name__ == '__main__':
             tests = (STATELESS_TESTS + EXTRA_MAP_STATELESS_TESTS +
                      EXTRA_FILTER_STATELESS_TESTS + STATEFUL_TESTS +
                      EXTRA_MAP_TESTS + EXTRA_FILTER_TESTS)
-            break
         else:
             tests.append(test)
 
@@ -59,6 +58,6 @@ if __name__ == '__main__':
             for i in range(RUNS_NUM):
                 # PIPE needed to capture output on Python < 3.7
                 output = run(arglist, stdout=PIPE, check=True)
-                run_results.append(int(output.stdout))
+                run_results.append(float(output.stdout))
             output_file.write(str(round(mean(run_results))) + '\n')
             output_file.flush()
