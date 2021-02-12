@@ -24,6 +24,7 @@ BATCH_LENGTHS = [1000, 5000, 10000]
 RUNS_NUM = 1
 WORKER_NUM = 1
 DATASET_FILE = 'sensors.dat'
+ROUND_RESULTS = False
 
 
 def print_usage_and_exit():
@@ -59,5 +60,7 @@ if __name__ == '__main__':
                 # PIPE needed to capture output on Python < 3.7
                 output = run(arglist, stdout=PIPE, check=True)
                 run_results.append(float(output.stdout))
-            output_file.write(str(round(mean(run_results))) + '\n')
+            mean_result = (round(mean(run_results)) if ROUND_RESULTS else
+                           mean(run_results))
+            output_file.write(str(mean_result) + '\n')
             output_file.flush()
