@@ -659,12 +659,13 @@ public:
 		        b->data_gpu, flags_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
 		        records[id_r]->state_ptrs_gpu, (b->kb).num_dist_keys, num_active_thread_per_warp);
 #else
-		cout << num_blocks << endl;
-		cout << sizeof(Window_State) << endl;
-		cout << "threads_per_warp: " << threads_per_warp << endl;
-		cout << num_active_thread_per_warp << endl;
-		cout << warps_per_block << endl;
-		cout << num_blocks * sizeof(Window_State) * num_active_thread_per_warp * warps_per_block << endl;
+		// cout << num_blocks << endl;
+		// cout << sizeof(Window_State) << endl;
+		// cout << "threads_per_warp: " << threads_per_warp << endl;
+		// cout << num_active_thread_per_warp << endl;
+		// cout << warps_per_block << endl;
+		// cout << num_blocks * sizeof(Window_State) * num_active_thread_per_warp * warps_per_block <<
+		// endl;
 		Stateful_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp,
 		                             sizeof(Window_State) * num_active_thread_per_warp
 		                                     * warps_per_block,
@@ -692,11 +693,13 @@ public:
 	}
 
 	void svc_end() {
+		const auto service_time = (static_cast<double>(tot_elapsed_nsec) / received_batch) / 1000;
 #ifndef TEST
-		printf("[FILTER] average service time: %f usec\n",
-		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
+		printf("[FILTER] average service time: %f usec\n", service_time);
 		printf("[FILTER] average number of keys per batch: %f\n",
 		       ((double) num_keys_per_batch) / received_batch);
+#elif defined(TEST) && defined(__SHARED__)
+		cout << service_time << endl;
 #endif
 	}
 };
@@ -893,14 +896,14 @@ int main(int argc, char *argv[]) {
 	volatile unsigned long start_time_main_usecs = current_time_usecs();
 	pipe->run_and_wait_end();
 	volatile unsigned long end_time_main_usecs = current_time_usecs();
-	double elapsed_time_seconds = (end_time_main_usecs - start_time_main_usecs) / (1000000.0);
-	double throughput           = sent_tuples / elapsed_time_seconds;
-#ifdef TEST
-	cout << (int) throughput << endl;
-#else
-	cout << "Measured throughput: " << (int) throughput << " tuples/second" << endl;
+	const double elapsed_time_seconds = (end_time_main_usecs - start_time_main_usecs) / 1000000.0;
+	const auto   throughput           = static_cast<int>(sent_tuples / elapsed_time_seconds);
+#ifndef TEST
+	cout << "Measured throughput: " << throughput << " tuples/second" << endl;
 	cout << "Allocated batches: " << (int) num_allocated_batches << endl;
 	cout << "...end" << endl;
+#elif !defined(__SHARED__)
+	cout << throughput << endl;
 #endif
 	cudaFree(flags_gpu);
 	return 0;

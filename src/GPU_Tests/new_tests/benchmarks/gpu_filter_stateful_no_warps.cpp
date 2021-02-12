@@ -646,11 +646,13 @@ public:
 	}
 
 	void svc_end() {
+		const auto service_time = (static_cast<double>(tot_elapsed_nsec) / received_batch) / 1000;
 #ifndef TEST
-		printf("[FILTER] average service time: %f usec\n",
-		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
+		printf("[FILTER] average service time: %f usec\n", service_time);
 		printf("[FILTER] average number of keys per batch: %f\n",
 		       ((double) num_keys_per_batch) / received_batch);
+#elif defined(TEST) && defined(__SHARED__)
+		cout << service_time << endl;
 #endif
 	}
 };
@@ -847,14 +849,14 @@ int main(int argc, char *argv[]) {
 	volatile unsigned long start_time_main_usecs = current_time_usecs();
 	pipe->run_and_wait_end();
 	volatile unsigned long end_time_main_usecs = current_time_usecs();
-	double elapsed_time_seconds = (end_time_main_usecs - start_time_main_usecs) / (1000000.0);
-	double throughput           = sent_tuples / elapsed_time_seconds;
-#ifdef TEST
-	cout << (int) throughput << endl;
-#else
-	cout << "Measured throughput: " << (int) throughput << " tuples/second" << endl;
+	const double elapsed_time_seconds = (end_time_main_usecs - start_time_main_usecs) / 1000000.0;
+	const auto   throughput           = static_cast<int>(sent_tuples / elapsed_time_seconds);
+#ifndef TEST
+	cout << "Measured throughput: " << throughput << " tuples/second" << endl;
 	cout << "Allocated batches: " << (int) num_allocated_batches << endl;
 	cout << "...end" << endl;
+#elif !defined(__SHARED__)
+	cout << throughput << endl;
 #endif
 	cudaFree(flags_gpu);
 	return 0;

@@ -390,7 +390,7 @@ __device__ void map_function(tuple_t &t, Window_State &state) {
 	t.incremental_average = state.compute(t.property_value);
 }
 
-#if !defined(__SHARED__)
+#ifndef __SHARED__
 __global__ void Stateful_Processing_Kernel(tuple_t *tuples, int *map_idxs, int *start_idxs,
                                            Window_State **states, int num_dist_keys) {
 	const int thread_id   = threadIdx.x + blockIdx.x * blockDim.x;
@@ -599,7 +599,7 @@ public:
 			else
 				delete batch_to_be_sent;
 		}
-#if !defined(__SHARED__)
+#ifndef __SHARED__
 		Stateful_Processing_Kernel<<<num_blocks, warps_per_block * threads_per_warp, 0,
 		                             records[id_r]->cudaStream>>>(
 		        b->data_gpu, records[id_r]->map_idxs_gpu, records[id_r]->start_idxs_gpu,
@@ -631,11 +631,13 @@ public:
 	}
 
 	void svc_end() {
+		const auto service_time = (static_cast<double>(tot_elapsed_nsec) / received_batch) / 1000;
 #ifndef TEST
-		printf("[MAP] average service time: %f usec\n",
-		       (((double) tot_elapsed_nsec) / received_batch) / 1000);
+		printf("[MAP] average service time: %f usec\n", service_time);
 		printf("[MAP] average number of keys per batch: %f\n",
 		       ((double) num_keys_per_batch) / received_batch);
+#elif defined(TEST) && defined(__SHARED__)
+		cout << service_time << endl;
 #endif
 	}
 };
@@ -829,14 +831,14 @@ int main(int argc, char *argv[]) {
 	volatile unsigned long start_time_main_usecs = current_time_usecs();
 	pipe->run_and_wait_end();
 	volatile unsigned long end_time_main_usecs = current_time_usecs();
-	double elapsed_time_seconds = (end_time_main_usecs - start_time_main_usecs) / (1000000.0);
-	double throughput           = sent_tuples / elapsed_time_seconds;
-#ifdef TEST
-	cout << (int) throughput << endl;
-#else
-	cout << "Measured throughput: " << (int) throughput << " tuples/second" << endl;
+	const double elapsed_time_seconds = (end_time_main_usecs - start_time_main_usecs) / 1000000.0;
+	const auto   throughput           = static_cast<int>(sent_tuples / elapsed_time_seconds);
+#ifndef TEST
+	cout << "Measured throughput: " << throughput << " tuples/second" << endl;
 	cout << "Allocated batches: " << (int) num_allocated_batches << endl;
 	cout << "...end" << endl;
+#elif !defined(__SHARED__)
+	cout << throughput << endl;
 #endif
 	return 0;
 }
