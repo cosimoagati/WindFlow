@@ -660,11 +660,11 @@ public:
 
 	void svc_end() {
 		const auto service_time = (static_cast<double>(tot_elapsed_nsec) / received_batch) / 1000;
-#ifndef TEST
+#if !defined(THROUGHPUT_TEST) && !defined(SERVICE_TIME_TEST)
 		printf("[FILTER] average service time: %f usec\n", service_time);
 		printf("[FILTER] average number of keys per batch: %f\n",
 		       ((double) num_keys_per_batch) / received_batch);
-#elif defined(TEST) && defined(__SHARED__)
+#elif defined(SERVICE_TIME_TEST) && !defined(THROUGHPUT_TEST)
 		cout << service_time << endl;
 #endif
 	}
@@ -706,7 +706,7 @@ public:
 	}
 
 	void svc_end() {
-#ifndef TEST
+#if !defined(THROUGHPUT_TEST) && !defined(SERVICE_TIME_TEST)
 		cout << "[SINK] received " << received << " inputs" << endl;
 #endif
 	}
@@ -855,7 +855,7 @@ int main(int argc, char *argv[]) {
 	a2a->add_secondset(second_set, true);
 	pipe->add_stage(a2a, true);
 	pipe->add_stage(new Sink(), true);
-#ifndef TEST
+#if !defined(THROUGHPUT_TEST) && !defined(SERVICE_TIME_TEST)
 	cout << "Starting pipe with " << pipe->cardinality() << " threads..." << endl;
 #endif
 	// evaluate topology execution time
@@ -865,11 +865,11 @@ int main(int argc, char *argv[]) {
 
 	const double elapsed_time_seconds = (end_time_main_usecs - start_time_main_usecs) / 1000000.0;
 	const auto   throughput           = static_cast<int>(sent_tuples / elapsed_time_seconds);
-#ifndef TEST
+#if !defined(THROUGHPUT_TEST) && !defined(SERVICE_TIME_TEST)
 	cout << "Measured throughput: " << throughput << " tuples/second" << endl;
 	cout << "Allocated batches: " << (int) num_allocated_batches << endl;
 	cout << "...end" << endl;
-#elif !defined(__SHARED__)
+#elif defined(THROUGHPUT_TEST) && !defined(SERVICE_TIME_TEST)
 	cout << throughput << endl;
 #endif
 	cudaFree(flags_gpu);
