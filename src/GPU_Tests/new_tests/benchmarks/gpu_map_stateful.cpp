@@ -36,6 +36,10 @@
 using namespace std;
 using namespace ff;
 
+#if defined(THROUGHPUT_TEST) && defined(SERVICE_TIME_TEST)
+static_assert(false, "At most one one kind of TEST macro can be defined.");
+#endif
+
 struct dummy_mi : ff_minode {
 	void *svc(void *t) { return t; }
 };
