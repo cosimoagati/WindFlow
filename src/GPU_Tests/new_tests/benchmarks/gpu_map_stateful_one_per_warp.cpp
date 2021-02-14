@@ -640,7 +640,7 @@ public:
 		printf("[MAP] average service time: %f usec\n", service_time);
 		printf("[MAP] average number of keys per batch: %f\n",
 		       ((double) num_keys_per_batch) / received_batch);
-#elif defined(THROUGHPUT_TEST) && !defined(THROUGHPUT_TEST)
+#elif defined(SERVICE_TIME_TEST) && !defined(THROUGHPUT_TEST)
 		cout << service_time << endl;
 #endif
 	}
